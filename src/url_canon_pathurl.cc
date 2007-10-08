@@ -96,14 +96,26 @@ bool CanonicalizePathURL(const wchar_t* spec,
 }
 
 bool ReplacePathURL(const char* base,
-                    int base_len,
                     const url_parse::Parsed& base_parsed,
-                    const URLComponentSource<char>& replacements,
+                    const Replacements<char>& replacements,
                     CanonOutput* output,
                     url_parse::Parsed* new_parsed) {
   URLComponentSource<char> source(base);
   url_parse::Parsed parsed(base_parsed);
   SetupOverrideComponents(base, replacements, &source, &parsed);
+  return DoCanonicalizePathURL<char, unsigned char>(
+      source, parsed, output, new_parsed);
+}
+
+bool ReplacePathURL(const char* base,
+                    const url_parse::Parsed& base_parsed,
+                    const Replacements<wchar_t>& replacements,
+                    CanonOutput* output,
+                    url_parse::Parsed* new_parsed) {
+  RawCanonOutput<1024> utf8;
+  URLComponentSource<char> source(base);
+  url_parse::Parsed parsed(base_parsed);
+  SetupUTF16OverrideComponents(base, replacements, &utf8, &source, &parsed);
   return DoCanonicalizePathURL<char, unsigned char>(
       source, parsed, output, new_parsed);
 }

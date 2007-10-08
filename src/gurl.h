@@ -34,17 +34,13 @@
 #include <map>
 
 #include "googleurl/src/url_canon.h"
+#include "googleurl/src/url_canon_stdstring.h"
 #include "googleurl/src/url_parse.h"
-
-// Forward declare IPC::Message because so that we don't have a circular header
-// file reference between this and ipc_message_utils.h
-namespace IPC {
-  class Message;
-}
 
 class GURL {
  public:
-  typedef url_canon::URLComponentSource<char> Replacements;
+  typedef url_canon::StdStringReplacements<char> Replacements;
+  typedef url_canon::StdStringReplacements<wchar_t> ReplacementsW;
 
   // Creates an empty, invalid URL.
   GURL();
@@ -147,18 +143,20 @@ class GURL {
   GURL Resolve(const std::wstring& relative) const;
 
   // Creates a new GURL by replacing the current URL's components with the
-  // supplied versions. See the Replacements typedef and class above for more.
+  // supplied versions. See the Replacements class in url_canon.h for more.
   //
   // These are not particularly quick, so avoid doing mutations when possible.
   // Prefer the 8-bit version when possible.
   //
   // It is an error to replace components of an invalid URL. The result will
   // be the empty URL.
-  GURL ReplaceComponents(const Replacements& replacements) const;
-  /* TODO: support wide replacements.
+  //
+  // Note that we use the more general url_canon::Replacements type to give
+  // callers extra flexibility rather than our override.
   GURL ReplaceComponents(
-      const url_canon::URLComponentSource<wchar_t>& replacements) const;
-  */
+      const url_canon::Replacements<char>& replacements) const;
+  GURL ReplaceComponents(
+      const url_canon::Replacements<wchar_t>& replacements) const;
 
   // A helper function that is equivalent to replacing the path with a slash
   // and clearing out everything after that. We sometimes need to know just the

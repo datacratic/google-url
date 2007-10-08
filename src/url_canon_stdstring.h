@@ -85,6 +85,48 @@ class StdStringCanonOutput : public CanonOutput {
    std::string* str_;
 };
 
+// An extension of the Replacements class that allows the setters to use
+// standard strings.
+//
+// The strings passed as arguments are not copied and must remain valid until
+// this class goes out of scope.
+template<typename CHAR>
+class StdStringReplacements : public url_canon::Replacements<CHAR> {
+ public:
+  void SetSchemeStr(const std::basic_string<CHAR>& s) {
+    SetScheme(s.data(),
+              url_parse::Component(0, static_cast<int>(s.length())));
+  }
+  void SetUsernameStr(const std::basic_string<CHAR>& s) {
+    SetUsername(s.data(),
+                url_parse::Component(0, static_cast<int>(s.length())));
+  }
+  void SetPasswordStr(const std::basic_string<CHAR>& s) {
+    SetPassword(s.data(),
+                url_parse::Component(0, static_cast<int>(s.length())));
+  }
+  void SetHostStr(const std::basic_string<CHAR>& s) {
+    SetHost(s.data(),
+            url_parse::Component(0, static_cast<int>(s.length())));
+  }
+  void SetPortStr(const std::basic_string<CHAR>& s) {
+    SetPort(s.data(),
+            url_parse::Component(0, static_cast<int>(s.length())));
+  }
+  void SetPathStr(const std::basic_string<CHAR>& s) {
+    SetPath(s.data(),
+            url_parse::Component(0, static_cast<int>(s.length())));
+  }
+  void SetQueryStr(const std::basic_string<CHAR>& s) {
+    SetQuery(s.data(),
+             url_parse::Component(0, static_cast<int>(s.length())));
+  }
+  void SetRefStr(const std::basic_string<CHAR>& s) {
+    SetRef(s.data(),
+           url_parse::Component(0, static_cast<int>(s.length())));
+  }
+};
+
 }  // namespace url_canon
 
 #endif  // GOOGLEURL_SRC_URL_CANON_STRING_H__

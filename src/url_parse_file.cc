@@ -151,16 +151,26 @@ void DoParseFileURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   int begin = 0;
   TrimURL(spec, &begin, &spec_len);
 
-  // Extract the scheme. We also handle the case where there is no scheme
+  // Find the scheme.
   int after_scheme;
-  if (ExtractScheme(&spec[begin], spec_len - begin, &parsed->scheme)) {
-    // Offset the results since we gave ExtractScheme a substring.
-    parsed->scheme.begin += begin;
-    after_scheme = parsed->scheme.end() + 1;
-  } else {
-    // No scheme found, remember that.
+#ifdef WIN32
+  if (DoesBeginWindowsDriveSpec(spec, begin, spec_len) ||
+      DoesBeginUNCPath(spec, begin, spec_len, false)) {
+    // Windows path, don't try to extract the scheme (for example, "c:\foo").
     parsed->scheme = Component();
     after_scheme = begin;
+  } else
+#endif
+  {
+    if (ExtractScheme(&spec[begin], spec_len - begin, &parsed->scheme)) {
+      // Offset the results since we gave ExtractScheme a substring.
+      parsed->scheme.begin += begin;
+      after_scheme = parsed->scheme.end() + 1;
+    } else {
+      // No scheme found, remember that.
+      parsed->scheme = Component();
+      after_scheme = begin;
+    }
   }
 
   // Handle empty specs ones that contain only whitespace or control chars,

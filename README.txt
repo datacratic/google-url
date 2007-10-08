@@ -8,28 +8,25 @@ Please see the LICENSE.txt file for licensing information.
 Features
 ========
 
+   * Easily embeddable: This library was written for a variety of client and
+     server programs in mind, so unlike most implementations of URL parsing
+     and canonicalization, it can be easily emdedded.
+
    * Fast: hundreds of thousands of typical URLs can be parsed and
      canonicalized per second on a modern CPU. It is much faster than, for
      example, calling WinInet's corresponding functions.
 
-   * Compatible: When possible, this library has strived for IE7 compatability.
+   * Compatible: When possible, this library has strived for IE7 compatability
+     for both general web compatability, and so IE addons or other applications
+     that communicate with or embed IE will work properly.
+
      It supports Unix-style file URLs, as well as the more complex rules for
      Window file URLs. Note that total compatability is not possible (for
      example, IE6 and IE7 disagree about how to parse certain IP addresses),
      and that this is more strict about certain illegal, rarely used, and
      potentially dangerous constructs such as escaped control characters in
-     host names that IE will allow.
-
-   * Complete: This library is more complete than most other applications such
-     as IE7, Firefox, and Safari. For example, this library is the only one out
-     of those that will canonicalize IP addresses, or that can handle escaped
-     UTF-8 in the host name that has been intermixed with non-escpaed UTF-16.
-
-   * Easily embededable: Unlike most implementations of URL parsing and
-     canonicalization, this library is designed to be embedded into another
-     application. There is no dependency on STL (with the exception of the
-     example URL object), and the only external dependencies are on character
-     set conversion and IDN for which a convenient porting layer is provided.
+     host names that IE will allow. It is typically a little less strict than
+     Firefox.
 
 
 Example
@@ -50,6 +47,11 @@ factor out the macros and functions used in ICU, there are only a few well-
 isolated things that are used.
 
 TODO(brettw) ADD INSTRUCTIONS FOR GETTING ICU HERE!
+
+logging.h and logging.cc are Windows-only because the corresponding Unix
+logging system has many dependencies. This library uses few of the logging
+macros, and a dummy header can easily be written that defines the
+appropriate things for Unix.
 
 
 Definitions

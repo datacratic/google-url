@@ -441,11 +441,13 @@ bool CanonicalizeRef(const wchar_t* spec,
 bool CanonicalizeStandardURL(const char* spec,
                              int spec_len,
                              const url_parse::Parsed& parsed,
+                             CharsetConverter* query_converter,
                              CanonOutput* output,
                              url_parse::Parsed* new_parsed);
 bool CanonicalizeStandardURL(const wchar_t* spec,
                              int spec_len,
                              const url_parse::Parsed& parsed,
+                             CharsetConverter* query_converter,
                              CanonOutput* output,
                              url_parse::Parsed* new_parsed);
 
@@ -453,11 +455,13 @@ bool CanonicalizeStandardURL(const wchar_t* spec,
 bool CanonicalizeFileURL(const char* spec,
                          int spec_len,
                          const url_parse::Parsed& parsed,
+                         CharsetConverter* query_converter,
                          CanonOutput* output,
                          url_parse::Parsed* new_parsed);
 bool CanonicalizeFileURL(const wchar_t* spec,
                          int spec_len,
                          const url_parse::Parsed& parsed,
+                         CharsetConverter* query_converter,
                          CanonOutput* output,
                          url_parse::Parsed* new_parsed);
 
@@ -476,27 +480,19 @@ bool CanonicalizePathURL(const wchar_t* spec,
 
 // Part replacer --------------------------------------------------------------
 
-// Structure for overriding components in a URL. Pointers to each replacement
-// are specified here. Internally, the canonicalizer also uses this structure
-// to track the source of each of the |Parsed| components. This allows the
-// replacement code and the canonicalization code to be shared because the
-// source for each component is always general. Internally in the canonicalizer
-// we can not handle NULLs. The NULLs are substituded in the Replace...()
-// functions before going to the canonicalizer.
+// Internal structure used for storing separate strings for each component.
+// The basic canonicalization functions use this structure internally so that
+// component remplacement (different strings for different components) can be
+// treated on the same code path as regular canonicalization (the same string
+// for each component).
 //
-// Supplying a NULL means that the corresponding component should be unchanged.
-// Supplying an empty string means that element should be deleted.
+// A url_parse::Parsed structure usually goes along with this. Those
+// components identify offsets within these strings, so that they can all be
+// in the same string, or spread arbitrarily across different ones.
 //
-// An empty string will delete that component. For the types of components that
-// can be either empty or nonexistant (think the difference between not having
-// a question mark and a question mark with nothing following it), this
-// function will assume nonexistant when given an empty input string.
-//
-// Note: if the base URL is non-standard (i.e. a "path" like javascript:) then
-// only the scheme and path can be set. If the base URL is a file, then only
-// the host, path, param, query, and ref can be set.
-//
-// The 8-bit version requires UTF-8 encoding.
+// This structures does not own any data. It is the caller's responsibility to
+// ensure that the data the pointers point to stays in scope and is not
+// modified.
 template<typename CHAR>
 struct URLComponentSource {
   // Constructor normally used by callers wishing to replace components. This
@@ -515,7 +511,7 @@ struct URLComponentSource {
 
   // Constructor normally used internally to initialize all the components to
   // point to the same spec.
-  URLComponentSource(const CHAR* default_value)
+  explicit URLComponentSource(const CHAR* default_value)
       : scheme(default_value),
         username(default_value),
         password(default_value),
@@ -536,29 +532,173 @@ struct URLComponentSource {
   const CHAR* ref;
 };
 
-// The base must be a narrow canonical URL.
+// This structure encapsulates information on modifying a URL. Each component
+// may either be left unchanged, replaced, or deleted.
+//
+// By default, each component is unchanged. For those components that should be
+// modified, call either Set* or Clear* to modify it.
+//
+// The string passed to Set* functions DOES NOT GET COPIED AND MUST BE KEPT
+// IN SCOPE BY THE CALLER for as long as this object exists!
+//
+// Prefer the 8-bit replacement version if possible since it is more efficient.
+template<typename CHAR>
+class Replacements {
+ public:
+  Replacements() {
+  }
+
+  // Scheme
+  void SetScheme(const CHAR* s, const url_parse::Component& comp) {
+    sources_.scheme = s;
+    components_.scheme = comp;
+  }
+  // Note: we don't have a ClearScheme since this doesn't make any sense.
+  bool IsSchemeOverridden() const { return sources_.scheme != NULL; }
+
+  // Username
+  void SetUsername(const CHAR* s, const url_parse::Component& comp) {
+    sources_.username = s;
+    components_.username = comp;
+  }
+  void ClearUsername() {
+    sources_.username = Placeholder();
+    components_.username = url_parse::Component();
+  }
+  bool IsUsernameOverridden() const { return sources_.username != NULL; }
+
+  // Password
+  void SetPassword(const CHAR* s, const url_parse::Component& comp) {
+    sources_.password = s;
+    components_.password = comp;
+  }
+  void ClearPassword() {
+    sources_.password = Placeholder();
+    components_.password = url_parse::Component();
+  }
+  bool IsPasswordOverridden() const { return sources_.password != NULL; }
+
+  // Host
+  void SetHost(const CHAR* s, const url_parse::Component& comp) {
+    sources_.host = s;
+    components_.host = comp;
+  }
+  void ClearHost() {
+    sources_.host = Placeholder();
+    components_.host = url_parse::Component();
+  }
+  bool IsHostOverridden() const { return sources_.host != NULL; }
+
+  // Port
+  void SetPort(const CHAR* s, const url_parse::Component& comp) {
+    sources_.port = s;
+    components_.port = comp;
+  }
+  void ClearPort() {
+    sources_.port = Placeholder();
+    components_.port = url_parse::Component();
+  }
+  bool IsPortOverridden() const { return sources_.port != NULL; }
+
+  // Path
+  void SetPath(const CHAR* s, const url_parse::Component& comp) {
+    sources_.path = s;
+    components_.path = comp;
+  }
+  void ClearPath() {
+    sources_.path = Placeholder();
+    components_.path = url_parse::Component();
+  }
+  bool IsPathOverridden() const { return sources_.path != NULL; }
+
+  // Query
+  void SetQuery(const CHAR* s, const url_parse::Component& comp) {
+    sources_.query = s;
+    components_.query = comp;
+  }
+  void ClearQuery() {
+    sources_.query = Placeholder();
+    components_.query = url_parse::Component();
+  }
+  bool IsQueryOverridden() const { return sources_.query != NULL; }
+
+  // Ref
+  void SetRef(const CHAR* s, const url_parse::Component& comp) {
+    sources_.ref = s;
+    components_.ref = comp;
+  }
+  void ClearRef() {
+    sources_.ref = Placeholder();
+    components_.ref = url_parse::Component();
+  }
+  bool IsRefOverridden() const { return sources_.ref != NULL; }
+
+  // Getters for the itnernal data. See the variables below for how the
+  // information is encoded.
+  const URLComponentSource<CHAR>& sources() const { return sources_; }
+  const url_parse::Parsed& components() const { return components_; }
+
+ private:
+  // Returns a pointer to a static empty string that is used as a placeholder
+  // to indicate a component should be deleted (see below).
+  const CHAR* Placeholder() {
+    static const CHAR empty_string = 0;
+    return &empty_string;
+  }
+
+  // We support three states:
+  //
+  // Action                 | Source                Component
+  // -----------------------+--------------------------------------------------
+  // Don't change component | NULL                  (unused)
+  // Replace component      | (replacement string)  (replacement component)
+  // Delete component       | (non-NULL)            (invalid component: (0,-1))
+  //
+  // We use a pointer to the empty string for the source when the component
+  // should be deleted.
+  URLComponentSource<CHAR> sources_;
+  url_parse::Parsed components_;
+};
+
+// The base must be an 8-bit canonical URL.
 bool ReplaceStandardURL(const char* base,
-                        int base_len,
                         const url_parse::Parsed& base_parsed,
-                        const URLComponentSource<char>& replacements,
+                        const Replacements<char>& replacements,
+                        CharsetConverter* query_converter,
+                        CanonOutput* output,
+                        url_parse::Parsed* new_parsed);
+bool ReplaceStandardURL(const char* base,
+                        const url_parse::Parsed& base_parsed,
+                        const Replacements<wchar_t>& replacements,
+                        CharsetConverter* query_converter,
                         CanonOutput* output,
                         url_parse::Parsed* new_parsed);
 
 // Replacing some parts of a file URL is not permitted. Everything except
 // the host, path, query, and ref will be ignored.
 bool ReplaceFileURL(const char* base,
-                    int base_len,
                     const url_parse::Parsed& base_parsed,
-                    const URLComponentSource<char>& replacements,
+                    const Replacements<char>& replacements,
+                    CharsetConverter* query_converter,
+                    CanonOutput* output,
+                    url_parse::Parsed* new_parsed);
+bool ReplaceFileURL(const char* base,
+                    const url_parse::Parsed& base_parsed,
+                    const Replacements<wchar_t>& replacements,
+                    CharsetConverter* query_converter,
                     CanonOutput* output,
                     url_parse::Parsed* new_parsed);
 
 // Path URLs can only have the scheme and path replaced. All other components
 // will be ignored.
 bool ReplacePathURL(const char* base,
-                    int base_len,
                     const url_parse::Parsed& base_parsed,
-                    const URLComponentSource<char>& replacements,
+                    const Replacements<char>& replacements,
+                    CanonOutput* output,
+                    url_parse::Parsed* new_parsed);
+bool ReplacePathURL(const char* base,
+                    const url_parse::Parsed& base_parsed,
+                    const Replacements<wchar_t>& replacements,
                     CanonOutput* output,
                     url_parse::Parsed* new_parsed);
 
@@ -603,6 +743,8 @@ bool IsRelativeURL(const char* base,
 // URLs off of it and will return the base as the output with an error flag.
 // Becausee it is canonical is should also be ASCII.
 //
+// The query charset converter follows the same rules as CanonicalizeQuery.
+//
 // Returns true on success. On failure, the output will be "something
 // reasonable" that will be consistent and valid, just probably not what
 // was intended by the web page author or caller.
@@ -611,6 +753,7 @@ bool ResolveRelativeURL(const char* base_url,
                         bool base_is_file,
                         const char* relative_url,
                         const url_parse::Component& relative_component,
+                        CharsetConverter* query_converter,
                         CanonOutput* output,
                         url_parse::Parsed* out_parsed);
 bool ResolveRelativeURL(const char* base_url,
@@ -618,6 +761,7 @@ bool ResolveRelativeURL(const char* base_url,
                         bool base_is_file,
                         const wchar_t* relative_url,
                         const url_parse::Component& relative_component,
+                        CharsetConverter* query_converter,
                         CanonOutput* output,
                         url_parse::Parsed* out_parsed);
 

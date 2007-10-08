@@ -34,7 +34,6 @@
 #include "googleurl/src/gurl.h"
 
 #include "base/logging.h"
-#include "base/string_util.h"
 #include "googleurl/src/url_canon_stdstring.h"
 #include "googleurl/src/url_util.h"
 
@@ -57,6 +56,31 @@ bool InitCanonical(const std::basic_string<CHAR>& input_spec,
 
   output.Complete();  // Must be done before using string.
   return success;
+}
+
+// Returns a static reference to an empty string for returning a reference
+// when there is no underlying string.
+const std::string& EmptyStringForGURL() {
+#ifdef WIN32
+  // Avoid static object construction/destruction on startup/shutdown.
+  static std::string* empty_string = NULL;
+  if (!empty_string) {
+    // Create the string. Be careful that we don't break in the case that this
+    // is being called from multiple threads. Statics are not threadsafe.
+    std::string* new_empty_string = new std::string;
+    if (InterlockedCompareExchangePointer(
+        reinterpret_cast<PVOID*>(&empty_string), new_empty_string, NULL)) {
+      // The old value was non-NULL, so no replacement was done. Another
+      // thread did the initialization out from under us.
+      delete new_empty_string;
+    }
+  }
+  return *empty_string;
+#else
+  // TODO(brettw) Write a threadsafe Unix version!
+  static std::string empty_string;
+  return empty_string;
+#endif
 }
 
 } // namespace
@@ -107,7 +131,7 @@ const std::string& GURL::spec() const {
     return spec_;
 
   NOTREACHED() << "Trying to get the spec of an invalid URL!";
-  return EmptyString();
+  return EmptyStringForGURL();
 }
 
 // Note: code duplicated below (it's inconvenient to use a template here).
@@ -160,7 +184,9 @@ GURL GURL::Resolve(const std::wstring& relative) const {
   return result;
 }
 
-GURL GURL::ReplaceComponents(const Replacements& replacements) const {
+// Note: code duplicated below (it's inconvenient to use a template here).
+GURL GURL::ReplaceComponents(
+    const url_canon::Replacements<char>& replacements) const {
   GURL result;
 
   // Not allowed for invalid URLs.
@@ -173,17 +199,34 @@ GURL GURL::ReplaceComponents(const Replacements& replacements) const {
   url_canon::StdStringCanonOutput output(&result.spec_);
 
   result.is_valid_ = url_util::ReplaceComponents(
-      spec_.data(), static_cast<int>(spec_.size()), parsed_, replacements,
+      spec_.data(), parsed_, replacements,
       &output, &result.parsed_);
 
   output.Complete();
   return result;
 }
 
-/* TODO(brettw) support wide replacements!
-GURL GURL::ReplaceComponents(const ReplacementsW& replacements) const {
+// Note: code duplicated above (it's inconvenient to use a template here).
+GURL GURL::ReplaceComponents(
+    const url_canon::Replacements<wchar_t>& replacements) const {
+  GURL result;
+
+  // Not allowed for invalid URLs.
+  if (!is_valid_)
+    return GURL();
+
+  // Reserve enough room in the output for the input, plus some extra so that
+  // we have room if we have to escape a few things without reallocating.
+  result.spec_.reserve(spec_.size() + 32);
+  url_canon::StdStringCanonOutput output(&result.spec_);
+
+  result.is_valid_ = url_util::ReplaceComponents(
+      spec_.data(), parsed_, replacements,
+      &output, &result.parsed_);
+
+  output.Complete();
+  return result;
 }
-*/
 
 GURL GURL::GetWithEmptyPath() const {
   // This doesn't make sense for invalid or nonstandard URLs, so return
@@ -212,9 +255,9 @@ GURL GURL::GetWithEmptyPath() const {
 bool GURL::SchemeIs(const char* lower_ascii_scheme) const {
   if (parsed_.scheme.len <= 0)
     return lower_ascii_scheme == NULL;
-  return LowerCaseEqualsASCII(spec_.begin() + parsed_.scheme.begin,
-                              spec_.begin() + parsed_.scheme.end(),
-                              lower_ascii_scheme);
+  return url_util::LowerCaseEqualsASCII(spec_.data() + parsed_.scheme.begin,
+                                        spec_.data() + parsed_.scheme.end(),
+                                        lower_ascii_scheme);
 }
 
 bool GURL::SchemeIsStandard() const {

@@ -75,20 +75,41 @@ void DoAppendInvalidNarrowString(const CHAR* spec, int begin, int end,
   }
 }
 
-// Overrides one component, if the override pointer is non-NULL, the given
-// character pointer and dest_component will be updated to reflect that
-// override string. Otherwise, no changes will be made.
-void DoOverrideComponent(const char* override,
+// Overrides one component, see the url_canon::Replacements structure for
+// what the various combionations of source pointer and component mean.
+void DoOverrideComponent(const char* override_source,
+                         const url_parse::Component& override_component,
                          const char** dest,
                          url_parse::Component* dest_component) {
-  if (override) {
-    *dest = override;
-    int len = static_cast<int>(strlen(override));
-    if (len == 0)
-      *dest_component = url_parse::Component();
-    else
-      *dest_component = url_parse::Component(0, len);
+  if (override_source) {
+    *dest = override_source;
+    *dest_component = override_component;
   }
+}
+
+// Like DoOverrideComponent except that it takes a UTF-16 input. It is
+// converted to UTF-8 at the end of the given buffer as a temporary holding
+// place, and the output is set to reference that portion of the buffer.
+bool DoUTF16OverrideComponent(const wchar_t* override_source,
+                              const url_parse::Component& override_component,
+                              CanonOutput* utf8_buffer,
+                              const char** dest,
+                              url_parse::Component* dest_component) {
+  bool success = true;
+  if (override_source) {
+    *dest = utf8_buffer->data();
+    if (!override_component.is_valid()) {
+      // Non-"valid" component (means delete), so we need to preserve that.
+      *dest_component = url_parse::Component();
+    } else {
+      // Convert to UTF-8.
+      dest_component->begin = utf8_buffer->length();
+      success = ConvertUTF16ToUTF8(&override_source[override_component.begin],
+                                   override_component.len, utf8_buffer);
+      dest_component->len = utf8_buffer->length() - dest_component->begin;
+    }
+  }
+  return success;
 }
 
 }  // namespace
@@ -264,23 +285,77 @@ bool ConvertUTF8ToUTF16(const char* input, int input_len,
 }
 
 void SetupOverrideComponents(const char* base,
-                             const URLComponentSource<char>& repl,
+                             const Replacements<char>& repl,
                              URLComponentSource<char>* source,
                              url_parse::Parsed* parsed) {
+  // Get the source and parsed structures of the things we are replacing.
+  const URLComponentSource<char>& repl_source = repl.sources();
+  const url_parse::Parsed& repl_parsed = repl.components();
 
-  DoOverrideComponent(repl.scheme, &source->scheme, &parsed->scheme);
-  DoOverrideComponent(repl.username, &source->username, &parsed->username);
-  DoOverrideComponent(repl.password, &source->password, &parsed->password);
+  DoOverrideComponent(repl_source.scheme, repl_parsed.scheme,
+                      &source->scheme, &parsed->scheme);
+  DoOverrideComponent(repl_source.username, repl_parsed.username,
+                      &source->username, &parsed->username);
+  DoOverrideComponent(repl_source.password, repl_parsed.password,
+                      &source->password, &parsed->password);
 
   // Our host should be empty if not present, so override the default setup.
-  DoOverrideComponent(repl.host, &source->host, &parsed->host);
+  DoOverrideComponent(repl_source.host, repl_parsed.host,
+                      &source->host, &parsed->host);
   if (parsed->host.len == -1)
     parsed->host.len = 0;
 
-  DoOverrideComponent(repl.port, &source->port, &parsed->port);
-  DoOverrideComponent(repl.path, &source->path, &parsed->path);
-  DoOverrideComponent(repl.query, &source->query, &parsed->query);
-  DoOverrideComponent(repl.ref, &source->ref, &parsed->ref);
+  DoOverrideComponent(repl_source.port, repl_parsed.port,
+                      &source->port, &parsed->port);
+  DoOverrideComponent(repl_source.path, repl_parsed.path,
+                      &source->path, &parsed->path);
+  DoOverrideComponent(repl_source.query, repl_parsed.query,
+                      &source->query, &parsed->query);
+  DoOverrideComponent(repl_source.ref, repl_parsed.ref,
+                      &source->ref, &parsed->ref);
+}
+
+bool SetupUTF16OverrideComponents(const char* base,
+                                  const Replacements<wchar_t>& repl,
+                                  CanonOutput* utf8_buffer,
+                                  URLComponentSource<char>* source,
+                                  url_parse::Parsed* parsed) {
+  bool success = true;
+
+  // Get the source and parsed structures of the things we are replacing.
+  const URLComponentSource<wchar_t>& repl_source = repl.sources();
+  const url_parse::Parsed& repl_parsed = repl.components();
+
+  success &= DoUTF16OverrideComponent(repl_source.scheme, repl_parsed.scheme,
+                                      utf8_buffer,
+                                      &source->scheme, &parsed->scheme);
+  success &= DoUTF16OverrideComponent(repl_source.username,
+                                      repl_parsed.username, utf8_buffer,
+                                      &source->username, &parsed->username);
+  success &= DoUTF16OverrideComponent(repl_source.password,
+                                      repl_parsed.password, utf8_buffer,
+                                      &source->password, &parsed->password);
+
+  // Our host should be empty if not present, so override the default setup.
+  success &= DoUTF16OverrideComponent(repl_source.host, repl_parsed.host,
+                                      utf8_buffer,
+                                      &source->host, &parsed->host);
+  if (parsed->host.len == -1)
+    parsed->host.len = 0;
+
+  success &= DoUTF16OverrideComponent(repl_source.port, repl_parsed.port,
+                                      utf8_buffer,
+                                      &source->port, &parsed->port);
+  success &= DoUTF16OverrideComponent(repl_source.path, repl_parsed.path,
+                                      utf8_buffer,
+                                      &source->path, &parsed->path);
+  success &= DoUTF16OverrideComponent(repl_source.query, repl_parsed.query,
+                                      utf8_buffer,
+                                      &source->query, &parsed->query);
+  success &= DoUTF16OverrideComponent(repl_source.ref, repl_parsed.ref,
+                                      utf8_buffer,
+                                      &source->ref, &parsed->ref);
+  return success;
 }
 
 }  // namespace url_canon

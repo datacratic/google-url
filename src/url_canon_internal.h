@@ -412,6 +412,13 @@ bool ConvertUTF16ToUTF8(const wchar_t* input, int input_len,
 bool ConvertUTF8ToUTF16(const char* input, int input_len,
                         CanonOutputT<wchar_t>* output);
 
+// Converts from UTF-16 to 8-bit using the character set converter. If the
+// converter is NULL, this will use UTF-8.
+void ConvertUTF16ToQueryEncoding(const wchar_t* input,
+                                 const url_parse::Component& query,
+                                 CharsetConverter* converter,
+                                 CanonOutput* output);
+
 // Applies the replacements to the given component source. The component source
 // should be pre-initialized to the "old" base. That is, all pointers will
 // point to the spec of the old URL, and all of the Parsed components will
@@ -422,9 +429,27 @@ bool ConvertUTF8ToUTF16(const char* input, int input_len,
 // Canonicalizing with the new |source| and |parsed| can then combine URL
 // components from many different strings.
 void SetupOverrideComponents(const char* base,
-                             const URLComponentSource<char>& repl,
+                             const Replacements<char>& repl,
                              URLComponentSource<char>* source,
                              url_parse::Parsed* parsed);
+
+// Like the above 8-bit version, except that it additionally converts the
+// UTF-16 input to UTF-8 before doing the overrides.
+//
+// The given utf8_buffer is used to store the converted components. They will
+// be appended one after another, with the parsed structure identifying the
+// appropriate substrings. This buffer is a parameter because the source has
+// no storage, so the buffer must have the same lifetime as the source
+// parameter owned by the caller.
+//
+// Returns true on success. Fales means that the input was not valid UTF-16,
+// although we will have still done the override with "invalid characters" in
+// place of errors.
+bool SetupUTF16OverrideComponents(const char* base,
+                                  const Replacements<wchar_t>& repl,
+                                  CanonOutput* utf8_buffer,
+                                  URLComponentSource<char>* source,
+                                  url_parse::Parsed* parsed);
 
 // Implemented in url_canon_path.cc, these are required by the relative URL
 // resolver as well, so we declare them here.

@@ -134,11 +134,27 @@ bool ResolveRelative(const char* base_spec,
 //
 // Returns true if the resulting URL is valid.
 bool ReplaceComponents(const char* spec,
-                       int spec_len,
                        const url_parse::Parsed& parsed,
-                       const url_canon::URLComponentSource<char>& replacements,
+                       const url_canon::Replacements<char>& replacements,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* out_parsed);
+bool ReplaceComponents(const char* spec,
+                       const url_parse::Parsed& parsed,
+                       const url_canon::Replacements<wchar_t>& replacements,
+                       url_canon::CanonOutput* output,
+                       url_parse::Parsed* out_parsed);
+
+// String helper functions ----------------------------------------------------
+
+// Compare the lower-case form of the given string against the given ASCII
+// string.  This is useful for doing checking if an input string matches some
+// token, and it is optimized to avoid intermediate string copies.
+bool LowerCaseEqualsASCII(const char* a_begin,
+                          const char* a_end,
+                          const char* b);
+bool LowerCaseEqualsASCII(const wchar_t* a_begin,
+                          const wchar_t* a_end,
+                          const char* b);
 
 }  // namespace url_util
 

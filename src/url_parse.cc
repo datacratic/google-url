@@ -81,10 +81,10 @@ int FindNextAuthorityTerminator(const CHAR* spec,
 // canonicalizer handles them, meaning if you've been to the corresponding
 // "http://foo.com/" link, it will be colored.
 template <typename CHAR>
-void ParseAfterScheme(const CHAR* spec,
-                      int spec_len,
-                      int after_scheme,
-                      Parsed* parsed) {
+void DoParseAfterScheme(const CHAR* spec,
+                        int spec_len,
+                        int after_scheme,
+                        Parsed* parsed) {
   int num_slashes = CountConsecutiveSlashes(spec, after_scheme, spec_len);
   int after_slashes = after_scheme + num_slashes;
 
@@ -320,7 +320,7 @@ void DoParseStandardURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   if (begin == spec_len) {
     // ParsedAfterScheme will fill in empty values if there is no more data.
     parsed->scheme = Component();
-    ParseAfterScheme(spec, spec_len, begin, parsed);
+    DoParseAfterScheme(spec, spec_len, begin, parsed);
     return;
   }
 
@@ -362,7 +362,7 @@ void DoParseStandardURL(const CHAR* spec, int spec_len, Parsed* parsed) {
     parsed->scheme = Component();
     after_scheme = begin;
   }
-  ParseAfterScheme(spec, spec_len, after_scheme, parsed);
+  DoParseAfterScheme(spec, spec_len, after_scheme, parsed);
 }
 
 // Initializes a path URL which is merely a scheme followed by a path. Examples
@@ -567,7 +567,7 @@ bool ExtractScheme(const wchar_t* url, int url_len, Component* scheme) {
 }
 
 // This handles everything that may be an authority terminator, including
-// backslash. For special backslash handling see ParseAfterScheme.
+// backslash. For special backslash handling see DoParseAfterScheme.
 bool IsAuthorityTerminator(wchar_t ch) {
   return IsURLSlash(ch) || ch == '?' || ch == '#' || ch == ';';
 }
@@ -636,6 +636,20 @@ void ParsePathInternal(const wchar_t* spec,
                        Component* query,
                        Component* ref) {
   ParsePath(spec, path, filepath, query, ref);
+}
+
+void ParseAfterScheme(const char* spec,
+                      int spec_len,
+                      int after_scheme,
+                      Parsed* parsed) {
+  DoParseAfterScheme(spec, spec_len, after_scheme, parsed);
+}
+
+void ParseAfterScheme(const wchar_t* spec,
+                      int spec_len,
+                      int after_scheme,
+                      Parsed* parsed) {
+  DoParseAfterScheme(spec, spec_len, after_scheme, parsed);
 }
 
 }  // namespace url_parse

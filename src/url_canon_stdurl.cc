@@ -40,6 +40,7 @@ namespace {
 template<typename CHAR, typename UCHAR>
 bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
                                const url_parse::Parsed& parsed,
+                               CharsetConverter* query_converter,
                                CanonOutput* output,
                                url_parse::Parsed* new_parsed) {
   // Scheme: this will append the colon.
@@ -92,7 +93,7 @@ bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
   }
 
   // Query
-  CanonicalizeQuery(source.query, parsed.query, NULL,
+  CanonicalizeQuery(source.query, parsed.query, query_converter,
                     output, &new_parsed->query);
 
   // Ref: ignore failure for this, since the page can probably still be loaded.
@@ -106,32 +107,52 @@ bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
 bool CanonicalizeStandardURL(const char* spec,
                              int spec_len,
                              const url_parse::Parsed& parsed,
+                             CharsetConverter* query_converter,
                              CanonOutput* output,
                              url_parse::Parsed* new_parsed) {
   return DoCanonicalizeStandardURL<char, unsigned char>(
-      spec, parsed, output, new_parsed);
+      URLComponentSource<char>(spec), parsed, query_converter,
+      output, new_parsed);
 }
 
 bool CanonicalizeStandardURL(const wchar_t* spec,
                              int spec_len,
                              const url_parse::Parsed& parsed,
+                             CharsetConverter* query_converter,
                              CanonOutput* output,
                              url_parse::Parsed* new_parsed) {
   return DoCanonicalizeStandardURL<wchar_t, wchar_t>(
-      URLComponentSource<wchar_t>(spec), parsed, output, new_parsed);
+      URLComponentSource<wchar_t>(spec), parsed, query_converter,
+      output, new_parsed);
 }
 
 bool ReplaceStandardURL(const char* base,
-                        int base_len,
                         const url_parse::Parsed& base_parsed,
-                        const URLComponentSource<char>& replacements,
+                        const Replacements<char>& replacements,
+                        CharsetConverter* query_converter,
                         CanonOutput* output,
                         url_parse::Parsed* new_parsed) {
   URLComponentSource<char> source(base);
   url_parse::Parsed parsed(base_parsed);
   SetupOverrideComponents(base, replacements, &source, &parsed);
   return DoCanonicalizeStandardURL<char, unsigned char>(
-      source, parsed, output, new_parsed);
+      source, parsed, query_converter, output, new_parsed);
+}
+
+// For 16-bit replacements, we turn all the replacements into UTF-8 so the
+// regular codepath can be used.
+bool ReplaceStandardURL(const char* base,
+                        const url_parse::Parsed& base_parsed,
+                        const Replacements<wchar_t>& replacements,
+                        CharsetConverter* query_converter,
+                        CanonOutput* output,
+                        url_parse::Parsed* new_parsed) {
+  RawCanonOutput<1024> utf8;
+  URLComponentSource<char> source(base);
+  url_parse::Parsed parsed(base_parsed);
+  SetupUTF16OverrideComponents(base, replacements, &utf8, &source, &parsed);
+  return DoCanonicalizeStandardURL<char, unsigned char>(
+      source, parsed, query_converter, output, new_parsed);
 }
 
 }  // namespace url_canon

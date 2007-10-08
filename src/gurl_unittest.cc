@@ -3,7 +3,25 @@
 
 #include "base/string_util.h"
 #include "googleurl/src/gurl.h"
+#include "googleurl/src/url_canon.h"
 #include "testing/base/gunit.h"
+
+namespace {
+
+template<typename CHAR>
+void SetupReplacement(void (url_canon::Replacements<CHAR>::*func)(const CHAR*,
+                          const url_parse::Component&),
+                      url_canon::Replacements<CHAR>* replacements,
+                      const CHAR* str) {
+  if (str) {
+    url_parse::Component comp;
+    if (str[0])
+      comp.len = static_cast<int>(strlen(str));
+    (replacements->*func)(str, comp);
+  }
+}
+
+}  // namespace
 
 // Test the basic creation and querying of components in a GURL. We assume
 // the parser is already tested and works, so we are mostly interested if the
@@ -169,17 +187,18 @@ TEST(GURLTest, Replacements) {
   };
 
   for (int i = 0; i < arraysize(replace_cases); i++) {
-    GURL url(replace_cases[i].base);
-    GURL::Replacements replacements;
-    replacements.scheme = replace_cases[i].scheme;
-    replacements.username = replace_cases[i].username;
-    replacements.password = replace_cases[i].password;
-    replacements.host = replace_cases[i].host;
-    replacements.port = replace_cases[i].port;
-    replacements.path = replace_cases[i].path;
-    replacements.query = replace_cases[i].query;
-    replacements.ref = replace_cases[i].ref;
-    GURL output = url.ReplaceComponents(replacements);
+    const ReplaceCase& cur = replace_cases[i];
+    GURL url(cur.base);
+    GURL::Replacements repl;
+    SetupReplacement(&GURL::Replacements::SetScheme, &repl, cur.scheme);
+    SetupReplacement(&GURL::Replacements::SetUsername, &repl, cur.username);
+    SetupReplacement(&GURL::Replacements::SetPassword, &repl, cur.password);
+    SetupReplacement(&GURL::Replacements::SetHost, &repl, cur.host);
+    SetupReplacement(&GURL::Replacements::SetPort, &repl, cur.port);
+    SetupReplacement(&GURL::Replacements::SetPath, &repl, cur.path);
+    SetupReplacement(&GURL::Replacements::SetQuery, &repl, cur.query);
+    SetupReplacement(&GURL::Replacements::SetRef, &repl, cur.ref);
+    GURL output = url.ReplaceComponents(repl);
 
     EXPECT_EQ(replace_cases[i].expected, output.spec());
   }

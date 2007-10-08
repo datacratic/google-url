@@ -79,13 +79,22 @@ inline bool DoesBeginWindowsDriveSpec(const CHAR* spec, int start_offset,
 // Returns true if the start_offset in the given text looks like it begins a
 // UNC path, for example "\\". This function explicitly handles start_offset
 // values that are equal to or larger than the spec_len to simplify callers.
+//
+// When strict_slashes is set, this function will only accept backslashes as is
+// standard for Windows. Otherwise, it will accept forward slashes as well
+// which we use for a lot of URL handling.
 template<typename CHAR>
-inline bool DoesBeginUNCPath(const CHAR* text, int start_offset, int len) {
+inline bool DoesBeginUNCPath(const CHAR* text,
+                             int start_offset,
+                             int len,
+                             bool strict_slashes) {
   int remaining_len = len - start_offset;
   if (remaining_len < 2)
     return false;
 
-  return (IsURLSlash(text[start_offset]) && IsURLSlash(text[start_offset + 1]));
+  if (strict_slashes)
+    return text[start_offset] == '\\' && text[start_offset + 1] == '\\';
+  return IsURLSlash(text[start_offset]) && IsURLSlash(text[start_offset + 1]);
 }
 
 #endif  // WIN32

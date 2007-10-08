@@ -90,6 +90,32 @@ class UConvScoper {
   UConverter* converter_;
 };
 
+// Magic string used in the replacements code that tells SetupReplComp to
+// call the clear function.
+const char kDeleteComp[] = "|";
+
+// Sets up a replacement for a single component. This is given pointers to
+// the set and clear function for the component being replaced, and will
+// either set the component (if it exists) or clear it (if the replacement
+// string matches kDeleteComp).
+//
+// This template is currently used only for the 8-bit case, and the strlen
+// causes it to fail in other cases. It is left a template in case we have
+// tests for wide replacements.
+template<typename CHAR>
+void SetupReplComp(
+    void (url_canon::Replacements<CHAR>::*set)(const CHAR*,
+                                               const url_parse::Component&),
+    void (url_canon::Replacements<CHAR>::*clear)(),
+    url_canon::Replacements<CHAR>* rep,
+    const CHAR* str) {
+  if (str && str[0] == kDeleteComp[0]) {
+    (rep->*clear)();
+  } else if (str) {
+    (rep->*set)(str, url_parse::Component(0, static_cast<int>(strlen(str))));
+  }
+}
+
 }  // namespace
 
 TEST(URLCanonTest, UTF) {
@@ -702,7 +728,6 @@ TEST(URLCanonTest, Query) {
   } query_cases[] = {
       // Regular ASCII case in some different encodings.
     {"foo=bar", L"foo=bar", NULL, "?foo=bar"},
-    {"foo=bar", L"foo=bar", "", "?foo=bar"},
     {"foo=bar", L"foo=bar", "utf-8", "?foo=bar"},
     {"foo=bar", L"foo=bar", "shift_jis", "?foo=bar"},
     {"foo=bar", L"foo=bar", "gb2312", "?foo=bar"},
@@ -713,19 +738,27 @@ TEST(URLCanonTest, Query) {
     {"%40%41123", L"%40%41123", NULL, "?%40%41123"},
       // Chinese input/output
     {"q=\xe4\xbd\xa0\xe5\xa5\xbd", L"q=\x4f60\x597d", NULL, "?q=%E4%BD%A0%E5%A5%BD"},
-    // TODO(brettw) add support for different encodings.
-    //{"q=\xe4\xbd\xa0\xe5\xa5\xbd", L"q=\x4f60\x597d", "gb2312", "?q=%C4%E3%BA%C3"},
-    //{"q=\xe4\xbd\xa0\xe5\xa5\xbd", L"q=\x4f60\x597d", "big5", "?q=%A7%41%A6%6e"},
+    {"q=\xe4\xbd\xa0\xe5\xa5\xbd", L"q=\x4f60\x597d", "gb2312", "?q=%C4%E3%BA%C3"},
+    {"q=\xe4\xbd\xa0\xe5\xa5\xbd", L"q=\x4f60\x597d", "big5", "?q=%A7A%A6n"},
       // Unencodable character in the destination character set should be
       // escaped. The escape sequence unescapes to be the entity name:
       // "?q=&#20320;"
-    //{"q=Chinese\xef\xbc\xa7", L"q=Chinese\xff27", "iso-8859-1", "?q=%26%2320320%3B"},
+    {"q=Chinese\xef\xbc\xa7", L"q=Chinese\xff27", "iso-8859-1", "?q=Chinese%26%2365319%3B"},
       // Invalid UTF-8/16 input should be replaced with invalid characters.
     {"q=\xed\xed", L"q=\xd800\xd800", NULL, "?q=%EF%BF%BD%EF%BF%BD"},
   };
 
   for (int i = 0; i < arraysize(query_cases); i++) {
     url_parse::Component out_comp;
+
+    UConvScoper conv(query_cases[i].encoding);
+    ASSERT_TRUE(!query_cases[i].encoding || conv.converter());
+    url_canon::ICUCharsetConverter converter(conv.converter());
+
+    // Map NULL to a NULL converter pointer.
+    url_canon::ICUCharsetConverter* conv_pointer = &converter;
+    if (!query_cases[i].encoding)
+      conv_pointer = NULL;
 
     if (query_cases[i].input8) {
       int len = static_cast<int>(strlen(query_cases[i].input8));
@@ -734,7 +767,7 @@ TEST(URLCanonTest, Query) {
 
       url_canon::StdStringCanonOutput output(&out_str);
       url_canon::CanonicalizeQuery(query_cases[i].input8, in_comp,
-                                   NULL, &output, &out_comp);
+                                   conv_pointer, &output, &out_comp);
       output.Complete();
 
       EXPECT_EQ(query_cases[i].expected, out_str);
@@ -747,7 +780,7 @@ TEST(URLCanonTest, Query) {
 
       url_canon::StdStringCanonOutput output(&out_str);
       url_canon::CanonicalizeQuery(query_cases[i].input16, in_comp,
-                                   NULL, &output, &out_comp);
+                                   conv_pointer, &output, &out_comp);
       output.Complete();
 
       EXPECT_EQ(query_cases[i].expected, out_str);
@@ -850,7 +883,7 @@ TEST(URLCanonTest, CanonicalizeStandardURL) {
     std::string out_str;
     url_canon::StdStringCanonOutput output(&out_str);
     bool success = url_canon::CanonicalizeStandardURL(
-        cases[i].input, url_len, parsed, &output, &out_parsed);
+        cases[i].input, url_len, parsed, NULL, &output, &out_parsed);
     output.Complete();
 
     EXPECT_EQ(cases[i].expected_success, success);
@@ -863,7 +896,7 @@ TEST(URLCanonTest, CanonicalizeStandardURL) {
 TEST(URLCanonTest, ReplaceStandardURL) {
   ReplaceCase replace_cases[] = {
       // Common case of truncating the path.
-    {"http://www.google.com/foo?bar=baz#ref", NULL, NULL, NULL, NULL, NULL, "/", "", "", "http://www.google.com/"},
+    {"http://www.google.com/foo?bar=baz#ref", NULL, NULL, NULL, NULL, NULL, "/", kDeleteComp, kDeleteComp, "http://www.google.com/"},
       // Replace everything
     {"http://a:b@google.com:22/foo;bar?baz@cat", "https", "me", "pw", "host.com", "99", "/path", "query", "ref", "https://me:pw@host.com:99/path?query#ref"},
       // Replace nothing
@@ -871,25 +904,30 @@ TEST(URLCanonTest, ReplaceStandardURL) {
   };
 
   for (int i = 0; i < arraysize(replace_cases); i++) {
-    int base_len = static_cast<int>(strlen(replace_cases[i].base));
+    const ReplaceCase& cur = replace_cases[i];
+    int base_len = static_cast<int>(strlen(cur.base));
     url_parse::Parsed parsed;
-    url_parse::ParseStandardURL(replace_cases[i].base, base_len, &parsed);
+    url_parse::ParseStandardURL(cur.base, base_len, &parsed);
 
-    url_canon::URLComponentSource<char> replacements;
-    replacements.scheme = replace_cases[i].scheme;
-    replacements.username = replace_cases[i].username;
-    replacements.password = replace_cases[i].password;
-    replacements.host = replace_cases[i].host;
-    replacements.port = replace_cases[i].port;
-    replacements.path = replace_cases[i].path;
-    replacements.query = replace_cases[i].query;
-    replacements.ref = replace_cases[i].ref;
+    url_canon::Replacements<char> r;
+    typedef url_canon::Replacements<char> R;  // Clean up syntax.
+
+    // Note that for the scheme we pass in a different clear function since
+    // there is no function to clear the scheme.
+    SetupReplComp(&R::SetScheme, &R::ClearRef, &r, cur.scheme);
+    SetupReplComp(&R::SetUsername, &R::ClearUsername, &r, cur.username);
+    SetupReplComp(&R::SetPassword, &R::ClearPassword, &r, cur.password);
+    SetupReplComp(&R::SetHost, &R::ClearHost, &r, cur.host);
+    SetupReplComp(&R::SetPort, &R::ClearPort, &r, cur.port);
+    SetupReplComp(&R::SetPath, &R::ClearPath, &r, cur.path);
+    SetupReplComp(&R::SetQuery, &R::ClearQuery, &r, cur.query);
+    SetupReplComp(&R::SetRef, &R::ClearRef, &r, cur.ref);
 
     std::string out_str;
     url_canon::StdStringCanonOutput output(&out_str);
     url_parse::Parsed out_parsed;
-    url_canon::ReplaceStandardURL(replace_cases[i].base, base_len, parsed,
-                                  replacements, &output, &out_parsed);
+    url_canon::ReplaceStandardURL(replace_cases[i].base, parsed,
+                                  r, NULL, &output, &out_parsed);
     output.Complete();
 
     EXPECT_EQ(replace_cases[i].expected, out_str);
@@ -903,36 +941,38 @@ TEST(URLCanonTest, ReplaceFileURL) {
       // Replace nothing
     {"file:///C:/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "file:///C:/gaba?query#ref"},
       // Clear non-path components (common)
-    {"file:///C:/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, "", "", "file:///C:/gaba"},
+    {"file:///C:/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, kDeleteComp, kDeleteComp, "file:///C:/gaba"},
       // Replace path with something that doesn't begin with a slash and make
       // sure it get added properly.
     {"file:///C:/gaba", NULL, NULL, NULL, NULL, NULL, "interesting/", NULL, NULL, "file:///interesting/"},
     {"file:///home/gaba?query#ref", NULL, NULL, NULL, "filer", NULL, "/foo", "b", "c", "file://filer/foo?b#c"},
     {"file:///home/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "file:///home/gaba?query#ref"},
-    {"file:///home/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, "", "", "file:///home/gaba"},
+    {"file:///home/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, kDeleteComp, kDeleteComp, "file:///home/gaba"},
     {"file:///home/gaba", NULL, NULL, NULL, NULL, NULL, "interesting/", NULL, NULL, "file:///interesting/"},
   };
 
   for (int i = 0; i < arraysize(replace_cases); i++) {
-    int base_len = static_cast<int>(strlen(replace_cases[i].base));
+    const ReplaceCase& cur = replace_cases[i];
+    int base_len = static_cast<int>(strlen(cur.base));
     url_parse::Parsed parsed;
-    url_parse::ParseFileURL(replace_cases[i].base, base_len, &parsed);
+    url_parse::ParseFileURL(cur.base, base_len, &parsed);
 
-    url_canon::URLComponentSource<char> replacements;
-    replacements.scheme = replace_cases[i].scheme;
-    replacements.username = replace_cases[i].username;
-    replacements.password = replace_cases[i].password;
-    replacements.host = replace_cases[i].host;
-    replacements.port = replace_cases[i].port;
-    replacements.path = replace_cases[i].path;
-    replacements.query = replace_cases[i].query;
-    replacements.ref = replace_cases[i].ref;
+    url_canon::Replacements<char> r;
+    typedef url_canon::Replacements<char> R;  // Clean up syntax.
+    SetupReplComp(&R::SetScheme, &R::ClearRef, &r, cur.scheme);
+    SetupReplComp(&R::SetUsername, &R::ClearUsername, &r, cur.username);
+    SetupReplComp(&R::SetPassword, &R::ClearPassword, &r, cur.password);
+    SetupReplComp(&R::SetHost, &R::ClearHost, &r, cur.host);
+    SetupReplComp(&R::SetPort, &R::ClearPort, &r, cur.port);
+    SetupReplComp(&R::SetPath, &R::ClearPath, &r, cur.path);
+    SetupReplComp(&R::SetQuery, &R::ClearQuery, &r, cur.query);
+    SetupReplComp(&R::SetRef, &R::ClearRef, &r, cur.ref);
 
     std::string out_str;
     url_canon::StdStringCanonOutput output(&out_str);
     url_parse::Parsed out_parsed;
-    url_canon::ReplaceFileURL(replace_cases[i].base, base_len, parsed,
-                              replacements, &output, &out_parsed);
+    url_canon::ReplaceFileURL(cur.base, parsed,
+                              r, NULL, &output, &out_parsed);
     output.Complete();
 
     EXPECT_EQ(replace_cases[i].expected, out_str);
@@ -948,29 +988,31 @@ TEST(URLCanonTest, ReplacePathURL) {
       // Replace one or the other
     {"data:foo", "javascript", NULL, NULL, NULL, NULL, NULL, NULL, NULL, "javascript:foo"},
     {"data:foo", NULL, NULL, NULL, NULL, NULL, "bar", NULL, NULL, "data:bar"},
-    {"data:foo", NULL, NULL, NULL, NULL, NULL, "", NULL, NULL, "data:"},
+    {"data:foo", NULL, NULL, NULL, NULL, NULL, kDeleteComp, NULL, NULL, "data:"},
   };
 
   for (int i = 0; i < arraysize(replace_cases); i++) {
-    int base_len = static_cast<int>(strlen(replace_cases[i].base));
+    const ReplaceCase& cur = replace_cases[i];
+    int base_len = static_cast<int>(strlen(cur.base));
     url_parse::Parsed parsed;
-    url_parse::ParsePathURL(replace_cases[i].base, base_len, &parsed);
+    url_parse::ParsePathURL(cur.base, base_len, &parsed);
 
-    url_canon::URLComponentSource<char> replacements;
-    replacements.scheme = replace_cases[i].scheme;
-    replacements.username = replace_cases[i].username;
-    replacements.password = replace_cases[i].password;
-    replacements.host = replace_cases[i].host;
-    replacements.port = replace_cases[i].port;
-    replacements.path = replace_cases[i].path;
-    replacements.query = replace_cases[i].query;
-    replacements.ref = replace_cases[i].ref;
+    url_canon::Replacements<char> r;
+    typedef url_canon::Replacements<char> R;  // Clean up syntax.
+    SetupReplComp(&R::SetScheme, &R::ClearRef, &r, cur.scheme);
+    SetupReplComp(&R::SetUsername, &R::ClearUsername, &r, cur.username);
+    SetupReplComp(&R::SetPassword, &R::ClearPassword, &r, cur.password);
+    SetupReplComp(&R::SetHost, &R::ClearHost, &r, cur.host);
+    SetupReplComp(&R::SetPort, &R::ClearPort, &r, cur.port);
+    SetupReplComp(&R::SetPath, &R::ClearPath, &r, cur.path);
+    SetupReplComp(&R::SetQuery, &R::ClearQuery, &r, cur.query);
+    SetupReplComp(&R::SetRef, &R::ClearRef, &r, cur.ref);
 
     std::string out_str;
     url_canon::StdStringCanonOutput output(&out_str);
     url_parse::Parsed out_parsed;
-    url_canon::ReplacePathURL(replace_cases[i].base, base_len, parsed,
-                              replacements, &output, &out_parsed);
+    url_canon::ReplacePathURL(cur.base, parsed,
+                              r, &output, &out_parsed);
     output.Complete();
 
     EXPECT_EQ(replace_cases[i].expected, out_str);
@@ -991,6 +1033,17 @@ TEST(URLCanonTest, CanonicalizeFileURL) {
     {"  File:c|////foo\\bar.html", "file:///C:////foo/bar.html", true, url_parse::Component(7, 0), url_parse::Component(7, 19)},
     {"file:", "file:///", true, url_parse::Component(7, 0), url_parse::Component(7, 1)},
     {"file:UNChost/path", "file://unchost/path", true, url_parse::Component(7, 7), url_parse::Component(14, 5)},
+      // CanonicalizeFileURL supports absolute Windows style paths for IE
+      // compatability. Note that the caller must decide that this is a file
+      // URL itself so it can call the file canonicalizer. This is usually
+      // done automatically as part of relative URL resolving.
+    {"c:\\foo\\bar", "file:///C:/foo/bar", true, url_parse::Component(7, 0), url_parse::Component(7, 11)},
+    {"C|/foo/bar", "file:///C:/foo/bar", true, url_parse::Component(7, 0), url_parse::Component(7, 11)},
+    {"/C|\\foo\\bar", "file:///C:/foo/bar", true, url_parse::Component(7, 0), url_parse::Component(7, 11)},
+    {"//C|/foo/bar", "file:///C:/foo/bar", true, url_parse::Component(7, 0), url_parse::Component(7, 11)},
+    {"//server/file", "file://server/file", true, url_parse::Component(7, 6), url_parse::Component(13, 5)},
+    {"\\\\server\\file", "file://server/file", true, url_parse::Component(7, 6), url_parse::Component(13, 5)},
+    {"/\\server/file", "file://server/file", true, url_parse::Component(7, 6), url_parse::Component(13, 5)},
       // We should preserve the number of slashes after the colon for IE
       // compatability, except when there is none, in which case we should
       // add one.
@@ -1026,7 +1079,7 @@ TEST(URLCanonTest, CanonicalizeFileURL) {
     std::string out_str;
     url_canon::StdStringCanonOutput output(&out_str);
     bool success = url_canon::CanonicalizeFileURL(cases[i].input, url_len,
-                                                  parsed, &output,
+                                                  parsed, NULL, &output,
                                                   &out_parsed);
     output.Complete();
 
@@ -1090,7 +1143,6 @@ static bool ParsedIsEqual(const url_parse::Parsed& a,
          a.ref.begin == b.ref.begin && a.ref.len == b.ref.len;
 }
 
-
 TEST(URLCanonTest, ResolveRelativeURL) {
   struct RelativeCase {
     const char* base;      // Input base URL: MUST BE CANONICAL
@@ -1123,9 +1175,8 @@ TEST(URLCanonTest, ResolveRelativeURL) {
     {"http://host/a", true, false, "/b/c/d", true, true, true, "http://host/b/c/d"},
     {"http://host/a", true, false, "\\b\\c\\d", true, true, true, "http://host/b/c/d"},
     {"http://host/a", true, false, "/b/../c", true, true, true, "http://host/c"},
-    {"http://host/a", true, false, "///b/../c", true, true, true, "http://host///c"},
-    {"http://host/a?b#c", true, false, "///b/../c", true, true, true, "http://host///c"},
-    {"http://host/a", true, false, "\\\\b/../c?x#y", true, true, true, "http://host//c?x#y"},
+    {"http://host/a?b#c", true, false, "/b/../c", true, true, true, "http://host/c"},
+    {"http://host/a", true, false, "\\b/../c?x#y", true, true, true, "http://host/c?x#y"},
     {"http://host/a?b#c", true, false, "/b/../c?x#y", true, true, true, "http://host/c?x#y"},
       // Relative path input
     {"http://host/a", true, false, "b", true, true, true, "http://host/b"},
@@ -1144,36 +1195,68 @@ TEST(URLCanonTest, ResolveRelativeURL) {
       // Ref input
     {"http://host/a", true, false, "#ref", true, true, true, "http://host/a#ref"},
     {"http://host/a#b", true, false, "#", true, true, true, "http://host/a#"},
+    {"http://host/a?foo=bar#hello", true, false, "#bye", true, true, true, "http://host/a?foo=bar#bye"},
       // Non-hierarchical base: no relative handling. Relative input should
       // error, and if a scheme is present, it should be treated as absolute.
     {"data:foobar", false, false, "baz.html", false, false, false, NULL},
     {"data:foobar", false, false, "data:baz", true, false, false, NULL},
     {"data:foobar", false, false, "data:/base", true, false, false, NULL},
-      // Non-hierarchical base: absolute input should succeed for 
+      // Non-hierarchical base: absolute input should succeed for
     {"data:foobar", false, false, "http://host/", true, false, false, NULL},
     {"data:foobar", false, false, "http:host", true, false, false, NULL},
-      // File base
-    {"file:///C:/foo", true, true, "http://host/", true, false, false, NULL},
-    {"file:///C:/foo", true, true, "bar", true, true, true, "file:///C:/bar"},
-    {"file:///C:/foo", true, true, "../../../bar.html", true, true, true, "file:///C:/bar.html"},
-    {"file:///C:/foo", true, true, "/../bar.html", true, true, true, "file:///C:/bar.html"},
-      // Windows drive specs should be allowed and treated as absolute.
-    {"file:///C:/foo", true, true, "c:", true, false, false, NULL},
-    {"file:///C:/foo", true, true, "c:/foo", true, false, false, NULL},
-    {"http://host/a", true, false, "c:\\foo", true, false, false, NULL},
-      // IE doesn't allow relative drive paths with a leading slash.
-      // Implementing support for this is challenging and of little
-      // benefit, so we declare IE's behavior to be correct.
-    {"file:///C:/foo", true, true, "/z:/bar", true, true, true, "file:///C:/z:/bar"},
-    {"http://host/a", true, false, "\\c:\\foo", true, true, true, "http://host/c:/foo"},
-      // Treat absolute paths as being off of the drive.
-    {"file:///C:/foo", true, true, "/bar", true, true, true, "file:///C:/bar"},
-    {"file://localhost/C:/foo", true, true, "/bar", true, true, true, "file://localhost/C:/bar"},
-    {"file:///C:/foo/com/", true, true, "/bar", true, true, true, "file:///C:/bar"},
       // We should treat semicolons like any other character in URL resolving 
     {"http://host/a", true, false, ";foo", true, true, true, "http://host/;foo"},
     {"http://host/a;", true, false, ";foo", true, true, true, "http://host/;foo"},
     {"http://host/a", true, false, ";/../bar", true, true, true, "http://host/bar"},
+      // Relative URLs can also be written as "//foo/bar" which is relative to
+      // the scheme. In this case, it would take the old scheme, so for http
+      // the example would resolve to "http://foo/bar".
+    {"http://host/a", true, false, "//another", true, true, true, "http://another/"},
+    {"http://host/a", true, false, "//another/path?query#ref", true, true, true, "http://another/path?query#ref"},
+    {"http://host/a", true, false, "///another/path", true, true, true, "http://another/path"},
+    {"http://host/a", true, false, "//Another\\path", true, true, true, "http://another/path"},
+      // IE will also allow one or the other to be a backslash to get the same
+      // behavior.
+    {"http://host/a", true, false, "\\/another/path", true, true, true, "http://another/path"},
+    {"http://host/a", true, false, "/\\Another\\path", true, true, true, "http://another/path"},
+#ifdef WIN32
+      // Resolving against Windows file base URLs.
+    {"file:///C:/foo", true, true, "http://host/", true, false, false, NULL},
+    {"file:///C:/foo", true, true, "bar", true, true, true, "file:///C:/bar"},
+    {"file:///C:/foo", true, true, "../../../bar.html", true, true, true, "file:///C:/bar.html"},
+    {"file:///C:/foo", true, true, "/../bar.html", true, true, true, "file:///C:/bar.html"},
+      // But two backslashes on Windows should be UNC so should be treated
+      // as absolute.
+    {"http://host/a", true, false, "\\\\another\\path", true, false, false, NULL},
+      // IE doesn't support drive specs starting with two slashes. It fails
+      // immediately and doesn't even try to load. We fix it up to either
+      // an absolute path or UNC depending on what it looks like.
+    {"file:///C:/something", true, true, "//c:/foo", true, true, true, "file:///C:/foo"},
+    {"file:///C:/something", true, true, "//localhost/c:/foo", true, true, true, "file:///C:/foo"},
+      // Windows drive specs should be allowed and treated as absolute.
+    {"file:///C:/foo", true, true, "c:", true, false, false, NULL},
+    {"file:///C:/foo", true, true, "c:/foo", true, false, false, NULL},
+    {"http://host/a", true, false, "c:\\foo", true, false, false, NULL},
+      // Relative paths with drive letters should be allowed when the base is
+      // also a file.
+    {"file:///C:/foo", true, true, "/z:/bar", true, true, true, "file:///Z:/bar"},
+      // Treat absolute paths as being off of the drive.
+    {"file:///C:/foo", true, true, "/bar", true, true, true, "file:///C:/bar"},
+    {"file://localhost/C:/foo", true, true, "/bar", true, true, true, "file://localhost/C:/bar"},
+    {"file:///C:/foo/com/", true, true, "/bar", true, true, true, "file:///C:/bar"},
+      // On Windows, two slashes without a drive letter when the base is a file
+      // means that the path is UNC.
+    {"file:///C:/something", true, true, "//somehost/path", true, true, true, "file://somehost/path"},
+    {"file:///C:/something", true, true, "/\\//somehost/path", true, true, true, "file://somehost/path"},
+#else
+      // On Unix we fall back to relative behavior since there's nothing else
+      // reasonable to do.
+    {"http://host/a", true, false, "\\\\Another\\path", true, true, true, "http://another/path"},
+#endif
+      // Even on Windows, we don't allow relative drive specs when the base
+      // is not file.
+    {"http://host/a", true, false, "/c:\\foo", true, true, true, "http://host/c:/foo"},
+    {"http://host/a", true, false, "//c:\\foo", true, true, true, "http://c/foo"},
   };
 
   for (int i = 0; i < arraysize(rel_cases); i++) {
@@ -1207,7 +1290,7 @@ TEST(URLCanonTest, ResolveRelativeURL) {
 
       bool succeed_resolve = url_canon::ResolveRelativeURL(
           cur_case.base, parsed, cur_case.is_base_file,
-          cur_case.test, relative_component, &output, &resolved_parsed);
+          cur_case.test, relative_component, NULL, &output, &resolved_parsed);
       output.Complete();
 
       EXPECT_EQ(cur_case.succeed_resolve, succeed_resolve);

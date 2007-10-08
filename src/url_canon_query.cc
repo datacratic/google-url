@@ -119,19 +119,10 @@ void RunConverter(const wchar_t* spec,
 }
 
 template<typename CHAR, typename UCHAR>
-void DoCanonicalizeQuery(const CHAR* spec,
-                         const url_parse::Component& query,
-                         CharsetConverter* converter,
-                         CanonOutput* output,
-                         url_parse::Component* out_query) {
-  if (query.len < 0) {
-    *out_query = url_parse::Component();
-    return;
-  }
-
-  output->push_back('?');
-  out_query->begin = output->length();
-
+void DoConvertToQueryEncoding(const CHAR* spec,
+                              const url_parse::Component& query,
+                              CharsetConverter* converter,
+                              CanonOutput* output) {
   int end = query.end();
   if (IsAllASCII<CHAR, UCHAR>(spec, query)) {
     // Easy: the input can just appended with no character set conversions.
@@ -143,8 +134,8 @@ void DoCanonicalizeQuery(const CHAR* spec,
       // Run the converter to get an 8-bit string, then append it, escaping
       // necessary values.
       RawCanonOutput<1024> eight_bit;
-      RunConverter(spec, query, converter, output);
-      Append8BitQueryString(eight_bit.data(), eight_bit.length(), output);      
+      RunConverter(spec, query, converter, &eight_bit);
+      Append8BitQueryString(eight_bit.data(), eight_bit.length(), output);
 
     } else {
       // No converter, do our own UTF-8 conversion.
@@ -162,6 +153,23 @@ void DoCanonicalizeQuery(const CHAR* spec,
       }
     }
   }
+}
+
+template<typename CHAR, typename UCHAR>
+void DoCanonicalizeQuery(const CHAR* spec,
+                         const url_parse::Component& query,
+                         CharsetConverter* converter,
+                         CanonOutput* output,
+                         url_parse::Component* out_query) {
+  if (query.len < 0) {
+    *out_query = url_parse::Component();
+    return;
+  }
+
+  output->push_back('?');
+  out_query->begin = output->length();
+
+  DoConvertToQueryEncoding<CHAR, UCHAR>(spec, query, converter, output);
 
   out_query->len = output->length() - out_query->begin;
 }
@@ -184,6 +192,13 @@ void CanonicalizeQuery(const wchar_t* spec,
                        url_parse::Component* out_query) {
   DoCanonicalizeQuery<wchar_t, wchar_t>(spec, query, converter,
                                         output, out_query);
+}
+
+void ConvertUTF16ToQueryEncoding(const wchar_t* input,
+                                 const url_parse::Component& query,
+                                 CharsetConverter* converter,
+                                 CanonOutput* output) {
+  DoConvertToQueryEncoding<wchar_t, wchar_t>(input, query, converter, output);
 }
 
 }  // namespace url_canon
