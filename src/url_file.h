@@ -37,13 +37,17 @@
 
 namespace url_parse {
 
+#ifdef WIN32
+
 // We allow both "c:" and "c|" as drive identifiers.
-inline bool IsWindowsDriveSeparator(wchar_t ch) {
+inline bool IsWindowsDriveSeparator(UTF16Char ch) {
   return ch == ':' || ch == '|';
 }
-inline bool IsWindowsDriveLetter(wchar_t ch) {
+inline bool IsWindowsDriveLetter(UTF16Char ch) {
   return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
 }
+
+#endif  // WIN32
 
 // Returns the index of the next slash in the input after the given index, or
 // spec_len if the end of the input is reached.

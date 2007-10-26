@@ -36,6 +36,7 @@
 #include <unicode/uidna.h>
 
 #include "googleurl/src/url_canon_icu.h"
+#include "googleurl/src/url_canon_internal.h"  // for _itoa_s
 
 #include "base/logging.h"
 
@@ -102,7 +103,7 @@ ICUCharsetConverter::ICUCharsetConverter(UConverter* converter)
     : converter_(converter) {
 }
 
-void ICUCharsetConverter::ConvertFromUTF16(const wchar_t* input,
+void ICUCharsetConverter::ConvertFromUTF16(const UTF16Char* input,
                                            int input_len,
                                            CanonOutput* output) {
   // Install our error handler. It will be called for character that can not
@@ -138,7 +139,7 @@ void ICUCharsetConverter::ConvertFromUTF16(const wchar_t* input,
 // the length of the output will be set to the length of the new host name.
 //
 // On error, this will return false. The output in this case is undefined.
-bool IDNToASCII(const wchar_t* src, int src_len, CanonOutputW* output) {
+bool IDNToASCII(const UTF16Char* src, int src_len, CanonOutputW* output) {
   DCHECK(output->length() == 0);  // Output buffer is assumed empty.
   while (true) {
     // Use ALLOW_UNASSIGNED to be more tolerant of hostnames that violate
@@ -161,4 +162,3 @@ bool IDNToASCII(const wchar_t* src, int src_len, CanonOutputW* output) {
 }
 
 }  // namespace url_canon
-

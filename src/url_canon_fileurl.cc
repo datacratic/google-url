@@ -38,6 +38,8 @@ namespace url_canon {
 
 namespace {
 
+#ifdef WIN32
+
 // Given a pointer into the spec, this copies and canonicalizes the drive
 // letter and colon to the output, if one is found. If there is not a drive
 // spec, it won't do anything. The index of the next character in the input
@@ -72,6 +74,8 @@ int FileDoDriveSpec(const CHAR* spec, int begin, int end,
   return after_slashes + 2;
 }
 
+#endif  // WIN32
+
 template<typename CHAR, typename UCHAR>
 bool DoFileCanonicalizePath(const CHAR* spec,
                             const url_parse::Component& path,
@@ -79,7 +83,12 @@ bool DoFileCanonicalizePath(const CHAR* spec,
                             url_parse::Component* out_path) {
   // Copies and normalizes the "c:" at the beginning, if present.
   out_path->begin = output->length();
-  int after_drive = FileDoDriveSpec(spec, path.begin, path.end(), output);
+  int after_drive;
+#ifdef WIN32
+  after_drive = FileDoDriveSpec(spec, path.begin, path.end(), output);
+#else
+  after_drive = path.begin;
+#endif
 
   // Copies the rest of the path, starting from the slash following the
   // drive colon (if any, Windows only), or the first slash of the path.
@@ -157,14 +166,14 @@ bool CanonicalizeFileURL(const char* spec,
       output, new_parsed);
 }
 
-bool CanonicalizeFileURL(const wchar_t* spec,
+bool CanonicalizeFileURL(const UTF16Char* spec,
                          int spec_len,
                          const url_parse::Parsed& parsed,
                          CharsetConverter* query_converter,
                          CanonOutput* output,
                          url_parse::Parsed* new_parsed) {
-  return DoCanonicalizeFileURL<wchar_t, wchar_t>(
-      URLComponentSource<wchar_t>(spec), parsed, query_converter,
+  return DoCanonicalizeFileURL<UTF16Char, UTF16Char>(
+      URLComponentSource<UTF16Char>(spec), parsed, query_converter,
       output, new_parsed);
 }
 
@@ -176,12 +185,12 @@ bool FileCanonicalizePath(const char* spec,
                                                      output, out_path);
 }
 
-bool FileCanonicalizePath(const wchar_t* spec,
+bool FileCanonicalizePath(const UTF16Char* spec,
                           const url_parse::Component& path,
                           CanonOutput* output,
                           url_parse::Component* out_path) {
-  return DoFileCanonicalizePath<wchar_t, wchar_t>(spec, path,
-                                                  output, out_path);
+  return DoFileCanonicalizePath<UTF16Char, UTF16Char>(spec, path,
+                                                      output, out_path);
 }
 
 bool ReplaceFileURL(const char* base,
@@ -199,7 +208,7 @@ bool ReplaceFileURL(const char* base,
 
 bool ReplaceFileURL(const char* base,
                     const url_parse::Parsed& base_parsed,
-                    const Replacements<wchar_t>& replacements,
+                    const Replacements<UTF16Char>& replacements,
                     CharsetConverter* query_converter,
                     CanonOutput* output,
                     url_parse::Parsed* new_parsed) {

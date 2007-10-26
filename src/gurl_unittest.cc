@@ -1,10 +1,20 @@
 // Copyright 2007 Google Inc. All Rights Reserved.
 // Author: brettw@google.com (Brett Wilson)
 
-#include "base/string_util.h"
 #include "googleurl/src/gurl.h"
 #include "googleurl/src/url_canon.h"
+#include "googleurl/src/url_test_utils.h"
 #include "testing/base/gunit.h"
+
+// Some implementations of base/basictypes.h may define ARRAYSIZE.
+// If it's not defined, we define it to the ARRAYSIZE_UNSAFE macro
+// which is in our version of basictypes.h.
+#ifndef ARRAYSIZE
+#define ARRAYSIZE ARRAYSIZE_UNSAFE
+#endif
+
+using url_test_utils::WStringToUTF16;
+using url_test_utils::ConvertUTF8ToUTF16;
 
 namespace {
 
@@ -27,7 +37,7 @@ void SetupReplacement(void (url_canon::Replacements<CHAR>::*func)(const CHAR*,
 // the parser is already tested and works, so we are mostly interested if the
 // object does the right thing with the results.
 TEST(GURLTest, Components) {
-  GURL url(L"http://user:pass@google.com:99/foo;bar?q=a#ref");
+  GURL url(WStringToUTF16(L"http://user:pass@google.com:99/foo;bar?q=a#ref"));
   EXPECT_TRUE(url.is_valid());
   EXPECT_TRUE(url.SchemeIs("http"));
   EXPECT_FALSE(url.SchemeIsFile());
@@ -63,7 +73,7 @@ TEST(GURLTest, Empty) {
 }
 
 TEST(GURLTest, Copy) {
-  GURL url(L"http://user:pass@google.com:99/foo;bar?q=a#ref");
+  GURL url(WStringToUTF16(L"http://user:pass@google.com:99/foo;bar?q=a#ref"));
 
   GURL url2(url);
   EXPECT_TRUE(url2.is_valid());
@@ -132,7 +142,7 @@ TEST(GURLTest, Resolve) {
     {"data:blahblah", "file.html", false, ""},
   };
 
-  for (int i = 0; i < arraysize(resolve_cases); i++) {
+  for (int i = 0; i < ARRAYSIZE(resolve_cases); i++) {
     // 8-bit code path.
     GURL input(resolve_cases[i].base);
     GURL output = input.Resolve(resolve_cases[i].relative);
@@ -140,8 +150,9 @@ TEST(GURLTest, Resolve) {
     EXPECT_EQ(resolve_cases[i].expected, output.spec());
 
     // Wide code path.
-    GURL inputw(UTF8ToWide(resolve_cases[i].base));
-    GURL outputw = input.Resolve(UTF8ToWide(resolve_cases[i].relative));
+    GURL inputw(ConvertUTF8ToUTF16(resolve_cases[i].base));
+    GURL outputw =
+        input.Resolve(ConvertUTF8ToUTF16(resolve_cases[i].relative));
     EXPECT_EQ(resolve_cases[i].expected_valid, outputw.is_valid());
     EXPECT_EQ(resolve_cases[i].expected, outputw.spec());
   }
@@ -157,7 +168,7 @@ TEST(GURLTest, GetWithEmptyPath) {
     {"http://www.google.com/foo/bar.html?baz=22", "http://www.google.com/"},
   };
 
-  for (int i = 0; i < arraysize(cases); i++) {
+  for (int i = 0; i < ARRAYSIZE(cases); i++) {
     GURL url(cases[i].input);
     GURL empty_path = url.GetWithEmptyPath();
     EXPECT_EQ(cases[i].expected, empty_path.spec());
@@ -183,10 +194,12 @@ TEST(GURLTest, Replacements) {
     {"http://www.google.com/foo/bar.html?foo#bar", NULL, NULL, NULL, NULL, NULL, "/", "", "", "http://www.google.com/"},
     {"http://www.google.com/foo/bar.html?foo#bar", "javascript", "", "", "", "", "window.open('foo');", "", "", "javascript:window.open('foo');"},
     {"file:///C:/foo/bar.txt", "http", NULL, NULL, "www.google.com", "99", "/foo","search", "ref", "http://www.google.com:99/foo?search#ref"},
+#ifdef WIN32
     {"http://www.google.com/foo/bar.html?foo#bar", "file", "", "", "", "", "c:\\", "", "", "file:///C:/"},
+#endif
   };
 
-  for (int i = 0; i < arraysize(replace_cases); i++) {
+  for (int i = 0; i < ARRAYSIZE(replace_cases); i++) {
     const ReplaceCase& cur = replace_cases[i];
     GURL url(cur.base);
     GURL::Replacements repl;
@@ -216,7 +229,7 @@ TEST(GURLTest, PathForRequest) {
     {"http://www.google.com/foo/bar.html?query#ref", "/foo/bar.html?query"},
   };
 
-  for (int i = 0; i < arraysize(cases); i++) {
+  for (int i = 0; i < ARRAYSIZE(cases); i++) {
     GURL url(cases[i].input);
     std::string path_request = url.PathForRequest();
     EXPECT_EQ(cases[i].expected, path_request);
@@ -262,8 +275,8 @@ TEST(GURLTest, ExtractQuery) {
     "http://www.google.com?==",
     "http://www.google.com?==&&&="
   };
-  for (int i = 0; i < arraysize(urls); ++i) {
-    GURL d(urls[i]);
+  for (int i = 0; i < arraysize(stress); ++i) {
+    GURL d(stress[i]);
     d.ExtractQuery(&map);
   }
 }
@@ -281,8 +294,42 @@ TEST(GURLTest, IPAddress) {
     {"some random input!", false},
   };
 
-  for (int i = 0; i < arraysize(ip_tests); i++) {
+  for (int i = 0; i < ARRAYSIZE(ip_tests); i++) {
     GURL url(ip_tests[i].spec);
     EXPECT_EQ(ip_tests[i].expected_ip, url.HostIsIPAddress());
   }
+}
+
+TEST(GURLTest, DomainIs) {
+  const char google_domain[] = "google.com";
+
+  GURL url_1("http://www.google.com:99/foo");
+  EXPECT_TRUE(url_1.DomainIs(google_domain));
+
+  GURL url_2("http://google.com:99/foo");
+  EXPECT_TRUE(url_2.DomainIs(google_domain));
+
+  GURL url_3("http://google.com./foo");
+  EXPECT_TRUE(url_3.DomainIs(google_domain));
+
+  GURL url_4("http://google.com/foo");
+  EXPECT_FALSE(url_4.DomainIs("google.com."));
+
+  GURL url_5("http://google.com./foo");
+  EXPECT_TRUE(url_5.DomainIs("google.com."));
+
+  GURL url_6("http://www.google.com./foo");
+  EXPECT_TRUE(url_6.DomainIs(".com."));
+
+  GURL url_7("http://www.balabala.com/foo");
+  EXPECT_FALSE(url_7.DomainIs(google_domain));
+
+  GURL url_8("http://www.google.com.cn/foo");
+  EXPECT_FALSE(url_8.DomainIs(google_domain));
+
+  GURL url_9("http://www.iamnotgoogle.com/foo");
+  EXPECT_FALSE(url_9.DomainIs(google_domain));
+
+  GURL url_10("http://www.iamnotgoogle.com../foo");
+  EXPECT_FALSE(url_10.DomainIs(".com"));
 }

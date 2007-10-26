@@ -39,8 +39,11 @@
 
 class GURL {
  public:
+  typedef url_canon::UTF16Char UTF16Char;
+  typedef url_canon::UTF16String UTF16String;
+
   typedef url_canon::StdStringReplacements<char> Replacements;
-  typedef url_canon::StdStringReplacements<wchar_t> ReplacementsW;
+  typedef url_canon::StdStringReplacements<UTF16Char> ReplacementsW;
 
   // Creates an empty, invalid URL.
   GURL();
@@ -57,7 +60,7 @@ class GURL {
   // version to assume the query parameter encoding should be the same as the
   // input encoding.
   explicit GURL(const std::string& url_string /*, output_param_encoding*/);
-  explicit GURL(const std::wstring& url_string /*, output_param_encoding*/);
+  explicit GURL(const UTF16String& url_string /*, output_param_encoding*/);
 
   // Constructor for URLs that have already been parsed and canonicalized. This
   // is used for conversions from KURL, for example. The caller must supply all
@@ -123,6 +126,14 @@ class GURL {
   bool operator==(const GURL& other) const {
     return spec_ == other.spec_;
   }
+  bool operator!=(const GURL& other) const {
+    return spec_ != other.spec_;
+  }
+
+  // Allows GURL to used as a key in STL (for example, a std::set or std::map).
+  bool operator<(const GURL& other) const {
+    return spec_ < other.spec_;
+  }
 
   // Resolves a URL that's possibly relative to this object's URL, and returns
   // it. Absolute URLs are also handled according to the rules of URLs on web
@@ -140,7 +151,7 @@ class GURL {
   // It is an error to resolve a URL relative to an invalid URL. The result
   // will be the empty URL.
   GURL Resolve(const std::string& relative) const;
-  GURL Resolve(const std::wstring& relative) const;
+  GURL Resolve(const UTF16String& relative) const;
 
   // Creates a new GURL by replacing the current URL's components with the
   // supplied versions. See the Replacements class in url_canon.h for more.
@@ -156,7 +167,7 @@ class GURL {
   GURL ReplaceComponents(
       const url_canon::Replacements<char>& replacements) const;
   GURL ReplaceComponents(
-      const url_canon::Replacements<wchar_t>& replacements) const;
+      const url_canon::Replacements<UTF16Char>& replacements) const;
 
   // A helper function that is equivalent to replacing the path with a slash
   // and clearing out everything after that. We sometimes need to know just the
@@ -270,6 +281,25 @@ class GURL {
   // Returns the path that should be sent to the server. This is the path,
   // parameter, and query portions of the URL. It is guaranteed to be ASCII.
   std::string PathForRequest() const;
+
+  // Returns true if this URL's host matches or is in the same domain as
+  // the given input string. For example if this URL was "www.google.com",
+  // this would match "com", "google.com", and "www.google.com
+  // (input domain should be lower-case ASCII to match the canonicalized
+  // scheme). This call is more efficient than getting the host and check 
+  // whether host has the specific domain or not because no copies or 
+  // object constructions are done.
+  //
+  // If function DomainIs has parameter domain_len, which means the parameter
+  // lower_ascii_domain does not gurantee to terminate with NULL character.
+  bool DomainIs(const char* lower_ascii_domain, int domain_len) const;
+
+  // If function DomainIs only has parameter lower_ascii_domain, which means
+  // domain string should be terminate with NULL character.
+  bool DomainIs(const char* lower_ascii_domain) const {
+    return DomainIs(lower_ascii_domain,
+                    static_cast<int>(strlen(lower_ascii_domain)));
+  }
 
 #ifdef WIN32  // Currently defined only for Windows.
   // Returns a reference to a singleton empty GURL. This object is for callers

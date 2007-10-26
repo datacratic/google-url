@@ -90,7 +90,7 @@ const char kHostCharLookup[0x80] = {
 
 const int kTempHostBufferLen = 1024;
 typedef RawCanonOutputT<char, kTempHostBufferLen> StackBuffer;
-typedef RawCanonOutputT<wchar_t, kTempHostBufferLen> StackBufferW;
+typedef RawCanonOutputT<UTF16Char, kTempHostBufferLen> StackBufferW;
 
 // Scans a host name and fills in the output flags according to what we find.
 // |has_non_ascii| will be true if there are any non-7-bit characters, and
@@ -228,7 +228,7 @@ bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output) {
 }
 
 // Canonicalizes a host that requires IDN conversion. Returns true on success.
-bool DoIDNHost(const wchar_t* src, int src_len, CanonOutput* output) {
+bool DoIDNHost(const UTF16Char* src, int src_len, CanonOutput* output) {
   StackBufferW wide_output;
   if (!IDNToASCII(src, src_len, &wide_output)) {
     // Some error, give up. This will write some reasonable looking
@@ -245,8 +245,8 @@ bool DoIDNHost(const wchar_t* src, int src_len, CanonOutput* output) {
   // We could unescape at this point, that that could also produce percents
   // or more UTF-8 input, and it gets too complicated. If people want to
   // escape domain names, they will have to use ASCII instead of fullwidth.
-  return DoSimpleHost<wchar_t>(wide_output.data(), wide_output.length(),
-                               output);
+  return DoSimpleHost<UTF16Char>(wide_output.data(), wide_output.length(),
+                                 output);
 }
 
 // 8-bit convert host to its ASCII version: this converts the UTF-8 input to
@@ -320,7 +320,7 @@ bool DoComplexHost(const char* host, int host_len,
 // UTF-16 convert host to its ASCII version. The set up is already ready for
 // the backend, so we just pass through. The has_escaped flag should be set if
 // the input string requires unescaping.
-bool DoComplexHost(const wchar_t* host, int host_len,
+bool DoComplexHost(const UTF16Char* host, int host_len,
                    bool has_non_ascii, bool has_escaped, CanonOutput* output) {
   if (has_escaped) {
     // Yikes, we have escaped characters with wide input. The escaped
@@ -405,7 +405,6 @@ bool DoHost(const CHAR* spec,
                             &has_spaces);
 
   out_host->begin = output->length();
-  int end = host.end();
 
   if (!has_non_ascii && !has_escaped) {
     success &= DoSimpleHost(&spec[host.begin], host.len, output);
@@ -440,17 +439,11 @@ bool CanonicalizeHost(const char* spec,
   return DoHost<char, unsigned char>(spec, host, output, out_host);
 }
 
-bool CanonicalizeHost(const wchar_t* spec,
+bool CanonicalizeHost(const UTF16Char* spec,
                       const url_parse::Component& host,
                       CanonOutput* output,
                       url_parse::Component* out_host) {
-  return DoHost<wchar_t, wchar_t>(spec, host, output, out_host);
-}
-
-bool IsValidHostCharacter(wchar_t ch) {
-  // Assumes non-ASCII characters are ok.
-  // kHostCharLookup only has 0x80 entries, we short-circut non-ASCII.
-  return (ch >= 0x80) || kHostCharLookup[ch];
+  return DoHost<UTF16Char, UTF16Char>(spec, host, output, out_host);
 }
 
 }  // namespace url_canon

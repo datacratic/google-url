@@ -44,7 +44,7 @@ namespace url_parse {
 namespace {
 
 // Returns true if the given character is a valid digit to use in a port.
-inline bool IsPortDigit(wchar_t ch) {
+inline bool IsPortDigit(UTF16Char ch) {
   return ch >= '0' && ch <= '9';
 }
 
@@ -293,7 +293,6 @@ bool DoExtractScheme(const CHAR* url,
     return false;  // Input is empty or all whitespace.
 
   // Find the first colon character.
-  int scheme_colon = -1;  // Index of first colon that preceeds the authority
   for (int i = begin; i < url_len; i++) {
     if (url[i] == ':') {
       *scheme = MakeRange(begin, i);
@@ -482,7 +481,6 @@ void DoExtractFileName(const CHAR* spec,
 
   // Now search backwards from the filename end to the previous slash
   // to find the beginning of the filename.
-  int slash_index = -1;
   for (int i = file_end - 1; i >= path.begin; i--) {
     if (IsURLSlash(spec[i])) {
       // File name is everything following this character to the end
@@ -562,13 +560,13 @@ bool ExtractScheme(const char* url, int url_len, Component* scheme) {
   return DoExtractScheme(url, url_len, scheme);
 }
 
-bool ExtractScheme(const wchar_t* url, int url_len, Component* scheme) {
+bool ExtractScheme(const UTF16Char* url, int url_len, Component* scheme) {
   return DoExtractScheme(url, url_len, scheme);
 }
 
 // This handles everything that may be an authority terminator, including
 // backslash. For special backslash handling see DoParseAfterScheme.
-bool IsAuthorityTerminator(wchar_t ch) {
+bool IsAuthorityTerminator(UTF16Char ch) {
   return IsURLSlash(ch) || ch == '?' || ch == '#' || ch == ';';
 }
 
@@ -578,7 +576,7 @@ void ExtractFileName(const char* url,
   DoExtractFileName(url, path, file_name);
 }
 
-void ExtractFileName(const wchar_t* url,
+void ExtractFileName(const UTF16Char* url,
                      const Component& path,
                      Component* file_name) {
   DoExtractFileName(url, path, file_name);
@@ -591,7 +589,7 @@ void ExtractQueryFragment(const char* url,
   DoExtractQueryFragment(url, query, key, value);
 }
 
-void ExtractQueryFragment(const wchar_t* url,
+void ExtractQueryFragment(const UTF16Char* url,
                           Component* query,
                           Component* key,
                           Component* value) {
@@ -602,7 +600,7 @@ int ParsePort(const char* url, const Component& port) {
   return DoParsePort(url, port);
 }
 
-int ParsePort(const wchar_t* url, const Component& port) {
+int ParsePort(const UTF16Char* url, const Component& port) {
   return DoParsePort(url, port);
 }
 
@@ -610,7 +608,7 @@ void ParseStandardURL(const char* url, int url_len, Parsed* parsed) {
   DoParseStandardURL(url, url_len, parsed);
 }
 
-void ParseStandardURL(const wchar_t* url, int url_len, Parsed* parsed) {
+void ParseStandardURL(const UTF16Char* url, int url_len, Parsed* parsed) {
   DoParseStandardURL(url, url_len, parsed);
 }
 
@@ -618,7 +616,7 @@ void ParsePathURL(const char* url, int url_len, Parsed* parsed) {
   DoParsePathURL(url, url_len, parsed);
 }
 
-void ParsePathURL(const wchar_t* url, int url_len, Parsed* parsed) {
+void ParsePathURL(const UTF16Char* url, int url_len, Parsed* parsed) {
   DoParsePathURL(url, url_len, parsed);
 }
 
@@ -630,7 +628,7 @@ void ParsePathInternal(const char* spec,
   ParsePath(spec, path, filepath, query, ref);
 }
 
-void ParsePathInternal(const wchar_t* spec,
+void ParsePathInternal(const UTF16Char* spec,
                        const Component& path,
                        Component* filepath,
                        Component* query,
@@ -645,7 +643,7 @@ void ParseAfterScheme(const char* spec,
   DoParseAfterScheme(spec, spec_len, after_scheme, parsed);
 }
 
-void ParseAfterScheme(const wchar_t* spec,
+void ParseAfterScheme(const UTF16Char* spec,
                       int spec_len,
                       int after_scheme,
                       Parsed* parsed) {

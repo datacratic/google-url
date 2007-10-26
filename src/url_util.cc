@@ -261,7 +261,7 @@ bool IsStandardScheme(const char* scheme, int scheme_len) {
   return DoIsStandardScheme(scheme, scheme_len);
 }
 
-bool IsStandardScheme(const wchar_t* scheme, int scheme_len) {
+bool IsStandardScheme(const UTF16Char* scheme, int scheme_len) {
   return DoIsStandardScheme(scheme, scheme_len);
 }
 
@@ -269,7 +269,7 @@ bool IsStandard(const char* spec, int spec_len) {
   return DoIsStandard(spec, spec_len);
 }
 
-bool IsStandard(const wchar_t* spec, int spec_len) {
+bool IsStandard(const UTF16Char* spec, int spec_len) {
   return DoIsStandard(spec, spec_len);
 }
 
@@ -280,7 +280,7 @@ bool FindAndCompareScheme(const char* str,
   return DoFindAndCompareScheme(str, str_len, compare, found_scheme);
 }
 
-bool FindAndCompareScheme(const wchar_t* str,
+bool FindAndCompareScheme(const UTF16Char* str,
                           int str_len,
                           const char* compare,
                           url_parse::Component* found_scheme) {
@@ -294,7 +294,7 @@ bool Canonicalize(const char* spec,
   return DoCanonicalize(spec, spec_len, output, output_parsed);
 }
 
-bool Canonicalize(const wchar_t* spec,
+bool Canonicalize(const UTF16Char* spec,
                   int spec_len,
                   url_canon::CanonOutput* output,
                   url_parse::Parsed* output_parsed) {
@@ -313,7 +313,7 @@ bool ResolveRelative(const char* base_spec,
 
 bool ResolveRelative(const char* base_spec,
                      const url_parse::Parsed& base_parsed,
-                     const wchar_t* relative,
+                     const UTF16Char* relative,
                      int relative_length,
                      url_canon::CanonOutput* output,
                      url_parse::Parsed* output_parsed) {
@@ -331,7 +331,7 @@ bool ReplaceComponents(const char* spec,
 
 bool ReplaceComponents(const char* spec,
                        const url_parse::Parsed& parsed,
-                       const url_canon::Replacements<wchar_t>& replacements,
+                       const url_canon::Replacements<UTF16Char>& replacements,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* out_parsed) {
   return DoReplaceComponents(spec, parsed, replacements, output, out_parsed);
@@ -343,11 +343,23 @@ bool LowerCaseEqualsASCII(const char* a_begin,
                           const char* b) {
   return DoLowerCaseEqualsASCII(a_begin, a_end, b);
 }
-bool LowerCaseEqualsASCII(const wchar_t* a_begin,
-                          const wchar_t* a_end,
+
+bool LowerCaseEqualsASCII(const char* a_begin,
+                          const char* a_end,
+                          const char* b_begin,
+                          const char* b_end) {
+  while (a_begin != a_end && b_begin != b_end &&
+         ToLowerASCII(*a_begin) == *b_begin) {
+    a_begin++;
+    b_begin++;
+  }
+  return a_begin == a_end && b_begin == b_end;
+}
+
+bool LowerCaseEqualsASCII(const UTF16Char* a_begin,
+                          const UTF16Char* a_end,
                           const char* b) {
   return DoLowerCaseEqualsASCII(a_begin, a_end, b);
 }
-
 
 }  // namespace url_util

@@ -182,9 +182,9 @@ void DoParseFileURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   }
 
   int num_slashes = CountConsecutiveSlashes(spec, after_scheme, spec_len);
-  int after_slashes = after_scheme + num_slashes;
 
 #ifdef WIN32
+  int after_slashes = after_scheme + num_slashes;
   if (!DoesBeginWindowsDriveSpec(spec, after_slashes, spec_len) &&
       num_slashes != 3) {
     // Anything not beginning with a drive spec ("c:\") on Windows is treated
@@ -210,7 +210,7 @@ void ParseFileURL(const char* url, int url_len, Parsed* parsed) {
   DoParseFileURL(url, url_len, parsed);
 }
 
-void ParseFileURL(const wchar_t* url, int url_len, Parsed* parsed) {
+void ParseFileURL(const UTF16Char* url, int url_len, Parsed* parsed) {
   DoParseFileURL(url, url_len, parsed);
 }
 

@@ -293,6 +293,7 @@ bool DoResolveRelativePath(const char* base_url,
     // incoming URL does not provide a drive spec. We save the true path
     // beginning so we can fix it up after we are done.
     int base_path_begin = base_parsed.path.begin;
+#ifdef WIN32
     if (base_is_file) {
       base_path_begin = CopyBaseDriveSpecIfNecessary(
           base_url, base_parsed.path.begin, base_parsed.path.end(),
@@ -302,6 +303,7 @@ bool DoResolveRelativePath(const char* base_url,
       // and we can start appending the rest of the path. |base_path_begin|
       // points to the character in the base that comes next.
     }
+#endif  // WIN32
 
     if (url_parse::IsURLSlash(relative_url[path.begin])) {
       // Easy case: the path is an absolute path on the server, so we can
@@ -361,7 +363,7 @@ bool DoResolveRelativePath(const char* base_url,
 
   // We should always have something to do in this function, the caller checks
   // that some component is being replaced.
-  NOTREACHED();
+  DCHECK(false) << "Not reached";
   return success;
 }
 
@@ -445,7 +447,6 @@ bool DoResolveRelativeURL(const char* base_url,
     return false;
   }
 
-  bool success = true;
   if (relative_component.len <= 0) {
     // Empty relative URL, make no changes.
     int base_len = base_parsed.Length();
@@ -456,7 +457,6 @@ bool DoResolveRelativeURL(const char* base_url,
 
   int num_slashes = url_parse::CountConsecutiveSlashes(
       relative_url, relative_component.begin, relative_component.end());
-  int after_slashes = relative_component.begin + num_slashes;
 
 #ifdef WIN32
   // On Windows, two slashes for a file path (regardless of which direction
@@ -469,6 +469,7 @@ bool DoResolveRelativeURL(const char* base_url,
   // case (we reject anything like "/c:/foo") because that should be treated
   // as a path. For file URLs, we allow any number of slashes since that would
   // be setting the path.
+  int after_slashes = relative_component.begin + num_slashes;
   if (url_parse::DoesBeginUNCPath(relative_url, relative_component.begin,
                                   relative_component.end(), !base_is_file) ||
       ((num_slashes == 0 || base_is_file) &&
@@ -508,12 +509,12 @@ bool IsRelativeURL(const char* base,
 
 bool IsRelativeURL(const char* base,
                    const url_parse::Parsed& base_parsed,
-                   const wchar_t* fragment,
+                   const UTF16Char* fragment,
                    int fragment_len,
                    bool is_base_hierarchical,
                    bool* is_relative,
                    url_parse::Component* relative_component) {
-  return DoIsRelativeURL<wchar_t>(
+  return DoIsRelativeURL<UTF16Char>(
       base, base_parsed, fragment, fragment_len, is_base_hierarchical,
       is_relative, relative_component);
 }
@@ -534,12 +535,12 @@ bool ResolveRelativeURL(const char* base_url,
 bool ResolveRelativeURL(const char* base_url,
                         const url_parse::Parsed& base_parsed,
                         bool base_is_file,
-                        const wchar_t* relative_url,
+                        const UTF16Char* relative_url,
                         const url_parse::Component& relative_component,
                         CharsetConverter* query_converter,
                         CanonOutput* output,
                         url_parse::Parsed* out_parsed) {
-  return DoResolveRelativeURL<wchar_t>(
+  return DoResolveRelativeURL<UTF16Char>(
       base_url, base_parsed, base_is_file, relative_url,
       relative_component, query_converter, output, out_parsed);
 }

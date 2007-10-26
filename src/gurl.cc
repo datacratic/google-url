@@ -89,8 +89,8 @@ GURL::GURL() : is_valid_(false) {
 }
 
 GURL::GURL(const GURL& other)
-    : is_valid_(other.is_valid_),
-      spec_(other.spec_),
+    : spec_(other.spec_),
+      is_valid_(other.is_valid_),
       parsed_(other.parsed_) {
 }
 
@@ -98,14 +98,14 @@ GURL::GURL(const std::string& url_string) {
   is_valid_ = InitCanonical(url_string, &spec_, &parsed_);
 }
 
-GURL::GURL(const std::wstring& url_string) {
+GURL::GURL(const UTF16String& url_string) {
   is_valid_ = InitCanonical(url_string, &spec_, &parsed_);
 }
 
 GURL::GURL(const char* canonical_spec, int canonical_spec_len,
            const url_parse::Parsed& parsed, bool is_valid)
-    : is_valid_(is_valid),
-      spec_(canonical_spec, canonical_spec_len),
+    : spec_(canonical_spec, canonical_spec_len),
+      is_valid_(is_valid),
       parsed_(parsed) {
 #ifndef NDEBUG
   // For testing purposes, check that the parsed canonical URL is
@@ -130,7 +130,7 @@ const std::string& GURL::spec() const {
   if (is_valid_ || spec_.empty())
     return spec_;
 
-  NOTREACHED() << "Trying to get the spec of an invalid URL!";
+  DCHECK(false) << "Trying to get the spec of an invalid URL!";
   return EmptyStringForGURL();
 }
 
@@ -160,7 +160,7 @@ GURL GURL::Resolve(const std::string& relative) const {
 }
 
 // Note: code duplicated above (it's inconvenient to use a template here).
-GURL GURL::Resolve(const std::wstring& relative) const {
+GURL GURL::Resolve(const UTF16String& relative) const {
   // Not allowed for invalid URLs.
   if (!is_valid_)
     return GURL();
@@ -208,7 +208,7 @@ GURL GURL::ReplaceComponents(
 
 // Note: code duplicated above (it's inconvenient to use a template here).
 GURL GURL::ReplaceComponents(
-    const url_canon::Replacements<wchar_t>& replacements) const {
+    const url_canon::Replacements<UTF16Char>& replacements) const {
   GURL result;
 
   // Not allowed for invalid URLs.
@@ -346,3 +346,44 @@ const GURL& GURL::EmptyGURL() {
 }
 
 #endif  // WIN32
+
+bool GURL::DomainIs(const char* lower_ascii_domain,
+                    int domain_len) const {
+  // Return false if this URL is not valid or domain is empty.
+  if (!is_valid_ || !parsed_.host.is_nonempty() || !domain_len)
+    return false;
+
+  // Check whether the host name is end with a dot. If yes, treat it
+  // the same as no-dot unless the input comparison domain is end 
+  // with dot.
+  const char* last_pos = spec_.data() + parsed_.host.end() - 1;
+  int host_len = parsed_.host.len;
+  if ('.' == *last_pos && '.' != lower_ascii_domain[domain_len - 1]) {
+    last_pos--;
+    host_len--;
+  }
+
+  // Return false if host's length is less than domain's length.
+  if (host_len < domain_len)
+    return false;
+
+  // Compare this url whether belong specific domain.
+  const char* start_pos = spec_.data() + parsed_.host.begin +
+                          host_len - domain_len;
+
+  if (!url_util::LowerCaseEqualsASCII(start_pos,
+                                      last_pos + 1,
+                                      lower_ascii_domain,
+                                      lower_ascii_domain + domain_len))
+    return false;
+
+  // Check whether host has right domain start with dot, make sure we got 
+  // right domain range. For example www.google.com has domain
+  // "google.com" but www.iamnotgoogle.com does not.
+  if ('.' != lower_ascii_domain[0] && host_len > domain_len &&
+      '.' != *(start_pos - 1))
+    return false;
+
+  return true;
+}
+

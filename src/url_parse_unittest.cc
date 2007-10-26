@@ -31,6 +31,13 @@
 #include "googleurl/src/url_parse.h"
 #include "testing/base/gunit.h"
 
+// Some implementations of base/basictypes.h may define ARRAYSIZE.
+// If it's not defined, we define it to the ARRAYSIZE_UNSAFE macro
+// which is in our version of basictypes.h.
+#ifndef ARRAYSIZE
+#define ARRAYSIZE ARRAYSIZE_UNSAFE
+#endif
+
 // Interesting IE file:isms...
 //
 //  file:/foo/bar              file:///foo/bar
@@ -242,7 +249,6 @@ TEST(URLParser, PathURL) {
   for (int i = 0; i < arraysize(path_cases); i++) {
     const char* url = path_cases[i].input;
     url_parse::ParsePathURL(url, static_cast<int>(strlen(url)), &parsed);
-    int port = url_parse::ParsePort(url, parsed.port);
 
     EXPECT_TRUE(ComponentMatches(url, path_cases[i].scheme, parsed.scheme));
     EXPECT_TRUE(ComponentMatches(url, path_cases[i].path, parsed.path));
@@ -267,6 +273,8 @@ TEST(URLParser, PathURL) {
     EXPECT_EQ(-1, parsed.ref.len);
   }
 }
+
+#ifdef WIN32
 
 // WindowsFile ----------------------------------------------------------------
 
@@ -321,6 +329,8 @@ TEST(URLParser, WindowsFile) {
   }
 }
 
+#endif  // WIN32
+
 TEST(URLParser, ExtractFileName) {
   struct FileCase {
     const char* input;
@@ -338,7 +348,7 @@ TEST(URLParser, ExtractFileName) {
     {"http://www.google.com/foo/bar.html?query#ref", "bar.html"},
   };
 
-  for (int i = 0; i < arraysize(file_cases); i++) {
+  for (int i = 0; i < ARRAYSIZE(file_cases); i++) {
     const char* url = file_cases[i].input;
     int len = static_cast<int>(strlen(url));
 

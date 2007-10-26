@@ -49,28 +49,33 @@ bool DoCanonicalizePathURL(const URLComponentSource<CHAR>& source,
 
   // We assume there's no authority for path URLs. Note that hosts should never
   // have -1 length.
-  new_parsed->username = url_parse::Component();
-  new_parsed->password = url_parse::Component();
+  new_parsed->username.reset();
+  new_parsed->password.reset();
   new_parsed->host = url_parse::Component(output->length(), 0);
-  new_parsed->port = url_parse::Component();
+  new_parsed->port.reset();
 
-  // Copy the path using path URL's more lax escaping rules (think for
-  // javascript:). We convert to UTF-8 and escape non-ASCII, but leave all
-  // ASCII characters alone. This helps readability of JavaStript.
-  new_parsed->path.begin = output->length();
-  int end = parsed.path.end();
-  for (int i = parsed.path.begin; i < end; i++) {
-    UCHAR uch = static_cast<UCHAR>(source.path[i]);
-    if (uch < 0x20 || uch >= 0x80)
-      success &= AppendUTF8EscapedChar(source.path, &i, end, output);
-    else
-      output->push_back(static_cast<char>(uch));
+  if (parsed.path.is_valid()) {
+    // Copy the path using path URL's more lax escaping rules (think for
+    // javascript:). We convert to UTF-8 and escape non-ASCII, but leave all
+    // ASCII characters alone. This helps readability of JavaStript.
+    new_parsed->path.begin = output->length();
+    int end = parsed.path.end();
+    for (int i = parsed.path.begin; i < end; i++) {
+      UCHAR uch = static_cast<UCHAR>(source.path[i]);
+      if (uch < 0x20 || uch >= 0x80)
+        success &= AppendUTF8EscapedChar(source.path, &i, end, output);
+      else
+        output->push_back(static_cast<char>(uch));
+    }
+    new_parsed->path.len = output->length() - new_parsed->path.begin;
+  } else {
+    // Empty path.
+    new_parsed->path.reset();
   }
-  new_parsed->path.len = output->length() - new_parsed->path.begin;
 
   // Assume there's no query or ref.
-  new_parsed->query = url_parse::Component();
-  new_parsed->ref = url_parse::Component();
+  new_parsed->query.reset();
+  new_parsed->ref.reset();
 
   return success;
 }
@@ -86,13 +91,13 @@ bool CanonicalizePathURL(const char* spec,
       URLComponentSource<char>(spec), parsed, output, new_parsed);
 }
 
-bool CanonicalizePathURL(const wchar_t* spec,
+bool CanonicalizePathURL(const UTF16Char* spec,
                          int spec_len,
                          const url_parse::Parsed& parsed,
                          CanonOutput* output,
                          url_parse::Parsed* new_parsed) {
-  return DoCanonicalizePathURL<wchar_t, wchar_t>(
-      URLComponentSource<wchar_t>(spec), parsed, output, new_parsed);
+  return DoCanonicalizePathURL<UTF16Char, UTF16Char>(
+      URLComponentSource<UTF16Char>(spec), parsed, output, new_parsed);
 }
 
 bool ReplacePathURL(const char* base,
@@ -109,7 +114,7 @@ bool ReplacePathURL(const char* base,
 
 bool ReplacePathURL(const char* base,
                     const url_parse::Parsed& base_parsed,
-                    const Replacements<wchar_t>& replacements,
+                    const Replacements<UTF16Char>& replacements,
                     CanonOutput* output,
                     url_parse::Parsed* new_parsed) {
   RawCanonOutput<1024> utf8;

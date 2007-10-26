@@ -27,6 +27,8 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <cstdio>
+#include <errno.h>
 #include <stdlib.h>
 #include <string>
 
@@ -90,7 +92,7 @@ void DoOverrideComponent(const char* override_source,
 // Like DoOverrideComponent except that it takes a UTF-16 input. It is
 // converted to UTF-8 at the end of the given buffer as a temporary holding
 // place, and the output is set to reference that portion of the buffer.
-bool DoUTF16OverrideComponent(const wchar_t* override_source,
+bool DoUTF16OverrideComponent(const UTF16Char* override_source,
                               const url_parse::Component& override_component,
                               CanonOutput* utf8_buffer,
                               const char** dest,
@@ -178,7 +180,7 @@ const unsigned char kSharedCharTypeTable[0x100] = {
     CHAR_QUERY,  // 0x59  Y
     CHAR_QUERY,  // 0x5a  Z
     CHAR_QUERY,  // 0x5b  [
-    CHAR_QUERY,  // 0x5c  \ 
+    CHAR_QUERY,  // 0x5c  '\'
     CHAR_QUERY,  // 0x5d  ]
     CHAR_QUERY,  // 0x5e  ^
     CHAR_QUERY,  // 0x5f  _
@@ -240,16 +242,16 @@ const char kCharToHexLookup[8] = {
     0,         // 0xE0 - 0xFF
 };
 
-const wchar_t kUnicodeReplacementCharacter = 0xfffd;
+const UTF16Char kUnicodeReplacementCharacter = 0xfffd;
 
 bool CanonicalizeEscaped(const char* spec, int* begin, int end,
                          CanonOutput* output) {
   return DoCanonicalizeEscaped<char, unsigned char>(spec, begin, end, output);
 }
 
-bool CanonicalizeEscaped(const wchar_t* spec, int* begin, int end,
+bool CanonicalizeEscaped(const UTF16Char* spec, int* begin, int end,
                          CanonOutput* output) {
-  return DoCanonicalizeEscaped<wchar_t, wchar_t>(spec, begin, end, output);
+  return DoCanonicalizeEscaped<UTF16Char, UTF16Char>(spec, begin, end, output);
 }
 
 void AppendInvalidNarrowString(const char* spec, int begin, int end,
@@ -257,12 +259,12 @@ void AppendInvalidNarrowString(const char* spec, int begin, int end,
   DoAppendInvalidNarrowString<char, unsigned char>(spec, begin, end, output);
 }
 
-void AppendInvalidNarrowString(const wchar_t* spec, int begin, int end,
+void AppendInvalidNarrowString(const UTF16Char* spec, int begin, int end,
                                CanonOutput* output) {
-  DoAppendInvalidNarrowString<wchar_t, wchar_t>(spec, begin, end, output);
+  DoAppendInvalidNarrowString<UTF16Char, UTF16Char>(spec, begin, end, output);
 }
 
-bool ConvertUTF16ToUTF8(const wchar_t* input, int input_len,
+bool ConvertUTF16ToUTF8(const UTF16Char* input, int input_len,
                         CanonOutput* output) {
   bool success = true;
   for (int i = 0; i < input_len; i++) {
@@ -274,7 +276,7 @@ bool ConvertUTF16ToUTF8(const wchar_t* input, int input_len,
 }
 
 bool ConvertUTF8ToUTF16(const char* input, int input_len,
-                        CanonOutputT<wchar_t>* output) {
+                        CanonOutputT<UTF16Char>* output) {
   bool success = true;
   for (int i = 0; i < input_len; i++) {
     unsigned code_point;
@@ -316,14 +318,14 @@ void SetupOverrideComponents(const char* base,
 }
 
 bool SetupUTF16OverrideComponents(const char* base,
-                                  const Replacements<wchar_t>& repl,
+                                  const Replacements<UTF16Char>& repl,
                                   CanonOutput* utf8_buffer,
                                   URLComponentSource<char>* source,
                                   url_parse::Parsed* parsed) {
   bool success = true;
 
   // Get the source and parsed structures of the things we are replacing.
-  const URLComponentSource<wchar_t>& repl_source = repl.sources();
+  const URLComponentSource<UTF16Char>& repl_source = repl.sources();
   const url_parse::Parsed& repl_parsed = repl.components();
 
   success &= DoUTF16OverrideComponent(repl_source.scheme, repl_parsed.scheme,
@@ -357,5 +359,41 @@ bool SetupUTF16OverrideComponents(const char* base,
                                       &source->ref, &parsed->ref);
   return success;
 }
+
+#ifndef WIN32
+
+int _itoa_s(int value, char* buffer, size_t size_in_chars, int radix) {
+  if (radix != 10)
+    return EINVAL;
+
+  int written = snprintf(buffer, size_in_chars, "%d", value);
+  if (written >= size_in_chars) {
+    // Output was truncated
+    return EINVAL;
+  }
+  return 0;
+}
+
+int _itow_s(int value, UTF16Char* buffer, size_t size_in_chars, int radix) {
+  if (radix != 10)
+    return EINVAL;
+
+  // No more than 12 characters will be required for a 32-bit integer.
+  // Add an extra byte for the terminating null.
+  char temp[13];
+  int written = snprintf(temp, sizeof(temp), "%d", value);
+  if (written >= size_in_chars) {
+    // Output was truncated
+    return EINVAL;
+  }
+
+  for (int i = 0; i < written; ++i) {
+    buffer[i] = static_cast<UTF16Char>(temp[i]);
+  }
+  buffer[written] = '\0';
+  return 0;
+}
+
+#endif  // !WIN32
 
 }  // namespace url_canon

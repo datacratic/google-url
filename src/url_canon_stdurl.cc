@@ -115,14 +115,14 @@ bool CanonicalizeStandardURL(const char* spec,
       output, new_parsed);
 }
 
-bool CanonicalizeStandardURL(const wchar_t* spec,
+bool CanonicalizeStandardURL(const UTF16Char* spec,
                              int spec_len,
                              const url_parse::Parsed& parsed,
                              CharsetConverter* query_converter,
                              CanonOutput* output,
                              url_parse::Parsed* new_parsed) {
-  return DoCanonicalizeStandardURL<wchar_t, wchar_t>(
-      URLComponentSource<wchar_t>(spec), parsed, query_converter,
+  return DoCanonicalizeStandardURL<UTF16Char, UTF16Char>(
+      URLComponentSource<UTF16Char>(spec), parsed, query_converter,
       output, new_parsed);
 }
 
@@ -143,7 +143,7 @@ bool ReplaceStandardURL(const char* base,
 // regular codepath can be used.
 bool ReplaceStandardURL(const char* base,
                         const url_parse::Parsed& base_parsed,
-                        const Replacements<wchar_t>& replacements,
+                        const Replacements<UTF16Char>& replacements,
                         CharsetConverter* query_converter,
                         CanonOutput* output,
                         url_parse::Parsed* new_parsed) {

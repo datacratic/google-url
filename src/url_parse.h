@@ -30,7 +30,20 @@
 #ifndef GOOGLEURL_SRC_URL_PARSE_H__
 #define GOOGLEURL_SRC_URL_PARSE_H__
 
+#include <string>
+
+#include "base/basictypes.h"
+
 namespace url_parse {
+
+// We represent UTF-16 data using a 2-byte character.  On platforms with
+// 2-byte wchar_t, we use that type directly.
+#ifdef WIN32
+typedef wchar_t UTF16Char;
+#else
+typedef uint16 UTF16Char;
+#endif
+typedef std::basic_string<UTF16Char> UTF16String;
 
 // Component ------------------------------------------------------------------
 
@@ -165,19 +178,19 @@ struct Parsed {
 // authority (host) like "http". This function will not handle weird ones
 // like "about:" and "javascript:", or do the right thing for "file:" URLs.
 void ParseStandardURL(const char* url, int url_len, Parsed* parsed);
-void ParseStandardURL(const wchar_t* url, int url_len, Parsed* parsed);
+void ParseStandardURL(const UTF16Char* url, int url_len, Parsed* parsed);
 
 // PathURL is for when the scheme is known not to have an authority (host)
 // section but that aren't file URLs either. The scheme is parsed, and
 // everything after the scheme is considered as the path. This is used for
 // things like "about:" and "javascript:"
 void ParsePathURL(const char* url, int url_len, Parsed* parsed);
-void ParsePathURL(const wchar_t* url, int url_len, Parsed* parsed);
+void ParsePathURL(const UTF16Char* url, int url_len, Parsed* parsed);
 
 // FileURL is for file URLs. There are some special rules for interpreting
 // these.
 void ParseFileURL(const char* url, int url_len, Parsed* parsed);
-void ParseFileURL(const wchar_t* url, int url_len, Parsed* parsed);
+void ParseFileURL(const UTF16Char* url, int url_len, Parsed* parsed);
 
 // Helper functions -----------------------------------------------------------
 
@@ -202,11 +215,11 @@ void ParseFileURL(const wchar_t* url, int url_len, Parsed* parsed);
 //
 // The 8-bit version requires UTF-8 encoding.
 bool ExtractScheme(const char* url, int url_len, Component* scheme);
-bool ExtractScheme(const wchar_t* url, int url_len, Component* scheme);
+bool ExtractScheme(const UTF16Char* url, int url_len, Component* scheme);
 
 // Returns true if ch is a character that terminates the authority segment
 // of a URL.
-bool IsAuthorityTerminator(wchar_t ch);
+bool IsAuthorityTerminator(UTF16Char ch);
 
 // Computes the integer port value from the given port component. The port
 // component should have been identified by one of the init functions on
@@ -216,7 +229,7 @@ bool IsAuthorityTerminator(wchar_t ch);
 // the two special values below.
 enum SpecialPort { PORT_UNSPECIFIED = -1, PORT_INVALID = -2 };
 int ParsePort(const char* url, const Component& port);
-int ParsePort(const wchar_t* url, const Component& port);
+int ParsePort(const UTF16Char* url, const Component& port);
 
 // Extracts the range of the file name in the given url. The path must
 // already have been computed by the parse function, and the matching URL
@@ -231,7 +244,7 @@ int ParsePort(const wchar_t* url, const Component& port);
 void ExtractFileName(const char* url,
                      const Component& path,
                      Component* file_name);
-void ExtractFileName(const wchar_t* url,
+void ExtractFileName(const UTF16Char* url,
                      const Component& path,
                      Component* file_name);
 
@@ -243,7 +256,7 @@ void ExtractQueryFragment(const char* url,
                           Component* query,
                           Component* key,
                           Component* value);
-void ExtractQueryFragment(const wchar_t* url,
+void ExtractQueryFragment(const UTF16Char* url,
                           Component* query,
                           Component* key,
                           Component* value);

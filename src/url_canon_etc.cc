@@ -162,7 +162,7 @@ bool DoUserInfo(const CHAR* username_spec,
 inline void WritePortInt(char* output, int output_len, int port) {
   _itoa_s(port, output, output_len, 10);
 }
-inline void WritePortInt(wchar_t* output, int output_len, int port) {
+inline void WritePortInt(UTF16Char* output, int output_len, int port) {
   _itow_s(port, output, output_len, 10);
 }
 
@@ -222,11 +222,10 @@ bool CopyAndValidateUTF8(const char* input, int input_len,
 
 }  // namespace
 
-char CanonicalSchemeChar(wchar_t ch) {
-  unsigned uch = static_cast<unsigned>(ch);
-  if (uch >= 0x80)
+char CanonicalSchemeChar(UTF16Char ch) {
+  if (ch >= 0x80)
     return 0;  // Non-ASCII is not supported by schemes.
-  return kSchemeCanonical[uch];
+  return kSchemeCanonical[ch];
 }
 
 bool CanonicalizeScheme(const char* spec,
@@ -236,11 +235,11 @@ bool CanonicalizeScheme(const char* spec,
   return DoScheme<char, unsigned char>(spec, scheme, output, out_scheme);
 }
 
-bool CanonicalizeScheme(const wchar_t* spec,
+bool CanonicalizeScheme(const UTF16Char* spec,
                         const url_parse::Component& scheme,
                         CanonOutput* output,
                         url_parse::Component* out_scheme) {
-  return DoScheme<wchar_t, wchar_t>(spec, scheme, output, out_scheme);
+  return DoScheme<UTF16Char, UTF16Char>(spec, scheme, output, out_scheme);
 }
 
 bool CanonicalizeUserInfo(const char* username_source,
@@ -255,14 +254,14 @@ bool CanonicalizeUserInfo(const char* username_source,
       output, out_username, out_password);
 }
 
-bool CanonicalizeUserInfo(const wchar_t* username_source,
+bool CanonicalizeUserInfo(const UTF16Char* username_source,
                           const url_parse::Component& username,
-                          const wchar_t* password_source,
+                          const UTF16Char* password_source,
                           const url_parse::Component& password,
                           CanonOutput* output,
                           url_parse::Component* out_username,
                           url_parse::Component* out_password) {
-  return DoUserInfo<wchar_t, wchar_t>(
+  return DoUserInfo<UTF16Char, UTF16Char>(
       username_source, username, password_source, password,
       output, out_username, out_password);
 }
@@ -277,13 +276,13 @@ bool CanonicalizePort(const char* spec,
                                      output, out_port);
 }
 
-bool CanonicalizePort(const wchar_t* spec,
+bool CanonicalizePort(const UTF16Char* spec,
                       const url_parse::Component& port,
                       int default_port_for_scheme,
                       CanonOutput* output,
                       url_parse::Component* out_port) {
-  return DoPort<wchar_t, wchar_t>(spec, port, default_port_for_scheme,
-                                  output, out_port);
+  return DoPort<UTF16Char, UTF16Char>(spec, port, default_port_for_scheme,
+                                      output, out_port);
 }
 
 // We don't do anything fancy with refs, we just validate that the input is
@@ -309,7 +308,7 @@ bool CanonicalizeRef(const char* spec,
 }
 
 // 16-bit-character refs need to get converted to UTF-8.
-bool CanonicalizeRef(const wchar_t* spec,
+bool CanonicalizeRef(const UTF16Char* spec,
                      const url_parse::Component& ref,
                      CanonOutput* output,
                      url_parse::Component* out_ref) {

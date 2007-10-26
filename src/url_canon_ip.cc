@@ -250,11 +250,11 @@ bool CanonicalizeIPAddress(const char* spec,
       spec, host, output, out_host);
 }
 
-bool CanonicalizeIPAddress(const wchar_t* spec,
+bool CanonicalizeIPAddress(const UTF16Char* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
                            url_parse::Component* out_host) {
-  return DoCanonicalizeIPv4Address<wchar_t, wchar_t>(
+  return DoCanonicalizeIPv4Address<UTF16Char, UTF16Char>(
       spec, host, output, out_host);
 }
 

@@ -37,6 +37,9 @@
 
 namespace url_util {
 
+typedef url_parse::UTF16Char UTF16Char;
+typedef url_parse::UTF16String UTF16String;
+
 // Schemes --------------------------------------------------------------------
 
 // Adds an application-defined scheme to the internal list of "standard" URL
@@ -51,7 +54,7 @@ bool FindAndCompareScheme(const char* str,
                           int str_len,
                           const char* compare,
                           url_parse::Component* found_scheme);
-bool FindAndCompareScheme(const wchar_t* str,
+bool FindAndCompareScheme(const UTF16Char* str,
                           int str_len,
                           const char* compare,
                           url_parse::Component* found_scheme);
@@ -61,7 +64,7 @@ inline bool FindAndCompareScheme(const std::string& str,
   return FindAndCompareScheme(str.data(), static_cast<int>(str.size()),
                               compare, found_scheme);
 }
-inline bool FindAndCompareScheme(const std::wstring& str,
+inline bool FindAndCompareScheme(const UTF16String& str,
                                  const char* compare,
                                  url_parse::Component* found_scheme) {
   return FindAndCompareScheme(str.data(), static_cast<int>(str.size()),
@@ -71,21 +74,21 @@ inline bool FindAndCompareScheme(const std::wstring& str,
 // Returns true if the given string corresponds to a known scheme in the
 // database.
 bool IsStandardScheme(const char* scheme, int scheme_len);
-bool IsStandardScheme(const wchar_t* scheme, int scheme_len);
+bool IsStandardScheme(const UTF16Char* scheme, int scheme_len);
 inline bool IsStandardScheme(const std::string& scheme) {
   return IsStandardScheme(scheme.data(), static_cast<int>(scheme.size()));
 }
-inline bool IsStandardScheme(const std::wstring& scheme) {
+inline bool IsStandardScheme(const UTF16String& scheme) {
   return IsStandardScheme(scheme.data(), static_cast<int>(scheme.size()));
 }
 
 // Returns true if the given string represents a standard URL.
 bool IsStandard(const char* spec, int spec_len);
-bool IsStandard(const wchar_t* spec, int spec_len);
+bool IsStandard(const UTF16Char* spec, int spec_len);
 inline bool IsStandard(const std::string& spec) {
   return IsStandard(spec.data(), static_cast<int>(spec.size()));
 }
-inline bool IsStandard(const std::wstring& spec) {
+inline bool IsStandard(const UTF16String& spec) {
   return IsStandard(spec.data(), static_cast<int>(spec.size()));
 }
 
@@ -102,7 +105,7 @@ bool Canonicalize(const char* spec,
                   int spec_len,
                   url_canon::CanonOutput* output,
                   url_parse::Parsed* output_parsed);
-bool Canonicalize(const wchar_t* spec,
+bool Canonicalize(const UTF16Char* spec,
                   int spec_len,
                   url_canon::CanonOutput* output,
                   url_parse::Parsed* output_parsed);
@@ -124,7 +127,7 @@ bool ResolveRelative(const char* base_spec,
                      url_parse::Parsed* output_parsed);
 bool ResolveRelative(const char* base_spec,
                      const url_parse::Parsed& base_parsed,
-                     const wchar_t* relative,
+                     const UTF16Char* relative,
                      int relative_length,
                      url_canon::CanonOutput* output,
                      url_parse::Parsed* output_parsed);
@@ -140,7 +143,7 @@ bool ReplaceComponents(const char* spec,
                        url_parse::Parsed* out_parsed);
 bool ReplaceComponents(const char* spec,
                        const url_parse::Parsed& parsed,
-                       const url_canon::Replacements<wchar_t>& replacements,
+                       const url_canon::Replacements<UTF16Char>& replacements,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* out_parsed);
 
@@ -149,11 +152,18 @@ bool ReplaceComponents(const char* spec,
 // Compare the lower-case form of the given string against the given ASCII
 // string.  This is useful for doing checking if an input string matches some
 // token, and it is optimized to avoid intermediate string copies.
+//
+// The versions of this function that don't take a b_end assume that the b
+// string is NULL terminated.
 bool LowerCaseEqualsASCII(const char* a_begin,
                           const char* a_end,
                           const char* b);
-bool LowerCaseEqualsASCII(const wchar_t* a_begin,
-                          const wchar_t* a_end,
+bool LowerCaseEqualsASCII(const char* a_begin,
+                          const char* a_end,
+                          const char* b_begin,
+                          const char* b_end);
+bool LowerCaseEqualsASCII(const UTF16Char* a_begin,
+                          const UTF16Char* a_end,
                           const char* b);
 
 }  // namespace url_util

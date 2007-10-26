@@ -111,7 +111,7 @@ void RunConverter(const char* spec,
 // Runs the converter with the given UTF-16 input. We don't have to do
 // anything, but this overriddden function allows us to use the same code
 // for both UTF-8 and UTF-16 input.
-void RunConverter(const wchar_t* spec,
+void RunConverter(const UTF16Char* spec,
                   const url_parse::Component& query,
                   CharsetConverter* converter,
                   CanonOutput* output) {
@@ -185,20 +185,21 @@ void CanonicalizeQuery(const char* spec,
                                            output, out_query);
 }
 
-void CanonicalizeQuery(const wchar_t* spec,
+void CanonicalizeQuery(const UTF16Char* spec,
                        const url_parse::Component& query,
                        CharsetConverter* converter,
                        CanonOutput* output,
                        url_parse::Component* out_query) {
-  DoCanonicalizeQuery<wchar_t, wchar_t>(spec, query, converter,
-                                        output, out_query);
+  DoCanonicalizeQuery<UTF16Char, UTF16Char>(spec, query, converter,
+                                            output, out_query);
 }
 
-void ConvertUTF16ToQueryEncoding(const wchar_t* input,
+void ConvertUTF16ToQueryEncoding(const UTF16Char* input,
                                  const url_parse::Component& query,
                                  CharsetConverter* converter,
                                  CanonOutput* output) {
-  DoConvertToQueryEncoding<wchar_t, wchar_t>(input, query, converter, output);
+  DoConvertToQueryEncoding<UTF16Char, UTF16Char>(input, query,
+                                                 converter, output);
 }
 
 }  // namespace url_canon
