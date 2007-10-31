@@ -30,8 +30,9 @@
 #ifndef GOOGLEURL_SRC_GURL_H__
 #define GOOGLEURL_SRC_GURL_H__
 
-#include <string>
+#include <iostream>
 #include <map>
+#include <string>
 
 #include "googleurl/src/url_canon.h"
 #include "googleurl/src/url_canon_stdstring.h"
@@ -329,5 +330,10 @@ class GURL {
 
   // TODO bug 684583: Add encoding for query params.
 };
+
+// Stream operator so GURL can be used in assertion statements.
+inline std::ostream& operator<<(std::ostream& out, const GURL& url) {
+  return out << url.possibly_invalid_spec();
+}
 
 #endif  // GOOGLEURL_SRC_GURL_H__
