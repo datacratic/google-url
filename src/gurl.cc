@@ -108,21 +108,24 @@ GURL::GURL(const char* canonical_spec, int canonical_spec_len,
       is_valid_(is_valid),
       parsed_(parsed) {
 #ifndef NDEBUG
-  // For testing purposes, check that the parsed canonical URL is
-  // identical to what we would have produced.
-  GURL test_url(spec_);
+  // For testing purposes, check that the parsed canonical URL is identical to
+  // what we would have produced. Skip checking for invalid URLs have no meaning
+  // and we can't always canonicalize then reproducabely.
+  if (is_valid_) {
+    GURL test_url(spec_);
 
-  DCHECK(test_url.is_valid_ == is_valid_);
-  DCHECK(test_url.spec_ == spec_);
+    DCHECK(test_url.is_valid_ == is_valid_);
+    DCHECK(test_url.spec_ == spec_);
 
-  DCHECK(test_url.parsed_.scheme == parsed_.scheme);
-  DCHECK(test_url.parsed_.username == parsed_.username);
-  DCHECK(test_url.parsed_.password == parsed_.password);
-  DCHECK(test_url.parsed_.host == parsed_.host);
-  DCHECK(test_url.parsed_.port == parsed_.port);
-  DCHECK(test_url.parsed_.path == parsed_.path);
-  DCHECK(test_url.parsed_.query == parsed_.query);
-  DCHECK(test_url.parsed_.ref == parsed_.ref);
+    DCHECK(test_url.parsed_.scheme == parsed_.scheme);
+    DCHECK(test_url.parsed_.username == parsed_.username);
+    DCHECK(test_url.parsed_.password == parsed_.password);
+    DCHECK(test_url.parsed_.host == parsed_.host);
+    DCHECK(test_url.parsed_.port == parsed_.port);
+    DCHECK(test_url.parsed_.path == parsed_.path);
+    DCHECK(test_url.parsed_.query == parsed_.query);
+    DCHECK(test_url.parsed_.ref == parsed_.ref);
+  }
 #endif
 }
 
