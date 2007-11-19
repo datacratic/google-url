@@ -15,8 +15,4 @@
 		Name="VCLinkerTool"
 		LinkIncremental="2"
 	/>
-	<Tool
-		Name="VCResourceCompilerTool"
-		PreprocessorDefinitions="_DEBUG"
-	/>
 </VisualStudioPropertySheet>

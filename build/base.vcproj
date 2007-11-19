@@ -18,7 +18,7 @@
 		<Configuration
 			Name="Debug|Win32"
 			ConfigurationType="4"
-			InheritedPropertySheets="$(SolutionDir)..\build\common.vsprops;$(SolutionDir)..\build\debug.vsprops"
+			InheritedPropertySheets="$(SolutionDir)..\build\common.vsprops;$(SolutionDir)..\build\debug.vsprops;$(SolutionDir)../third_party/icu36/build/using_icu.vsprops"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -69,8 +69,7 @@
 		<Configuration
 			Name="Release|Win32"
 			ConfigurationType="4"
-			InheritedPropertySheets="$(SolutionDir)..\build\common.vsprops;$(SolutionDir)..\build\release.vsprops"
-			WholeProgramOptimization="1"
+			InheritedPropertySheets="$(SolutionDir)..\build\common.vsprops;$(SolutionDir)..\build\release.vsprops;$(SolutionDir)../third_party/icu36/build/using_icu.vsprops"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -136,14 +135,6 @@
 		</File>
 		<File
 			RelativePath="..\base\scoped_ptr.h"
-			>
-		</File>
-		<File
-			RelativePath="..\base\string_util.cc"
-			>
-		</File>
-		<File
-			RelativePath="..\base\string_util.h"
 			>
 		</File>
 	</Files>

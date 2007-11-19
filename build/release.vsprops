@@ -6,16 +6,18 @@
 	>
 	<Tool
 		Name="VCCLCompilerTool"
+		WholeProgramOptimization="true"
 		PreprocessorDefinitions="NDEBUG"
+	/>
+	<Tool
+		Name="VCLibrarianTool"
+		AdditionalOptions="/ltcg"
 	/>
 	<Tool
 		Name="VCLinkerTool"
 		LinkIncremental="1"
 		OptimizeReferences="2"
 		EnableCOMDATFolding="2"
-	/>
-	<Tool
-		Name="VCResourceCompilerTool"
-		PreprocessorDefinitions="NDEBUG"
+		LinkTimeCodeGeneration="1"
 	/>
 </VisualStudioPropertySheet>
