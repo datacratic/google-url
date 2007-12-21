@@ -233,6 +233,30 @@ class CharsetConverter {
                                 CanonOutput* output) = 0;
 };
 
+// Whitespace -----------------------------------------------------------------
+
+// Searches for whitespace that should be removed from the middle of URLs, and
+// removes it. Removed whitespace are tabs and newlines, but NOT spaces. Spaces
+// are preserved, which is what most browsers do. A pointer to the output will
+// be returned, and the length of that output will be in |output_len|.
+//
+// This should be called before parsing if whitespace removal is desired (which
+// it normally is when you are canonicalizing).
+//
+// If no whitespace is removed, this function will not use the buffer and will
+// return a pointer to the input, to avoid the extra copy. If modification is
+// required, the given |buffer| will be used and the returned pointer will
+// point to the beginning of the buffer.
+//
+// Therefore, callers should not use the buffer, since it may actuall be empty,
+// use the computed pointer and |*output_len| instead.
+const char* RemoveURLWhitespace(const char* input, int input_len,
+                                CanonOutputT<char>* buffer,
+                                int* output_len);
+const UTF16Char* RemoveURLWhitespace(const UTF16Char* input, int input_len,
+                                     CanonOutputT<UTF16Char>* buffer,
+                                     int* output_len);
+
 // IDN ------------------------------------------------------------------------
 
 // Converts the Unicode input representing a hostname to ASCII using IDN rules.

@@ -149,6 +149,18 @@ object that meets the requirements of their system. A reasonably complete
 example implemnetation is provided in src/gurl.*. You may wish to use this
 object, extend or modify it, or write your own.
 
+Whitespace
+----------
+Sometimes, you may want to remove linefeeds and tabs from the content of a URL.
+Some web pages, for example, expect that a URL spanning two lines should be
+treated as one with the newline removed. Depending on the source of the URLs
+you are canonicalizing, these newlines may or may not be trimmed off.
+
+If you want this behavior, call RemoveURLWhitespace before parsing. This will
+remove CR, LF and TAB from the input. Note that it preserves spaces. On typical
+URLs, this function produces a 10-15% speed reduction, so it is optional and
+not done automatically. The example GURL object and the url_util wrapper does
+this for you.
 
 Tests
 =====

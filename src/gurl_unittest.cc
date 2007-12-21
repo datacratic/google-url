@@ -333,3 +333,16 @@ TEST(GURLTest, DomainIs) {
   GURL url_10("http://www.iamnotgoogle.com../foo");
   EXPECT_FALSE(url_10.DomainIs(".com"));
 }
+
+// Newlines should be stripped from inputs.
+TEST(GURLTest, Newlines) {
+  // Constructor.
+  GURL url_1(" \t ht\ntp://\twww.goo\rgle.com/as\ndf \n ");
+  EXPECT_EQ("http://www.google.com/asdf", url_1.spec());
+
+  // Relative path resolver.
+  GURL url_2 = url_1.Resolve(" \n /fo\to\r ");
+  EXPECT_EQ("http://www.google.com/foo", url_2.spec());
+
+  // Note that newlines are NOT stripped from ReplaceComponents.
+}

@@ -29,12 +29,54 @@
 
 // Canonicalizers for random bits that aren't big enough for their own files.
 
+#include <string.h>
+
 #include "googleurl/src/url_canon.h"
 #include "googleurl/src/url_canon_internal.h"
 
 namespace url_canon {
 
 namespace {
+
+// Returns true if the given character should be removed from the middle of a
+// URL.
+inline bool IsRemovableURLWhitespace(int ch) {
+  return ch == '\r' || ch == '\n' || ch == '\t';
+}
+
+// Backend for RemoveURLWhitespace (see declaration in url_canon.h).
+// It sucks that we have to do this, since this takes about 13% of the total URL
+// canonicalization time.
+template<typename CHAR>
+const CHAR* DoRemoveURLWhitespace(const CHAR* input, int input_len,
+                                  CanonOutputT<CHAR>* buffer,
+                                  int* output_len) {
+  // Fast verification that there's nothing that needs removal. This is the 99%
+  // case, so we want it to be fast and don't care about impacting the speed
+  // when we do find whitespace.
+  int found_whitespace = false;
+  for (int i = 0; i < input_len; i++) {
+    if (!IsRemovableURLWhitespace(input[i]))
+      continue;
+    found_whitespace = true;
+    break;
+  }
+
+  if (!found_whitespace) {
+    // Didn't find any whitespace, we don't need to do anything. We can just
+    // return the input as the output.
+    *output_len = input_len;
+    return input;
+  }
+
+  // Remove the whitespace into the new buffer and return it.
+  for (int i = 0; i < input_len; i++) {
+    if (!IsRemovableURLWhitespace(input[i]))
+      buffer->push_back(input[i]);
+  }
+  *output_len = buffer->length();
+  return buffer->data();
+}
 
 // Contains the canonical version of each possible input letter in the scheme
 // (basically, lower-cased). The corresponding entry will be 0 if the letter
@@ -221,6 +263,18 @@ bool CopyAndValidateUTF8(const char* input, int input_len,
 }
 
 }  // namespace
+
+const char* RemoveURLWhitespace(const char* input, int input_len,
+                                CanonOutputT<char>* buffer,
+                                int* output_len) {
+  return DoRemoveURLWhitespace(input, input_len, buffer, output_len);
+}
+
+const UTF16Char* RemoveURLWhitespace(const UTF16Char* input, int input_len,
+                                     CanonOutputT<UTF16Char>* buffer,
+                                     int* output_len) {
+  return DoRemoveURLWhitespace(input, input_len, buffer, output_len);
+}
 
 char CanonicalSchemeChar(UTF16Char ch) {
   if (ch >= 0x80)

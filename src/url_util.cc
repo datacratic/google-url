@@ -133,10 +133,16 @@ bool DoFindAndCompareScheme(const CHAR* str,
 }
 
 template<typename CHAR>
-bool DoCanonicalize(const CHAR* spec,
-                    int spec_len,
+bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
                     url_canon::CanonOutput* output,
                     url_parse::Parsed* output_parsed) {
+  // Remove any whitespace from the middle of the relative URL, possibly
+  // copying to the new buffer.
+  url_canon::RawCanonOutputT<CHAR> whitespace_buffer;
+  int spec_len;
+  const CHAR* spec = RemoveURLWhitespace(in_spec, in_spec_len,
+                                         &whitespace_buffer, &spec_len);
+
   url_parse::Component scheme;
   if(!url_parse::ExtractScheme(spec, spec_len, &scheme))
     return false;
@@ -169,10 +175,18 @@ bool DoCanonicalize(const CHAR* spec,
 template<typename CHAR>
 bool DoResolveRelative(const char* base_spec,
                        const url_parse::Parsed& base_parsed,
-                       const CHAR* relative,
-                       int relative_length,
+                       const CHAR* in_relative,
+                       int in_relative_length,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* output_parsed) {
+  // Remove any whitespace from the middle of the relative URL, possibly
+  // copying to the new buffer.
+  url_canon::RawCanonOutputT<CHAR> whitespace_buffer;
+  int relative_length;
+  const CHAR* relative = RemoveURLWhitespace(in_relative, in_relative_length,
+                                             &whitespace_buffer,
+                                             &relative_length);
+
   bool standard_base_scheme =
       IsStandardScheme(&base_spec[base_parsed.scheme.begin],
                        base_parsed.scheme.len);
