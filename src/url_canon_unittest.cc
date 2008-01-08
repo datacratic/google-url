@@ -272,7 +272,7 @@ TEST(URLCanonTest, Scheme) {
   ComponentCase scheme_cases[] = {
     {"http", "http:", url_parse::Component(0, 4), true},
     {"HTTP", "http:", url_parse::Component(0, 4), true},
-    {" HTTP ", "%20http%20:", url_parse::Component(0, 10),false},
+    {" HTTP ", "%20http%20:", url_parse::Component(0, 10), false},
     {"htt: ", "htt%3A%20:", url_parse::Component(0, 9), false},
     {"\xe4\xbd\xa0\xe5\xa5\xbdhttp", "%E4%BD%A0%E5%A5%BDhttp:", url_parse::Component(0, 22), false},
   };
@@ -864,7 +864,7 @@ TEST(URLCanonTest, Ref) {
 
 TEST(URLCanonTest, CanonicalizeStandardURL) {
   // The individual component canonicalize tests should have caught the cases
-  // for each of thost components. Here, we just need to test that the various
+  // for each of those components. Here, we just need to test that the various
   // parts are included or excluded properly, and have the correct separators.
   struct URLCase {
     const char* input;
@@ -876,6 +876,7 @@ TEST(URLCanonTest, CanonicalizeStandardURL) {
     {"http:////////user:@google.com:99?foo", "http://user@google.com:99/?foo", true},
     {"www.google.com", ":www.google.com/", true},
     {"http://192.0x00A80001", "http://192.168.0.1/", true},
+    {"http://www/foo%2Ehtml", "http://www/foo.html", true},
 
       // Backslashes should get converted to forward slashes.
     {"http:\\\\www.google.com\\foo", "http://www.google.com/foo", true},

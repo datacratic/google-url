@@ -259,6 +259,7 @@ bool DoPartialPath(const CHAR* spec,
             // This dot is not preceeded by a slash, it is just part of some
             // file name.
             output->push_back('.');
+            i += dotlen - 1;
           }
 
         } else if (out_ch == '\\') {
