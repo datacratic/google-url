@@ -680,6 +680,9 @@ TEST(URLCanonTest, Path) {
     {"/foo\tbar", L"/foo\tbar", "/foo%09bar", url_parse::Component(0, 10), true},
       // Backslashes should get converted to forward slashes
     {"\\foo\\bar", L"\\foo\\bar", "/foo/bar", url_parse::Component(0, 8), true},
+      // Hashes can get in paths if there is already one for the reference (it's
+      // the last one). These are not generally escaped.
+    {"/foo#bar", L"/foo#bar", "/foo#bar", url_parse::Component(0, 8), true},
 
     // ----- encoding tests -----
       // Basic conversions
