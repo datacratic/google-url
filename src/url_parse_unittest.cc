@@ -193,14 +193,12 @@ static URLParseCase cases[] = {
 {"c:/foo",                              "c",    NULL,  NULL,      "foo",        -1, NULL,      NULL,        NULL},
 {"//foo/bar",                           NULL,   NULL,  NULL,      "foo",        -1, "/bar",    NULL,        NULL},
 
-  // Use the first question mark for the query, the last # for the ref.
-{"http://foo/path;a??e#f#g",            "http", NULL,  NULL,      "foo",        -1, "/path;a", "?e#f",      "g"},
+  // Use the first question mark for the query and the ref.
+{"http://foo/path;a??e#f#g",            "http", NULL,  NULL,      "foo",        -1, "/path;a", "?e",      "f#g"},
 {"http://foo/abcd?efgh?ijkl",           "http", NULL,  NULL,      "foo",        -1, "/abcd",   "efgh?ijkl", NULL},
-
-  // Use first question mark for the query.
 {"http://foo/abcd#foo?bar",             "http", NULL,  NULL,      "foo",        -1, "/abcd",   NULL,        "foo?bar"},
 
-  // IPV6, check also interesting uses of colons
+  // IPV6, check also interesting uses of colons.
 {"[61:24:74]:98",                       NULL,   NULL,  NULL,      "[61:24:74]", 98, NULL,      NULL,        NULL},
 {"http://[61:27]:98",                   "http", NULL,  NULL,      "[61:27]",    98, NULL,      NULL,        NULL},
 {"http:[61:27]/:foo",                   "http", NULL,  NULL,      "[61:27]",    -1, "/:foo",   NULL,        NULL},

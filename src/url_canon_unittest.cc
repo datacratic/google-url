@@ -680,9 +680,9 @@ TEST(URLCanonTest, Path) {
     {"/foo\tbar", L"/foo\tbar", "/foo%09bar", url_parse::Component(0, 10), true},
       // Backslashes should get converted to forward slashes
     {"\\foo\\bar", L"\\foo\\bar", "/foo/bar", url_parse::Component(0, 8), true},
-      // Hashes can get in paths if there is already one for the reference (it's
-      // the last one). These are not generally escaped.
-    {"/foo#bar", L"/foo#bar", "/foo#bar", url_parse::Component(0, 8), true},
+      // Hashes found in paths (possibly only when the caller explicitly sets
+      // the path on an already-parsed URL) should be escaped.
+    {"/foo#bar", L"/foo#bar", "/foo%23bar", url_parse::Component(0, 10), true},
 
     // ----- encoding tests -----
       // Basic conversions
@@ -823,6 +823,9 @@ TEST(URLCanonTest, Ref) {
       // Invalid UTF-8/16 input should be flagged and the input made valid
     {"\xc2", NULL, "#\xef\xbf\xbd", url_parse::Component(1, 3), false},
     {NULL, L"\xd800\x597d", "#\xef\xbf\xbd\xe5\xa5\xbd", url_parse::Component(1, 6), false},
+      // Refs can have # signs and we should preserve them.
+    {"asdf#qwer", L"asdf#qwer", "#asdf#qwer", url_parse::Component(1, 9), true},
+    {"#asdf", L"#asdf", "##asdf", url_parse::Component(1, 5), true},
   };
 
   for (int i = 0; i < arraysize(ref_cases); i++) {

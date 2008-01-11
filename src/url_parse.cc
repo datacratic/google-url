@@ -244,9 +244,9 @@ void ParsePath(const CHAR* spec,
           query_separator = i;
         break;
       case '#':
-        // We want to find the LAST reference fragment, so overwrite any
-        // previous one.
-        ref_separator = i;
+        // Record the first # sign only.
+        if (ref_separator < 0)
+          ref_separator = i;
         break;
     }
   }
