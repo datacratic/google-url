@@ -683,6 +683,9 @@ TEST(URLCanonTest, Path) {
       // Hashes found in paths (possibly only when the caller explicitly sets
       // the path on an already-parsed URL) should be escaped.
     {"/foo#bar", L"/foo#bar", "/foo%23bar", url_parse::Component(0, 10), true},
+      // %7f should be allowed and %3D should not be unescaped (these were wrong
+      // in a previous version).
+    {"/%7Ffp3%3Eju%3Dduvgw%3Dd", L"/%7Ffp3%3Eju%3Dduvgw%3Dd", "/%7Ffp3%3Eju%3Dduvgw%3Dd", url_parse::Component(0, 24), true},
 
     // ----- encoding tests -----
       // Basic conversions

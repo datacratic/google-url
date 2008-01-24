@@ -82,7 +82,7 @@ const unsigned char kPathCharLookup[0x100] = {
 //   ' '      !        "        #        $        %        &        '        (        )        *        +        ,        -        .        /
      ESCAPE,  PASS,    ESCAPE,  ESCAPE,  PASS,    ESCAPE,  PASS,    PASS,    PASS,    PASS,    PASS,    PASS,    PASS,    UNESCAPE,SPECIAL, PASS,
 //   0        1        2        3        4        5        6        7        8        9        :        ;        <        =        >        ?
-     UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,PASS,    PASS,    ESCAPE,  UNESCAPE,ESCAPE,  ESCAPE,
+     UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,PASS,    PASS,    ESCAPE,  PASS,    ESCAPE,  ESCAPE,
 //   @        A        B        C        D        E        F        G        H        I        J        K        L        M        N        O
      ESCAPE,  UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,
 //   P        Q        R        S        T        U        V        W        X        Y        Z        [        \        ]        ^        _
@@ -90,7 +90,7 @@ const unsigned char kPathCharLookup[0x100] = {
 //   `        a        b        c        d        e        f        g        h        i        j        k        l        m        n        o
      ESCAPE,  UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,
 //   p        q        r        s        t        u        v        w        x        y        z        {        |        }        ~        <NBSP>
-     UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,ESCAPE,  ESCAPE,  ESCAPE,  UNESCAPE,INVALID,
+     UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,ESCAPE,  ESCAPE,  ESCAPE,  UNESCAPE,ESCAPE,
 //   ...all the high-bit characters are escaped
      ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,
      ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,  ESCAPE,
