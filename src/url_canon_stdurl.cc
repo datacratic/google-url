@@ -37,6 +37,31 @@ namespace url_canon {
 
 namespace {
 
+// Returns the default port for the given canonical scheme, or PORT_UNSPECIFIED
+// if the scheme is unknown.
+int DefaultPortForScheme(const char* scheme, int scheme_len) {
+  int default_port = url_parse::PORT_UNSPECIFIED;
+  switch (scheme_len) {
+    case 4:
+      if (!strncmp(scheme, "http", scheme_len))
+        default_port = 80;
+      break;
+    case 5:
+      if (!strncmp(scheme, "https", scheme_len))
+        default_port = 443;
+      break;
+    case 3:
+      if (!strncmp(scheme, "ftp", scheme_len))
+        default_port = 21;
+      break;
+    case 6:
+      if (!strncmp(scheme, "gopher", scheme_len))
+        default_port = 70;
+      break;
+  }
+  return default_port;
+}
+
 template<typename CHAR, typename UCHAR>
 bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
                                const url_parse::Parsed& parsed,
@@ -70,9 +95,10 @@ bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
     success &= CanonicalizeHost(source.host, parsed.host,
                                 output, &new_parsed->host);
 
-    // Port: the port canonicalizer will handle the colon
-    // FIXME(brettw) DO SOMETHING BETTER WITH THE PORT!!!
-    success &= CanonicalizePort(source.port, parsed.port, 80,
+    // Port: the port canonicalizer will handle the colon.
+    int default_port = DefaultPortForScheme(
+        &output->data()[new_parsed->scheme.begin], new_parsed->scheme.len);
+    success &= CanonicalizePort(source.port, parsed.port, default_port,
                                 output, &new_parsed->port);
   }
 

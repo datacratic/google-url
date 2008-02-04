@@ -364,6 +364,8 @@ bool CanonicalizeIPAddress(const UTF16Char* spec,
                            url_parse::Component* out_host);
 
 // Port: this function will add the colon for the port if a port is present.
+// The caller can pass url_parse::PORT_UNSPECIFIED as the
+// default_port_for_scheme argument if there is no default port.
 //
 // The 8-bit version requires UTF-8 encoding.
 bool CanonicalizePort(const char* spec,

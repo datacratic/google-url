@@ -588,13 +588,21 @@ TEST(URLCanonTest, Port) {
   //
   // Note that the CanonicalizePort will always prepend a colon to the output
   // to separate it from the colon that it assumes preceeds it.
-  const int default_port = 80;
-  ComponentCase port_cases[] = {
+  struct PortCase {
+    const char* input;
+    int default_port;
+    const char* expected;
+    url_parse::Component expected_component;
+    bool expected_success;
+  } port_cases[] = {
       // Invalid input should be copied w/ failure.
-    {"as df", ":as%20df", url_parse::Component(1, 7), false},
+    {"as df", 80, ":as%20df", url_parse::Component(1, 7), false},
+    {"-2", 80, ":-2", url_parse::Component(1, 2), false},
       // Default port should be omitted.
-    {"80", "", url_parse::Component(0, -1), true},
-    {"8080", ":8080", url_parse::Component(1, 4), true},
+    {"80", 80, "", url_parse::Component(0, -1), true},
+    {"8080", 80, ":8080", url_parse::Component(1, 4), true},
+      // PORT_UNSPECIFIED should mean always keep the port.
+    {"80", url_parse::PORT_UNSPECIFIED, ":80", url_parse::Component(1, 2), true},
   };
 
   for (int i = 0; i < arraysize(port_cases); i++) {
@@ -604,8 +612,8 @@ TEST(URLCanonTest, Port) {
     std::string out_str;
     url_canon::StdStringCanonOutput output1(&out_str);
     bool success = url_canon::CanonicalizePort(port_cases[i].input, in_comp,
-                                               default_port, &output1,
-                                               &out_comp);
+                                               port_cases[i].default_port,
+                                               &output1, &out_comp);
     output1.Complete();
 
     EXPECT_EQ(port_cases[i].expected_success, success);
@@ -618,7 +626,8 @@ TEST(URLCanonTest, Port) {
     url_canon::StdStringCanonOutput output2(&out_str);
     UTF16String wide_input(ConvertUTF8ToUTF16(port_cases[i].input));
     success = url_canon::CanonicalizePort(wide_input.c_str(), in_comp,
-                                          default_port, &output2, &out_comp);
+                                          port_cases[i].default_port,
+                                          &output2, &out_comp);
     output2.Complete();
 
     EXPECT_EQ(port_cases[i].expected_success, success);
@@ -883,7 +892,7 @@ TEST(URLCanonTest, CanonicalizeStandardURL) {
     bool expected_success;
   } cases[] = {
     {"http://www.google.com/foo?bar=baz#", "http://www.google.com/foo?bar=baz#", true},
-    {"ht\ttp:@www.google.com:80/;p?#", "ht%09tp://www.google.com/;p?#", false},
+    {"ht\ttp:@www.google.com:80/;p?#", "ht%09tp://www.google.com:80/;p?#", false},
     {"http:////////user:@google.com:99?foo", "http://user@google.com:99/?foo", true},
     {"www.google.com", ":www.google.com/", true},
     {"http://192.0x00A80001", "http://192.168.0.1/", true},
@@ -894,6 +903,19 @@ TEST(URLCanonTest, CanonicalizeStandardURL) {
 
       // Busted refs shouldn't make the whole thing fail.
     {"http://www.google.com/asdf#\xc2", "http://www.google.com/asdf#\xef\xbf\xbd", true},
+
+      // Basic port tests.
+    {"http://foo:80/", "http://foo/", true},
+    {"http://foo:81/", "http://foo:81/", true},
+    {"httpa://foo:80/", "httpa://foo:80/", true},
+    {"http://foo:-80/", "http://foo:-80/", false},
+
+    {"https://foo:443/", "https://foo/", true},
+    {"https://foo:80/", "https://foo:80/", true},
+    {"ftp://foo:21/", "ftp://foo/", true},
+    {"ftp://foo:80/", "ftp://foo:80/", true},
+    {"gopher://foo:70/", "gopher://foo/", true},
+    {"gopher://foo:443/", "gopher://foo:443/", true},
   };
 
   for (int i = 0; i < ARRAYSIZE(cases); i++) {
