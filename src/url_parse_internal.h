@@ -48,7 +48,10 @@ inline bool ShouldTrimFromURL(UTF16Char ch) {
 }
 
 // Given an already-initialized begin index and length, this shrinks the range
-// to eliminate "should-be-trimmed" characters.
+// to eliminate "should-be-trimmed" characters. Note that the length does *not*
+// indicate the length of untrimmed data from |*begin|, but rather the position
+// in the input string (so the string starts at character |*begin| in the spec,
+// and goes until |*len|).
 template<typename CHAR>
 inline void TrimURL(const CHAR* spec, int* begin, int* len) {
   // Strip leading whitespace and control characters.
