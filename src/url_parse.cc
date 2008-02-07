@@ -496,42 +496,41 @@ void DoExtractFileName(const CHAR* spec,
 }
 
 template<typename CHAR>
-void DoExtractQueryFragment(const CHAR* spec,
+bool DoExtractQueryKeyValue(const CHAR* spec,
                             Component* query,
                             Component* key,
                             Component* value) {
+  if (!query->is_nonempty())
+    return false;
+
   int start = query->begin;
-  int c = start;
-  int end = query->begin + query->len;
-  while (c < end && spec[c] != '&' && spec[c] != '=')
-    c++;
+  int cur = start;
+  int end = query->end();
 
-  if ((c - start) > 0) {
-    key->begin = start;
-    key->len = c - start;
-  }
+  // We assume the beginning of the input is the beginning of the "key" and we
+  // skip to the end of it.
+  key->begin = cur;
+  while (cur < end && spec[cur] != '&' && spec[cur] != '=')
+    cur++;
+  key->len = cur - key->begin;
+  
+  // Skip the separator after the key (if any).
+  if (cur < end && spec[cur] == '=')
+    cur++;
 
-  // We have a key, skip the separator if any
-  if (c < end && spec[c] == '=')
-    ++c;
-
-  if (c < end) {
-    start = c;
-    while (c < end && spec[c] != '&')
-      c++;
-    if ((c - start) > 0) {
-      value->begin = start;
-      value->len = c - start;
-    }
-  }
+  // Find the value part.
+  value->begin = cur;
+  while (cur < end && spec[cur] != '&')
+    cur++;
+  value->len = cur - value->begin;
 
   // Finally skip the next separator if any
-  if (c < end && spec[c] == '&')
-    ++c;
+  if (cur < end && spec[cur] == '&')
+    cur++;
 
   // Save the new query
-  query->begin = c;
-  query->len = end - c;
+  *query = url_parse::MakeRange(cur, end);
+  return true;
 }
 
 }  // namespace
@@ -582,18 +581,18 @@ void ExtractFileName(const UTF16Char* url,
   DoExtractFileName(url, path, file_name);
 }
 
-void ExtractQueryFragment(const char* url,
+bool ExtractQueryKeyValue(const char* url,
                           Component* query,
                           Component* key,
                           Component* value) {
-  DoExtractQueryFragment(url, query, key, value);
+  return DoExtractQueryKeyValue(url, query, key, value);
 }
 
-void ExtractQueryFragment(const UTF16Char* url,
+bool ExtractQueryKeyValue(const UTF16Char* url,
                           Component* query,
                           Component* key,
                           Component* value) {
-  DoExtractQueryFragment(url, query, key, value);
+  return DoExtractQueryKeyValue(url, query, key, value);
 }
 
 int ParsePort(const char* url, const Component& port) {

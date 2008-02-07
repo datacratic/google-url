@@ -248,15 +248,26 @@ void ExtractFileName(const UTF16Char* url,
                      const Component& path,
                      Component* file_name);
 
-// Extract the next key / value from the range defined by query.
-// Updates query to start at the end of the extracted key / value
-// pair. If no key or / and no value are found query and key are
-// unchanged.
-void ExtractQueryFragment(const char* url,
+// Extract the first key/value from the range defined by |*query|. Updates
+// |*query| to start at the end of the extracted key/value pair. This is
+// designed for use in a loop: you can keep calling it with the same query
+// object and it will iterate over all items in the query.
+//
+// Some key/value pairs may have the key, the value, or both be empty (for
+// example, the query string "?&"). These will be returned. Note that an empty
+// last parameter "foo.com?" or foo.com?a&" will not be returned, this case
+// is the same as "done."
+//
+// The initial query component should not include the '?' (this is the default
+// for parsed URLs).
+//
+// If no key/value are found |*key| and |*value| will be unchanged and it will
+// return false.
+bool ExtractQueryKeyValue(const char* url,
                           Component* query,
                           Component* key,
                           Component* value);
-void ExtractQueryFragment(const UTF16Char* url,
+bool ExtractQueryKeyValue(const UTF16Char* url,
                           Component* query,
                           Component* key,
                           Component* value);

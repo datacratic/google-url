@@ -236,51 +236,6 @@ TEST(GURLTest, PathForRequest) {
   }
 }
 
-TEST(GURLTest, ExtractQuery) {
-  GURL::QueryMap map;
-  GURL::QueryMap::iterator i;
-
-  // empty URL
-  GURL a("http://www.google.com");
-  a.ExtractQuery(&map);
-  i = map.find("foo");
-  EXPECT_TRUE(i == map.end());
-
-  // simple case
-  GURL b("http://www.google.com?arg1=1&arg2=2&bar");
-  b.ExtractQuery(&map);
-  EXPECT_EQ(map["arg1"], "1");
-  EXPECT_EQ(map["arg2"], "2");
-  EXPECT_EQ(map["bar"], "");
-
-  // Various terminations
-  const char* urls[] = {
-    "http://www.google.com?foo=bar",
-    "http://www.google.com?foo=bar&",
-    "http://www.google.com?&foo=bar",
-    "http://www.google.com?blaz&foo=bar",
-    "http://www.google.com?blaz=&foo=bar"
-  };
-
-  for (int i = 0; i < arraysize(urls); ++i) {
-    GURL c(urls[i]);
-    c.ExtractQuery(&map);
-    EXPECT_EQ(map["foo"], "bar");
-  }
-
-  const char* stress[] = {
-    "http://www.google.com?&=",
-    "http://www.google.com?&&=&",
-    "http://www.google.com?=",
-    "http://www.google.com?==",
-    "http://www.google.com?==&&&="
-  };
-  for (int i = 0; i < arraysize(stress); ++i) {
-    GURL d(stress[i]);
-    d.ExtractQuery(&map);
-  }
-}
-
 TEST(GURLTest, IPAddress) {
   struct IPTest {
     const char* spec;

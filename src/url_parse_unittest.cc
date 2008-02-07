@@ -359,3 +359,77 @@ TEST(URLParser, ExtractFileName) {
     EXPECT_TRUE(ComponentMatches(url, file_cases[i].expected, file_name));
   }
 }
+
+// Returns true if the parameter with index |parameter| in the given URL's
+// query string. The expected key can be NULL to indicate no such key index
+// should exist. The parameter number is 1-based.
+static bool NthParameterIs(const char* url,
+                           int parameter,
+                           const char* expected_key,
+                           const char* expected_value) {
+  url_parse::Parsed parsed;
+  url_parse::ParseStandardURL(url, static_cast<int>(strlen(url)), &parsed);
+
+  url_parse::Component query = parsed.query;
+
+  for (int i = 1; i <= parameter; i++) {
+    url_parse::Component key, value;
+    if (!url_parse::ExtractQueryKeyValue(url, &query, &key, &value)) {
+      if (parameter >= i && !expected_key)
+        return true;  // Expected nonexistant key, got one.
+      return false;  // Not enough keys.
+    }
+
+    if (i == parameter) {
+      if (!expected_key)
+        return false;
+      
+      if (strncmp(&url[key.begin], expected_key, key.len) != 0)
+        return false;
+      if (strncmp(&url[value.begin], expected_value, value.len) != 0)
+        return false;
+      return true;
+    }
+  }
+  return expected_key == NULL;  // We didn't find that many parameters.
+}
+
+TEST(URLParser, ExtractQueryKeyValue) {
+  EXPECT_TRUE(NthParameterIs("http://www.google.com", 1, NULL, NULL));
+
+  // Basic case.
+  char a[] = "http://www.google.com?arg1=1&arg2=2&bar";
+  EXPECT_TRUE(NthParameterIs(a, 1, "arg1", "1"));
+  EXPECT_TRUE(NthParameterIs(a, 2, "arg2", "2"));
+  EXPECT_TRUE(NthParameterIs(a, 3, "bar", ""));
+  EXPECT_TRUE(NthParameterIs(a, 4, NULL, NULL));
+
+  // Empty param at the end.
+  char b[] = "http://www.google.com?foo=bar&";
+  EXPECT_TRUE(NthParameterIs(b, 1, "foo", "bar"));
+  EXPECT_TRUE(NthParameterIs(b, 2, NULL, NULL));
+
+  // Empty param at the beginning.
+  char c[] = "http://www.google.com?&foo=bar";
+  EXPECT_TRUE(NthParameterIs(c, 1, "", ""));
+  EXPECT_TRUE(NthParameterIs(c, 2, "foo", "bar"));
+  EXPECT_TRUE(NthParameterIs(c, 3, NULL, NULL));
+
+  // Empty key with value.
+  char d[] = "http://www.google.com?=foo";
+  EXPECT_TRUE(NthParameterIs(d, 1, "", "foo"));
+  EXPECT_TRUE(NthParameterIs(d, 2, NULL, NULL));
+
+  // Empty value with key.
+  char e[] = "http://www.google.com?foo=";
+  EXPECT_TRUE(NthParameterIs(e, 1, "foo", ""));
+  EXPECT_TRUE(NthParameterIs(e, 2, NULL, NULL));
+
+  // Empty key and values.
+  char f[] = "http://www.google.com?&&==&=";
+  EXPECT_TRUE(NthParameterIs(f, 1, "", ""));
+  EXPECT_TRUE(NthParameterIs(f, 2, "", ""));
+  EXPECT_TRUE(NthParameterIs(f, 3, "", "="));
+  EXPECT_TRUE(NthParameterIs(f, 4, "", ""));
+  EXPECT_TRUE(NthParameterIs(f, 5, NULL, NULL));
+}

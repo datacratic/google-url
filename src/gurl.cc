@@ -280,31 +280,6 @@ std::string GURL::ExtractFileName() const {
   return ComponentString(file_component);
 }
 
-void GURL::ExtractQuery(QueryMap* r) const {
-  url_parse::Component q(parsed_.query);
-  url_parse::Component key;
-  url_parse::Component value;
-
-  while (q.is_nonempty()) {
-    key = url_parse::Component();
-    value = url_parse::Component();
-
-    url_parse::ExtractQueryFragment(spec_.data(),
-                                    &q,
-                                    &key,
-                                    &value);
-
-    // Something may or may not have been found. For example, the key and value
-    // will both be empty for the query string "&".
-    if (key.len > 0) {
-      if (value.len > 0)
-        (*r)[ComponentString(key)] = ComponentString(value);
-      else
-        (*r)[ComponentString(key)] = std::string("");
-    }
-  }
-}
-
 std::string GURL::PathForRequest() const {
   DCHECK(parsed_.path.len > 0) << "Canonical path for requests should be non-empty";
   if (parsed_.ref.len >= 0) {

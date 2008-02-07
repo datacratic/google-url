@@ -31,7 +31,6 @@
 #define GOOGLEURL_SRC_GURL_H__
 
 #include <iostream>
-#include <map>
 #include <string>
 
 #include "googleurl/src/url_canon.h"
@@ -274,10 +273,6 @@ class GURL {
   // Extracts the filename portion of the path and returns it. The filename
   // is everything after the last slash in the path. This may be empty.
   std::string ExtractFileName() const;
-
-  // Decompose the query component into a map of key value pairs.
-  typedef std::map<std::string, std::string> QueryMap;
-  void ExtractQuery(QueryMap* r) const;
 
   // Returns the path that should be sent to the server. This is the path,
   // parameter, and query portions of the URL. It is guaranteed to be ASCII.
