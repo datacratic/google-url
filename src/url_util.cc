@@ -105,6 +105,20 @@ bool DoIsStandardScheme(const CHAR* scheme,
   return false;
 }
 
+// Returns true if the stuff following the scheme in the given spec indicates
+// a "standard" URL. The presence of "://" after the scheme indicates that
+// there is a hostname, etc. which we call a standard URL.
+template<typename CHAR>
+bool HasStandardSchemeSeparator(const CHAR* spec, int spec_len,
+                                const url_parse::Component& scheme) {
+  int after_scheme = scheme.end();
+  if (spec_len < after_scheme + 3)
+    return false;
+  return spec[after_scheme] == ':' &&
+         spec[after_scheme + 1] == '/' &&
+         spec[after_scheme + 2] == '/';
+}
+
 template<typename CHAR>
 bool DoIsStandard(const CHAR* spec, int spec_len) {
   // TODO(brettw) bug 772441: treat URLs with "://" and possible ":/" as
@@ -157,7 +171,8 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
     success = url_canon::CanonicalizeFileURL(spec, spec_len, parsed_input,
                                              NULL, output, output_parsed);
 
-  } else if (IsStandardScheme(&spec[scheme.begin], scheme.len)) {
+  } else if (HasStandardSchemeSeparator(spec, spec_len, scheme) ||
+             IsStandardScheme(&spec[scheme.begin], scheme.len)) {
     // All "normal" URLs.
     url_parse::ParseStandardURL(spec, spec_len, &parsed_input);
     success = url_canon::CanonicalizeStandardURL(spec, spec_len, parsed_input,

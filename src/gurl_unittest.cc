@@ -33,6 +33,28 @@ void SetupReplacement(void (url_canon::Replacements<CHAR>::*func)(const CHAR*,
 
 }  // namespace
 
+// Different types of URLs should be handled differently by url_util, and
+// handed off to different canonicalizers.
+TEST(GURLTest, Types) {
+  struct TypeTest {
+    const char* src;
+    const char* expected;
+  } type_cases[] = {
+      // URLs with "://" should be treated as standard and have a hostname, even
+      // when the scheme is unknown.
+    {"something:///HOSTNAME.com/", "something://hostname.com/"},
+      // In the reverse, lacking a "://" means a path URL so no canonicalization
+      // should happen.
+    {"something:HOSTNAME.com/", "something:HOSTNAME.com/"},
+    {"something:/HOSTNAME.com/", "something:/HOSTNAME.com/"},
+  };
+
+  for (int i = 0; i < arraysize(type_cases); i++) {
+    GURL gurl(type_cases[i].src);
+    EXPECT_STREQ(type_cases[i].expected, gurl.spec().c_str());
+  }
+}
+
 // Test the basic creation and querying of components in a GURL. We assume
 // the parser is already tested and works, so we are mostly interested if the
 // object does the right thing with the results.
