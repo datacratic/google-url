@@ -31,6 +31,8 @@
 #include <windows.h>
 #endif
 
+#include <algorithm>
+
 #include "googleurl/src/gurl.h"
 
 #include "base/logging.h"
@@ -363,5 +365,11 @@ bool GURL::DomainIs(const char* lower_ascii_domain,
     return false;
 
   return true;
+}
+
+void GURL::Swap(GURL* other) {
+  spec_.swap(other->spec_);
+  std::swap(is_valid_, other->is_valid_);
+  std::swap(parsed_, other->parsed_);
 }
 

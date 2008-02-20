@@ -297,6 +297,10 @@ class GURL {
                     static_cast<int>(strlen(lower_ascii_domain)));
   }
 
+  // Swaps the contents of this GURL object with the argument without doing
+  // any memory allocations.
+  void Swap(GURL* other);
+
 #ifdef WIN32  // Currently defined only for Windows.
   // Returns a reference to a singleton empty GURL. This object is for callers
   // who return references but don't have anything to return in some cases.
