@@ -976,6 +976,34 @@ TEST(URLCanonTest, ReplaceStandardURL) {
 
     EXPECT_EQ(replace_cases[i].expected, out_str);
   }
+
+  // The path pointer should be ignored if the address is invalid.
+  {
+    const char src[] = "http://www.google.com/here_is_the_path";
+    int src_len = static_cast<int>(strlen(src));
+
+    url_parse::Parsed parsed;
+    url_parse::ParseStandardURL(src, src_len, &parsed);
+
+    // Replace the path to 0 length string. By using 1 as the string address,
+    // the test should get an access violation if it tries to dereference it.
+    url_canon::Replacements<char> r;
+    r.SetPath(reinterpret_cast<char*>(0x00000001), url_parse::Component(0, 0));
+    std::string out_str1;
+    url_canon::StdStringCanonOutput output1(&out_str1);
+    url_parse::Parsed new_parsed;
+    url_canon::ReplaceStandardURL(src, parsed, r, NULL, &output1, &new_parsed);
+    output1.Complete();
+    EXPECT_STREQ("http://www.google.com/", out_str1.c_str());
+
+    // Same with an "invalid" path.
+    r.SetPath(reinterpret_cast<char*>(0x00000001), url_parse::Component());
+    std::string out_str2;
+    url_canon::StdStringCanonOutput output2(&out_str2);
+    url_canon::ReplaceStandardURL(src, parsed, r, NULL, &output2, &new_parsed);
+    output2.Complete();
+    EXPECT_STREQ("http://www.google.com/", out_str2.c_str());
+  }
 }
 
 TEST(URLCanonTest, ReplaceFileURL) {

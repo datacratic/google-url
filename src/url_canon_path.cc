@@ -326,7 +326,7 @@ bool DoPath(const CHAR* spec,
             CanonOutput* output,
             url_parse::Component* out_path) {
   bool success = true;
-  if (path.len >= 0) {
+  if (path.len > 0) {
     out_path->begin = output->length();
 
     // Write out an initial slash if the input has none. If we just parse a URL
