@@ -73,6 +73,11 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 #define ARRAYSIZE_UNSAFE(a) \
   ((sizeof(a) / sizeof(*(a))) / \
    static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
-#endif
+
+// A macro to disallow the evil copy constructor and operator= functions
+// This should be used in the private: declarations for a class
+#define DISALLOW_EVIL_CONSTRUCTORS(TypeName)    \
+  TypeName(const TypeName&);                    \
+  void operator=(const TypeName&)
 
 #endif  // BASE_BASICTYPES_H__
