@@ -110,13 +110,56 @@ inline Component MakeRange(int begin, int end) {
 //      url_parse::ParsePathURL(url, url_len, &parsed);
 //
 struct Parsed {
-  // Use a special initializer for the host since its length should be 0 when
-  // not present. The default constructor is sufficient for the rest.
-  Parsed() : host(0, 0) {
-  }
+  // Identifies different components.
+  enum ComponentType {
+    SCHEME,
+    USERNAME,
+    PASSWORD,
+    HOST,
+    PORT,
+    PATH,
+    QUERY,
+    REF,
+  };
+
+  // The default constructor is sufficient for the components.
+  Parsed() {}
 
   // Returns the length of the URL (the end of the last component).
+  //
+  // Note that for some invalid, non-canonical URLs, this may not be the length
+  // of the string. For example "http://": the parsed structure will only
+  // contain an entry for the four-character scheme, and it doesn't know about
+  // the "://". For all other last-components, it will return the real length.
   int Length() const;
+
+  // Returns the number of characters before the given component if it exists,
+  // or where the component would be if it did exist. This will return the
+  // string length if the component would be appended to the end.
+  //
+  // Note that this can get a little funny for the port, query, and ref
+  // components which have a delimiter that is not counted as part of the
+  // component. The |include_delimiter| flag controls if you want this counted
+  // as part of the component or not when the component exists.
+  //
+  // This example shows the difference between the two flags for two of these
+  // delimited components that is present (the port and query) and one that
+  // isn't (the reference). The components that this flag affects are marked
+  // with a *.
+  //                 0         1         2
+  //                 012345678901234567890
+  // Example input:  http://foo:80/?query
+  //              include_delim=true,  ...=false  ("<-" indicates different)
+  //      SCHEME: 0                    0
+  //    USERNAME: 5                    5
+  //    PASSWORD: 5                    5
+  //        HOST: 7                    7
+  //       *PORT: 10                   11 <-
+  //        PATH: 13                   13
+  //      *QUERY: 14                   15 <-
+  //        *REF: 20                   20
+  //
+  int CountCharactersBefore(ComponentType type, bool include_delimiter) const;
 
   // Scheme without the colon: "http://foo"/ would have a scheme of "http".
   // The length will be -1 if no scheme is specified ("foo.com"), or 0 if there
@@ -134,8 +177,7 @@ struct Parsed {
   // "http://me:secret@host/"
   Component password;
 
-  // Host name. The host name is never unspecified, and will have a length of
-  // zero if empty.
+  // Host name.
   Component host;
 
   // Port number.

@@ -83,8 +83,12 @@ void DoParseUNC(const CHAR* spec,
   if (next_slash == spec_len) {
     // No additional slash found, as in "file://foo", treat the text as the
     // host with no path (this will end up being UNC to server "foo").
-    parsed->host = MakeRange(after_slashes, spec_len);
-    parsed->path = Component();
+    int host_len = spec_len - after_slashes;
+    if (host_len)
+      parsed->host = Component(after_slashes, host_len);
+    else
+      parsed->host.reset();
+    parsed->path.reset();
     return;
   }
 
@@ -92,7 +96,7 @@ void DoParseUNC(const CHAR* spec,
   // component. As in "file://localhost/c:/", we get "c:/" out. We want to
   // treat this as a having no host but the path given. Works on Windows only.
   if (DoesBeginWindowsDriveSpec(spec, next_slash + 1, spec_len)) {
-    parsed->host = Component(after_slashes, 0);
+    parsed->host.reset();
     ParsePathInternal(spec, MakeRange(next_slash, spec_len),
                       &parsed->path, &parsed->query, &parsed->ref);
     return;
@@ -105,12 +109,16 @@ void DoParseUNC(const CHAR* spec,
   //
   // This is Windows only. On Linux systems, this definition will have to
   // be different, but so will our treatment of UNC filenames.
-  parsed->host = MakeRange(after_slashes, next_slash);
+  int host_len = next_slash - after_slashes;
+  if (host_len)
+    parsed->host = MakeRange(after_slashes, next_slash);
+  else
+    parsed->host.reset();
   if (next_slash < spec_len) {
     ParsePathInternal(spec, MakeRange(next_slash, spec_len),
                       &parsed->path, &parsed->query, &parsed->ref);
   } else {
-    parsed->path = Component();
+    parsed->path.reset();
   }
 }
 
@@ -125,7 +133,7 @@ void DoParseLocalFile(const CHAR* spec,
                       int path_begin,
                       int spec_len,
                       Parsed* parsed) {
-  parsed->host = Component(path_begin, 0);
+  parsed->host.reset();
   ParsePathInternal(spec, MakeRange(path_begin, spec_len),
                     &parsed->path, &parsed->query, &parsed->ref);
 }
@@ -138,14 +146,14 @@ void DoParseFileURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   DCHECK(spec_len >= 0);
 
   // Get the parts we never use for file URLs out of the way.
-  parsed->username = Component();
-  parsed->password = Component();
-  parsed->port = Component();
+  parsed->username.reset();
+  parsed->password.reset();
+  parsed->port.reset();
 
   // Many of the code paths don't set these, so it's convenient to just clear
   // them. We'll write them in those cases we need them.
-  parsed->query = Component();
-  parsed->ref = Component();
+  parsed->query.reset();
+  parsed->ref.reset();
 
   // Strip leading & trailing spaces and control characters.
   int begin = 0;
@@ -157,7 +165,7 @@ void DoParseFileURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   if (DoesBeginWindowsDriveSpec(spec, begin, spec_len) ||
       DoesBeginUNCPath(spec, begin, spec_len, false)) {
     // Windows path, don't try to extract the scheme (for example, "c:\foo").
-    parsed->scheme = Component();
+    parsed->scheme.reset();
     after_scheme = begin;
   } else
 #endif
@@ -168,7 +176,7 @@ void DoParseFileURL(const CHAR* spec, int spec_len, Parsed* parsed) {
       after_scheme = parsed->scheme.end() + 1;
     } else {
       // No scheme found, remember that.
-      parsed->scheme = Component();
+      parsed->scheme.reset();
       after_scheme = begin;
     }
   }
@@ -176,8 +184,8 @@ void DoParseFileURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   // Handle empty specs ones that contain only whitespace or control chars,
   // or that are just the scheme (for example "file:").
   if (after_scheme == spec_len) {
-    parsed->host = Component(begin, 0);
-    parsed->path = Component();
+    parsed->host.reset();
+    parsed->path.reset();
     return;
   }
 

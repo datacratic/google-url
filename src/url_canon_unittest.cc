@@ -1101,37 +1101,37 @@ TEST(URLCanonTest, CanonicalizeFileURL) {
   } cases[] = {
 #ifdef _WIN32
       // Windows-style paths
-    {"file:c:\\foo\\bar.html", "file:///C:/foo/bar.html", true, url_parse::Component(7, 0), url_parse::Component(7, 16)},
-    {"  File:c|////foo\\bar.html", "file:///C:////foo/bar.html", true, url_parse::Component(7, 0), url_parse::Component(7, 19)},
-    {"file:", "file:///", true, url_parse::Component(7, 0), url_parse::Component(7, 1)},
+    {"file:c:\\foo\\bar.html", "file:///C:/foo/bar.html", true, url_parse::Component(), url_parse::Component(7, 16)},
+    {"  File:c|////foo\\bar.html", "file:///C:////foo/bar.html", true, url_parse::Component(), url_parse::Component(7, 19)},
+    {"file:", "file:///", true, url_parse::Component(), url_parse::Component(7, 1)},
     {"file:UNChost/path", "file://unchost/path", true, url_parse::Component(7, 7), url_parse::Component(14, 5)},
       // CanonicalizeFileURL supports absolute Windows style paths for IE
       // compatability. Note that the caller must decide that this is a file
       // URL itself so it can call the file canonicalizer. This is usually
       // done automatically as part of relative URL resolving.
-    {"c:\\foo\\bar", "file:///C:/foo/bar", true, url_parse::Component(7, 0), url_parse::Component(7, 11)},
-    {"C|/foo/bar", "file:///C:/foo/bar", true, url_parse::Component(7, 0), url_parse::Component(7, 11)},
-    {"/C|\\foo\\bar", "file:///C:/foo/bar", true, url_parse::Component(7, 0), url_parse::Component(7, 11)},
-    {"//C|/foo/bar", "file:///C:/foo/bar", true, url_parse::Component(7, 0), url_parse::Component(7, 11)},
+    {"c:\\foo\\bar", "file:///C:/foo/bar", true, url_parse::Component(), url_parse::Component(7, 11)},
+    {"C|/foo/bar", "file:///C:/foo/bar", true, url_parse::Component(), url_parse::Component(7, 11)},
+    {"/C|\\foo\\bar", "file:///C:/foo/bar", true, url_parse::Component(), url_parse::Component(7, 11)},
+    {"//C|/foo/bar", "file:///C:/foo/bar", true, url_parse::Component(), url_parse::Component(7, 11)},
     {"//server/file", "file://server/file", true, url_parse::Component(7, 6), url_parse::Component(13, 5)},
     {"\\\\server\\file", "file://server/file", true, url_parse::Component(7, 6), url_parse::Component(13, 5)},
     {"/\\server/file", "file://server/file", true, url_parse::Component(7, 6), url_parse::Component(13, 5)},
       // We should preserve the number of slashes after the colon for IE
       // compatability, except when there is none, in which case we should
       // add one.
-    {"file:c:foo/bar.html", "file:///C:/foo/bar.html", true, url_parse::Component(7, 0), url_parse::Component(7, 16)},
-    {"file:/\\/\\C:\\\\//foo\\bar.html", "file:///C:////foo/bar.html", true, url_parse::Component(7, 0), url_parse::Component(7, 19)},
+    {"file:c:foo/bar.html", "file:///C:/foo/bar.html", true, url_parse::Component(), url_parse::Component(7, 16)},
+    {"file:/\\/\\C:\\\\//foo\\bar.html", "file:///C:////foo/bar.html", true, url_parse::Component(), url_parse::Component(7, 19)},
       // Three slashes should be non-UNC, even if there is no drive spec (IE
       // does this, which makes the resulting request invalid).
-    {"file:///foo/bar.txt", "file:///foo/bar.txt", true, url_parse::Component(7, 0), url_parse::Component(7, 12)},
+    {"file:///foo/bar.txt", "file:///foo/bar.txt", true, url_parse::Component(), url_parse::Component(7, 12)},
       // TODO(brettw) we should probably fail for invalid host names, which
       // would change the expected result on this test.
     {"FILE:/\\/\\7:\\\\//foo\\bar.html", "file://7%3A////foo/bar.html", false, url_parse::Component(7, 4), url_parse::Component(11, 16)},
     {"file:filer/home\\me", "file://filer/home/me", true, url_parse::Component(7, 5), url_parse::Component(12, 8)},
       // Make sure relative paths can't go above the "C:"
-    {"file:///C:/foo/../../../bar.html", "file:///C:/bar.html", true, url_parse::Component(7, 0), url_parse::Component(7, 12)},
+    {"file:///C:/foo/../../../bar.html", "file:///C:/bar.html", true, url_parse::Component(), url_parse::Component(7, 12)},
       // Busted refs shouldn't make the whole thing fail.
-    {"file:///C:/asdf#\xc2", "file:///C:/asdf#\xef\xbf\xbd", true, url_parse::Component(7, 0), url_parse::Component(7, 8)},
+    {"file:///C:/asdf#\xc2", "file:///C:/asdf#\xef\xbf\xbd", true, url_parse::Component(), url_parse::Component(7, 8)},
 #else
       // Unix-style paths
     {"file:///home/me", "file:///home/me", true, url_parse::Component(7, 0), url_parse::Component(7, 8)},
@@ -1198,8 +1198,8 @@ TEST(URLCanonTest, CanonicalizePathURL) {
     EXPECT_TRUE(success);
     EXPECT_EQ(path_cases[i].expected, out_str);
 
-    // Hosts should be 0 length not -1 if they don't exist
-    EXPECT_EQ(0, out_parsed.host.len);
+    EXPECT_EQ(0, out_parsed.host.begin);
+    EXPECT_EQ(-1, out_parsed.host.len);
 
     // When we end with a colon at the end, there should be no path.
     if (path_cases[i].input[url_len - 1] == ':') {
@@ -1364,6 +1364,7 @@ TEST(URLCanonTest, ResolveRelativeURL) {
     {"http://host/a", true, false, "//another/path?query#ref", true, true, true, "http://another/path?query#ref"},
     {"http://host/a", true, false, "///another/path", true, true, true, "http://another/path"},
     {"http://host/a", true, false, "//Another\\path", true, true, true, "http://another/path"},
+    {"http://host/a", true, false, "//", true, true, false, "http:"},
       // IE will also allow one or the other to be a backslash to get the same
       // behavior.
     {"http://host/a", true, false, "\\/another/path", true, true, true, "http://another/path"},

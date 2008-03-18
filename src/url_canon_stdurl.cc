@@ -73,7 +73,7 @@ bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
                                     output, &new_parsed->scheme);
 
   // Authority (username, password, host, port)
-  bool have_authority = false;
+  bool have_authority;
   if (parsed.username.is_valid() || parsed.password.is_valid() ||
       parsed.host.is_nonempty() || parsed.port.is_valid()) {
     have_authority = true;
@@ -100,6 +100,14 @@ bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
         &output->data()[new_parsed->scheme.begin], new_parsed->scheme.len);
     success &= CanonicalizePort(source.port, parsed.port, default_port,
                                 output, &new_parsed->port);
+  } else {
+    // No authority, clear the components.
+    have_authority = false;
+    new_parsed->host.reset();
+    new_parsed->username.reset();
+    new_parsed->password.reset();
+    new_parsed->port.reset();
+    success = false;  // Standard URLs must have an authority.
   }
 
   // Path
@@ -115,7 +123,7 @@ bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
     output->push_back('/');
   } else {
     // No path at all
-    new_parsed->path = url_parse::Component();
+    new_parsed->path.reset();
   }
 
   // Query

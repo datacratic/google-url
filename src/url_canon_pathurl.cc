@@ -51,7 +51,7 @@ bool DoCanonicalizePathURL(const URLComponentSource<CHAR>& source,
   // have -1 length.
   new_parsed->username.reset();
   new_parsed->password.reset();
-  new_parsed->host = url_parse::Component(output->length(), 0);
+  new_parsed->host.reset();
   new_parsed->port.reset();
 
   if (parsed.path.is_valid()) {

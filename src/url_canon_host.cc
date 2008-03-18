@@ -396,7 +396,7 @@ bool DoHost(const CHAR* spec,
   bool success = true;
   if (host.len <= 0) {
     // Empty hosts don't need anything.
-    *out_host = url_parse::Component(output->length(), 0);
+    *out_host = url_parse::Component();
     return true;
   }
 

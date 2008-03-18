@@ -140,8 +140,8 @@ void ParseServerInfo(const CHAR* spec,
                      Component* port_num) {
   if (serverinfo.len == 0) {
     // No server info, host name is empty.
-    *hostname = Component(serverinfo.begin, 0);
-    *port_num = Component();
+    hostname->reset();
+    port_num->reset();
     return;
   }
 
@@ -164,12 +164,16 @@ void ParseServerInfo(const CHAR* spec,
 
   if (colon >= 0) {
     // Found a port number: <hostname>:<port>
-    *hostname = MakeRange(serverinfo.begin, colon);
+    int host_len = colon - serverinfo.begin;
+    if (host_len)
+      *hostname = MakeRange(serverinfo.begin, colon);
+    else
+      hostname->reset();
     *port_num = MakeRange(colon + 1, serverinfo.begin + serverinfo.len);
   } else {
     // No port: <hostname>
     *hostname = serverinfo;
-    *port_num = Component();
+    port_num->reset();
   }
 }
 
@@ -186,10 +190,10 @@ void ParseAuthority(const CHAR* spec,
                     Component* port_num) {
   DCHECK(auth.is_valid()) << "We should always get an authority";
   if (auth.len == 0) {
-    *username = Component();
-    *password = Component();
-    *hostname = Component(0, 0);
-    *port_num = Component();
+    username->reset();
+    password->reset();
+    hostname->reset();
+    port_num->reset();
     return;
   }
 
@@ -207,8 +211,8 @@ void ParseAuthority(const CHAR* spec,
                     hostname, port_num);
   } else {
     // No user info, everything is server info.
-    *username = Component();
-    *password = Component();
+    username->reset();
+    password->reset();
     ParseServerInfo(spec, auth, hostname, port_num);
   }
 }
@@ -223,9 +227,9 @@ void ParsePath(const CHAR* spec,
 
   // Special case when there is no path.
   if (path.len == -1) {
-    *filepath = Component();
-    *query = Component();
-    *ref = Component();
+    filepath->reset();
+    query->reset();
+    ref->reset();
     return;
   }
   DCHECK(path.len > 0) << "We should never have 0 length paths";
@@ -262,7 +266,7 @@ void ParsePath(const CHAR* spec,
     *ref = MakeRange(ref_separator + 1, path_end);
   } else {
     file_end = query_end = path_end;
-    *ref = Component();
+    ref->reset();
   }
 
   // Query fragment: everything from the ? to the next boundary (either the end
@@ -271,14 +275,14 @@ void ParsePath(const CHAR* spec,
     file_end = query_separator;
     *query = MakeRange(query_separator + 1, query_end);
   } else {
-    *query = Component();
+    query->reset();
   }
 
   // File path: treat an empty file path as no file path.
   if (file_end != path.begin)
     *filepath = MakeRange(path.begin, file_end);
   else
-    *filepath = Component();
+    filepath->reset();
 }
 
 template<typename CHAR>
@@ -318,7 +322,7 @@ void DoParseStandardURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   // Handle empty specs or ones that contain only whitespace or control chars.
   if (begin == spec_len) {
     // ParsedAfterScheme will fill in empty values if there is no more data.
-    parsed->scheme = Component();
+    parsed->scheme.reset();
     DoParseAfterScheme(spec, spec_len, begin, parsed);
     return;
   }
@@ -358,7 +362,7 @@ void DoParseStandardURL(const CHAR* spec, int spec_len, Parsed* parsed) {
     // or
     //   spec = <authority-no-port-or-password>
     //   spec = <path-no-slashes-or-colon>
-    parsed->scheme = Component();
+    parsed->scheme.reset();
     after_scheme = begin;
   }
   DoParseAfterScheme(spec, spec_len, after_scheme, parsed);
@@ -370,12 +374,12 @@ template<typename CHAR>
 void DoParsePathURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   // Get the non-path and non-scheme parts of the URL out of the way, we never
   // use them.
-  parsed->username = Component();
-  parsed->password = Component();
-  parsed->host = Component(0, 0);
-  parsed->port = Component();
-  parsed->query = Component();
-  parsed->ref = Component();
+  parsed->username.reset();
+  parsed->password.reset();
+  parsed->host.reset();
+  parsed->port.reset();
+  parsed->query.reset();
+  parsed->ref.reset();
 
   // Strip leading & trailing spaces and control characters.
   int begin = 0;
@@ -384,8 +388,8 @@ void DoParsePathURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   // Handle empty specs or ones that contain only whitespace or control chars.
   if (begin == spec_len) {
     // ParsedAfterScheme will fill in empty values if there is no more data.
-    parsed->scheme = Component();
-    parsed->path = Component();
+    parsed->scheme.reset();
+    parsed->path.reset();
     return;
   }
 
@@ -399,12 +403,12 @@ void DoParsePathURL(const CHAR* spec, int spec_len, Parsed* parsed) {
     // -1, rather than having a length of 0 (we normally wouldn't care so
     // much for these non-standard URLs).
     if (parsed->scheme.end() == spec_len - 1)
-      parsed->path = Component();
+      parsed->path.reset();
     else
       parsed->path = MakeRange(parsed->scheme.end() + 1, spec_len);
   } else {
     // No scheme found, just path.
-    parsed->scheme = Component();
+    parsed->scheme.reset();
     parsed->path = MakeRange(begin, spec_len);
   }
 }
@@ -462,7 +466,7 @@ void DoExtractFileName(const CHAR* spec,
                        Component* file_name) {
   // Handle empty paths: they have no file names.
   if (!path.is_nonempty()) {
-    *file_name = Component();
+    file_name->reset();
     return;
   }
 
@@ -536,23 +540,72 @@ bool DoExtractQueryKeyValue(const CHAR* spec,
 }  // namespace
 
 int Parsed::Length() const {
-  if (ref.is_nonempty())
+  if (ref.is_valid())
     return ref.end();
-  if (query.is_nonempty())
-    return query.end();
-  if (path.is_nonempty())
-    return path.end();
-  if (port.is_nonempty())
-    return port.end();
-  if (host.is_nonempty())
-    return host.end();
-  if (password.is_nonempty())
-    return password.end();
-  if (username.is_nonempty())
-    return username.end();
-  if (scheme.is_nonempty())
-    return scheme.end();
-  return 0;
+  return CountCharactersBefore(REF, false);
+}
+
+int Parsed::CountCharactersBefore(ComponentType type,
+                                  bool include_delimiter) const {
+  if (type == SCHEME)
+    return scheme.begin;
+
+  // There will be some characters after the scheme like "://" and we don't
+  // know how many. Search forwards for the next thing until we find one.
+  int cur = 0;
+  if (scheme.is_valid())
+    cur = scheme.end() + 1;  // Advance over the ':' at the end of the scheme.
+
+  if (username.is_valid()) {
+    if (type <= USERNAME)
+      return username.begin;
+    cur = username.end() + 1;  // Advance over the '@' or ':' at the end.
+  }
+
+  if (password.is_valid()) {
+    if (type <= PASSWORD)
+      return password.begin;
+    cur = password.end() + 1;  // Advance over the '@' at the end.
+  }
+
+  if (host.is_valid()) {
+    if (type <= HOST)
+      return host.begin;
+    cur = host.end();
+  }
+
+  if (port.is_valid()) {
+    if (type < PORT || (type == PORT && include_delimiter))
+      return port.begin - 1;  // Back over delimiter.
+    if (type == PORT)
+      return port.begin;  // Don't want delimiter counted.
+    cur = port.end();
+  }
+
+  if (path.is_valid()) {
+    if (type <= PATH)
+      return path.begin;
+    cur = path.end();
+  }
+
+  if (query.is_valid()) {
+    if (type < QUERY || (type == QUERY && include_delimiter))
+      return query.begin - 1;  // Back over delimiter.
+    if (type == QUERY)
+      return query.begin;  // Don't want delimiter counted.
+    cur = query.end();
+  }
+
+  if (ref.is_valid()) {
+    if (type == REF && !include_delimiter)
+      return ref.begin;  // Back over delimiter.
+
+    // When there is a ref and we get here, the component we wanted was before
+    // this and not found, so we always know the beginning of the ref is right.
+    return ref.begin - 1;  // Don't want delimiter counted.
+  }
+
+  return cur;
 }
 
 bool ExtractScheme(const char* url, int url_len, Component* scheme) {

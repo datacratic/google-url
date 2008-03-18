@@ -438,7 +438,7 @@ bool DoResolveRelativeURL(const char* base_url,
   // paths (even the default path of "/" is OK).
   //
   // We allow hosts with no length so we can handle file URLs, for example.
-  if (base_parsed.host.len < 0 || base_parsed.path.len <= 0) {
+  if (base_parsed.path.len <= 0) {
     // On error, return the input (resolving a relative URL on a non-relative
     // base = the base).
     int base_len = base_parsed.Length();
