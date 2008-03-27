@@ -29,6 +29,8 @@
 
 #ifdef WIN32
 #include <windows.h>
+#else
+#include <pthread.h>
 #endif
 
 #include <algorithm>
@@ -60,12 +62,15 @@ bool InitCanonical(const std::basic_string<CHAR>& input_spec,
   return success;
 }
 
+static std::string* empty_string = NULL;
+static GURL* empty_gurl = NULL;
+
+#ifdef WIN32
+
 // Returns a static reference to an empty string for returning a reference
 // when there is no underlying string.
 const std::string& EmptyStringForGURL() {
-#ifdef WIN32
   // Avoid static object construction/destruction on startup/shutdown.
-  static std::string* empty_string = NULL;
   if (!empty_string) {
     // Create the string. Be careful that we don't break in the case that this
     // is being called from multiple threads. Statics are not threadsafe.
@@ -78,12 +83,24 @@ const std::string& EmptyStringForGURL() {
     }
   }
   return *empty_string;
-#else
-  // TODO(brettw) Write a threadsafe Unix version!
-  static std::string empty_string;
-  return empty_string;
-#endif
 }
+
+#else
+
+static pthread_once_t empty_string_once = PTHREAD_ONCE_INIT;
+static pthread_once_t empty_gurl_once = PTHREAD_ONCE_INIT;
+
+void EmptyStringForGURLOnce(void) {
+  empty_string = new std::string;
+}
+
+const std::string& EmptyStringForGURL() {
+  // Avoid static object construction/destruction on startup/shutdown.
+  pthread_once(&empty_string_once, EmptyStringForGURLOnce);
+  return *empty_string;
+}
+
+#endif  // WIN32
 
 } // namespace
 
@@ -307,10 +324,8 @@ bool GURL::HostIsIPAddress() const {
 
 #ifdef WIN32
 
-// static
 const GURL& GURL::EmptyGURL() {
   // Avoid static object construction/destruction on startup/shutdown.
-  static GURL* empty_gurl = NULL;
   if (!empty_gurl) {
     // Create the string. Be careful that we don't break in the case that this
     // is being called from multiple threads.
@@ -322,6 +337,18 @@ const GURL& GURL::EmptyGURL() {
       delete new_empty_gurl;
     }
   }
+  return *empty_gurl;
+}
+
+#else
+
+void EmptyGURLOnce(void) {
+  empty_gurl = new GURL;
+}
+
+const GURL& GURL::EmptyGURL() {
+  // Avoid static object construction/destruction on startup/shutdown.
+  pthread_once(&empty_gurl_once, EmptyGURLOnce);
   return *empty_gurl;
 }
 

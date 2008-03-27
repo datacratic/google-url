@@ -301,12 +301,10 @@ class GURL {
   // any memory allocations.
   void Swap(GURL* other);
 
-#ifdef WIN32  // Currently defined only for Windows.
   // Returns a reference to a singleton empty GURL. This object is for callers
   // who return references but don't have anything to return in some cases.
   // This function may be called from any thread.
   static const GURL& EmptyGURL();
-#endif
 
  private:
   // Returns the substring of the input identified by the given component.
