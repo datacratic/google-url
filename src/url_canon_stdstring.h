@@ -94,36 +94,36 @@ template<typename CHAR>
 class StdStringReplacements : public url_canon::Replacements<CHAR> {
  public:
   void SetSchemeStr(const std::basic_string<CHAR>& s) {
-    SetScheme(s.data(),
-              url_parse::Component(0, static_cast<int>(s.length())));
+    this->SetScheme(s.data(),
+                    url_parse::Component(0, static_cast<int>(s.length())));
   }
   void SetUsernameStr(const std::basic_string<CHAR>& s) {
-    SetUsername(s.data(),
-                url_parse::Component(0, static_cast<int>(s.length())));
+    this->SetUsername(s.data(),
+                      url_parse::Component(0, static_cast<int>(s.length())));
   }
   void SetPasswordStr(const std::basic_string<CHAR>& s) {
-    SetPassword(s.data(),
-                url_parse::Component(0, static_cast<int>(s.length())));
+    this->SetPassword(s.data(),
+                      url_parse::Component(0, static_cast<int>(s.length())));
   }
   void SetHostStr(const std::basic_string<CHAR>& s) {
-    SetHost(s.data(),
-            url_parse::Component(0, static_cast<int>(s.length())));
+    this->SetHost(s.data(),
+                  url_parse::Component(0, static_cast<int>(s.length())));
   }
   void SetPortStr(const std::basic_string<CHAR>& s) {
-    SetPort(s.data(),
-            url_parse::Component(0, static_cast<int>(s.length())));
+    this->SetPort(s.data(),
+                  url_parse::Component(0, static_cast<int>(s.length())));
   }
   void SetPathStr(const std::basic_string<CHAR>& s) {
-    SetPath(s.data(),
-            url_parse::Component(0, static_cast<int>(s.length())));
+    this->SetPath(s.data(),
+                  url_parse::Component(0, static_cast<int>(s.length())));
   }
   void SetQueryStr(const std::basic_string<CHAR>& s) {
-    SetQuery(s.data(),
-             url_parse::Component(0, static_cast<int>(s.length())));
+    this->SetQuery(s.data(),
+                   url_parse::Component(0, static_cast<int>(s.length())));
   }
   void SetRefStr(const std::basic_string<CHAR>& s) {
-    SetRef(s.data(),
-           url_parse::Component(0, static_cast<int>(s.length())));
+    this->SetRef(s.data(),
+                 url_parse::Component(0, static_cast<int>(s.length())));
   }
 };
 
