@@ -250,6 +250,22 @@ GURL GURL::ReplaceComponents(
   return result;
 }
 
+GURL GURL::GetOrigin() const {
+  // This doesn't make sense for invalid or nonstandard URLs, so return
+  // the empty URL
+  if (!is_valid_ || !SchemeIsStandard())
+    return GURL();
+  
+  url_canon::Replacements<char> replacements;
+  replacements.ClearUsername();
+  replacements.ClearPassword();
+  replacements.ClearPath();
+  replacements.ClearQuery();
+  replacements.ClearRef();
+
+  return ReplaceComponents(replacements);
+}
+
 GURL GURL::GetWithEmptyPath() const {
   // This doesn't make sense for invalid or nonstandard URLs, so return
   // the empty URL.

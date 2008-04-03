@@ -180,6 +180,25 @@ TEST(GURLTest, Resolve) {
   }
 }
 
+TEST(GURLTest, GetOrigin) {
+  struct TestCase {
+    const char* input;
+    const char* expected;
+  } cases[] = {
+    {"http://www.google.com", "http://www.google.com/"},
+    {"javascript:window.alert(\"hello,world\");", ""},
+    {"http://user:pass@www.google.com:21/blah#baz", "http://www.google.com:21/"},
+    {"http://user@www.google.com", "http://www.google.com/"},
+    {"http://:pass@www.google.com", "http://www.google.com/"},
+    {"http://:@www.google.com", "http://www.google.com/"},
+  };
+  for (int i = 0; i < ARRAYSIZE(cases); i++) {
+    GURL url(cases[i].input);
+    GURL origin = url.GetOrigin();
+    EXPECT_EQ(cases[i].expected, origin.spec());
+  }
+}
+
 TEST(GURLTest, GetWithEmptyPath) {
   struct TestCase {
     const char* input;
