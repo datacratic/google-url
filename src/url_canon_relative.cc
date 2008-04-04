@@ -469,6 +469,9 @@ bool DoResolveRelativeURL(const char* base_url,
   // case (we reject anything like "/c:/foo") because that should be treated
   // as a path. For file URLs, we allow any number of slashes since that would
   // be setting the path.
+  //
+  // This assumes the absolute path resolver handles absolute URLs like this
+  // properly. url_util::DoCanonicalize does this.
   int after_slashes = relative_component.begin + num_slashes;
   if (url_parse::DoesBeginUNCPath(relative_url, relative_component.begin,
                                   relative_component.end(), !base_is_file) ||

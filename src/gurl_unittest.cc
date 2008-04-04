@@ -47,6 +47,13 @@ TEST(GURLTest, Types) {
       // should happen.
     {"something:HOSTNAME.com/", "something:HOSTNAME.com/"},
     {"something:/HOSTNAME.com/", "something:/HOSTNAME.com/"},
+#ifdef WIN32
+      // URLs that look like absolute Windows drive specs.
+    {"c:\\foo.txt", "file:///C:/foo.txt"},
+    {"Z|foo.txt", "file:///Z:/foo.txt"},
+    {"\\\\server\\foo.txt", "file://server/foo.txt"},
+    {"//server/foo.txt", "file://server/foo.txt"},
+#endif
   };
 
   for (int i = 0; i < arraysize(type_cases); i++) {

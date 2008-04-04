@@ -33,6 +33,7 @@
 #include "googleurl/src/url_util.h"
 
 #include "base/logging.h"
+#include "googleurl/src/url_file.h"
 
 namespace url_util {
 
@@ -157,6 +158,26 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
   const CHAR* spec = RemoveURLWhitespace(in_spec, in_spec_len,
                                          &whitespace_buffer, &spec_len);
 
+  url_parse::Parsed parsed_input;
+#ifdef WIN32
+  // For Windows, we allow things that look like absolute Windows paths to be
+  // fixed up magically to file URLs. This is done for IE compatability. For
+  // example, this will change "c:/foo" into a file URL rather than treating
+  // it as a URL with the protocol "c". It also works for UNC ("\\foo\bar.txt").
+  // There is similar logic in url_canon_relative.cc for 
+  //
+  // For Max & Unix, we don't do this (the equivalent would be "/foo/bar" which
+  // has no meaning as an absolute path name. This is because browsers on Mac
+  // & Unix don't generally do this, so there is no compatibility reason for
+  // doing so.
+  if (url_parse::DoesBeginUNCPath(spec, 0, spec_len, false) ||
+      url_parse::DoesBeginWindowsDriveSpec(spec, 0, spec_len)) {
+    url_parse::ParseFileURL(spec, spec_len, &parsed_input);
+    return url_canon::CanonicalizeFileURL(spec, spec_len, parsed_input,
+                                           NULL, output, output_parsed);
+  }
+#endif
+
   url_parse::Component scheme;
   if(!url_parse::ExtractScheme(spec, spec_len, &scheme))
     return false;
@@ -164,7 +185,6 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
   // This is the parsed version of the input URL, we have to canonicalize it
   // before storing it in our object.
   bool success;
-  url_parse::Parsed parsed_input;
   if (CompareSchemeComponent(spec, scheme, kFileScheme)) {
     // File URLs are special.
     url_parse::ParseFileURL(spec, spec_len, &parsed_input);
