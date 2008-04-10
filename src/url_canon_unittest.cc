@@ -680,6 +680,8 @@ TEST(URLCanonTest, Path) {
       // Funny characters that are unescaped should be escaped
     {"/foo\x09\x91%91", NULL, "/foo%09%91%91", url_parse::Component(0, 13), true},
     {NULL, L"/foo\x09\x91%91", "/foo%09%C2%91%91", url_parse::Component(0, 16), true},
+      // Invalid characters that are escaped should cause a failure.
+    {"/foo%00%51", L"/foo%00%51", "/foo%00Q", url_parse::Component(0, 8), false},
       // Some characters should be passed through unchanged regardless of esc.
     {"/(%28:%3A%29)", L"/(%28:%3A%29)", "/(%28:%3A%29)", url_parse::Component(0, 13), true},
       // Characters that are properly escaped should not have the case changed
@@ -742,6 +744,20 @@ TEST(URLCanonTest, Path) {
       EXPECT_EQ(path_cases[i].expected, out_str);
     }
   }
+
+  // Manual test: embedded NULLs should be escaped and the URL should be marked
+  // as invalid.
+  const char path_with_null[] = "/ab\0c";
+  url_parse::Component in_comp(0, 5);
+  url_parse::Component out_comp;
+  
+  std::string out_str;
+  url_canon::StdStringCanonOutput output(&out_str);    
+  bool success = url_canon::CanonicalizePath(path_with_null, in_comp,
+                                             &output, &out_comp);
+  output.Complete();
+  EXPECT_FALSE(success);
+  EXPECT_EQ("/ab%00c", out_str);
 }
 
 TEST(URLCanonTest, Query) {
@@ -1459,4 +1475,41 @@ TEST(URLCanonTest, ResolveRelativeURL) {
       EXPECT_TRUE(ParsedIsEqual(ref_parsed, resolved_parsed));
     }
   }
+}
+
+// It used to be when we did a replacement with a long buffer of UTF-16
+// charatcers, we would get invalid data in the URL. This is because the buffer
+// it used to hold the UTF-8 data was resized, while some pointers were still
+// kept to the old buffer that was removed.
+TEST(URLCanonTest, ReplacementOverflow) {
+  const char src[] = "file:///C:/foo/bar";
+  int src_len = static_cast<int>(strlen(src));
+  url_parse::Parsed parsed;
+  url_parse::ParseFileURL(src, src_len, &parsed);
+
+  // Override two components, the path with something short, and the query with
+  // sonething long enough to trigger the bug.
+  url_canon::Replacements<UTF16Char> repl;
+  std::wstring new_query;
+  for (int i = 0; i < 4800; i++)
+    new_query.push_back('a');
+
+  repl.SetPath(L"/foo", url_parse::Component(0, 4));
+  repl.SetQuery(new_query.c_str(),
+                url_parse::Component(0, static_cast<int>(new_query.length())));
+
+  // Call ReplaceComponents on the string. It doesn't matter if we call it for
+  // standard URLs, file URLs, etc, since they will go to the same replacement
+  // function that was buggy.
+  url_parse::Parsed repl_parsed;
+  std::string repl_str;
+  url_canon::StdStringCanonOutput repl_output(&repl_str);
+  url_canon::ReplaceFileURL(src, parsed, repl, NULL, &repl_output, &repl_parsed);
+  repl_output.Complete();
+
+  // Generate the expected string and check.
+  std::string expected("file:///foo?");
+  for (size_t i = 0; i < new_query.length(); i++)
+    expected.push_back('a');
+  EXPECT_TRUE(expected == repl_str);
 }

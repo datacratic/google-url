@@ -89,17 +89,25 @@ void DoOverrideComponent(const char* override_source,
   }
 }
 
-// Like DoOverrideComponent except that it takes a UTF-16 input. It is
-// converted to UTF-8 at the end of the given buffer as a temporary holding
-// place, and the output is set to reference that portion of the buffer.
-bool DoUTF16OverrideComponent(const UTF16Char* override_source,
-                              const url_parse::Component& override_component,
-                              CanonOutput* utf8_buffer,
-                              const char** dest,
-                              url_parse::Component* dest_component) {
+// Similar to DoOverrideComponent except that it takes a UTF-16 input and does
+// not actually set the output character pointer.
+//
+// The input is converted to UTF-8 at the end of the given buffer as a temporary
+// holding place. The component indentifying the portion of the buffer used in
+// the |utf8_buffer| will be specified in |*dest_component|.
+//
+// This will not actually set any |dest| pointer like DoOverrideComponent
+// does because all of the pointers will point into the |utf8_buffer|, which
+// may get resized while we're overriding a subsequent component. Instead, the
+// caller should use the beginning of the |utf8_buffer| as the string pointer
+// for all components once all overrides have been prepared.
+bool PrepareUTF16OverrideComponent(
+    const UTF16Char* override_source,
+    const url_parse::Component& override_component,
+    CanonOutput* utf8_buffer,
+    url_parse::Component* dest_component) {
   bool success = true;
   if (override_source) {
-    *dest = utf8_buffer->data();
     if (!override_component.is_valid()) {
       // Non-"valid" component (means delete), so we need to preserve that.
       *dest_component = url_parse::Component();
@@ -328,35 +336,43 @@ bool SetupUTF16OverrideComponents(const char* base,
   const URLComponentSource<UTF16Char>& repl_source = repl.sources();
   const url_parse::Parsed& repl_parsed = repl.components();
 
-  success &= DoUTF16OverrideComponent(repl_source.scheme, repl_parsed.scheme,
-                                      utf8_buffer,
-                                      &source->scheme, &parsed->scheme);
-  success &= DoUTF16OverrideComponent(repl_source.username,
-                                      repl_parsed.username, utf8_buffer,
-                                      &source->username, &parsed->username);
-  success &= DoUTF16OverrideComponent(repl_source.password,
-                                      repl_parsed.password, utf8_buffer,
-                                      &source->password, &parsed->password);
+  success &= PrepareUTF16OverrideComponent(
+      repl_source.scheme, repl_parsed.scheme,
+      utf8_buffer, &parsed->scheme);
+  success &= PrepareUTF16OverrideComponent(
+      repl_source.username, repl_parsed.username,
+      utf8_buffer, &parsed->username);
+  success &= PrepareUTF16OverrideComponent(
+      repl_source.password, repl_parsed.password,
+      utf8_buffer, &parsed->password);
+  success &= PrepareUTF16OverrideComponent(
+      repl_source.host, repl_parsed.host,
+      utf8_buffer, &parsed->host);
+  success &= PrepareUTF16OverrideComponent(
+      repl_source.port, repl_parsed.port,
+      utf8_buffer, &parsed->port);
+  success &= PrepareUTF16OverrideComponent(
+      repl_source.path, repl_parsed.path,
+      utf8_buffer, &parsed->path);
+  success &= PrepareUTF16OverrideComponent(
+      repl_source.query, repl_parsed.query,
+      utf8_buffer, &parsed->query);
+  success &= PrepareUTF16OverrideComponent(
+      repl_source.ref, repl_parsed.ref,
+      utf8_buffer, &parsed->ref);
 
-  // Our host should be empty if not present, so override the default setup.
-  success &= DoUTF16OverrideComponent(repl_source.host, repl_parsed.host,
-                                      utf8_buffer,
-                                      &source->host, &parsed->host);
-  if (parsed->host.len == -1)
-    parsed->host.len = 0;
+  // PrepareUTF16OverrideComponent will not have set the data pointer since the
+  // buffer could be resized, invalidating the pointers. We set the data
+  // pointers for affected components now that the buffer is finalized.
+  if (repl_source.scheme)   source->scheme = utf8_buffer->data();
+  if (repl_source.username) source->username = utf8_buffer->data();
+  if (repl_source.password) source->password = utf8_buffer->data();
+  if (repl_source.host)     source->host = utf8_buffer->data();
+  if (repl_source.port)     source->port = utf8_buffer->data();
+  if (repl_source.path)     source->path = utf8_buffer->data();
+  if (repl_source.query)    source->query = utf8_buffer->data();
+  if (repl_source.ref)      source->ref = utf8_buffer->data();
 
-  success &= DoUTF16OverrideComponent(repl_source.port, repl_parsed.port,
-                                      utf8_buffer,
-                                      &source->port, &parsed->port);
-  success &= DoUTF16OverrideComponent(repl_source.path, repl_parsed.path,
-                                      utf8_buffer,
-                                      &source->path, &parsed->path);
-  success &= DoUTF16OverrideComponent(repl_source.query, repl_parsed.query,
-                                      utf8_buffer,
-                                      &source->query, &parsed->query);
-  success &= DoUTF16OverrideComponent(repl_source.ref, repl_parsed.ref,
-                                      utf8_buffer,
-                                      &source->ref, &parsed->ref);
   return success;
 }
 

@@ -279,9 +279,10 @@ bool DoPartialPath(const CHAR* spec,
               // This escaped value shouldn't be escaped, copy it.
               output->push_back(unescaped_value);
             } else if (unescaped_flags & INVALID_BIT) {
-              // Invalid escaped character, copy the percent and remember
-              // the error.
+              // Invalid escaped character, copy it and remember the error.
               output->push_back('%');
+              output->push_back(static_cast<char>(spec[i - 1]));
+              output->push_back(static_cast<char>(spec[i]));
               success = false;
             } else {
               // Valid escaped character but we should keep it escaped. We
