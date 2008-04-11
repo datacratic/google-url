@@ -98,15 +98,20 @@ inline bool IsStandard(const UTF16String& spec) {
 // should use the URL object, although this may be useful if performance is
 // critical and you don't want to do the heap allocation for the std::string.
 //
+// As with the url_canon::Canonicalize* functions, the charset converter can
+// be NULL to use UTF-8 (it will be faster in this case).
+//
 // Returns true if a valid URL was produced, false if not. On failure, the
 // output and parsed structures will still be filled and will be consistent,
 // but they will not represent a loadable URL.
 bool Canonicalize(const char* spec,
                   int spec_len,
+                  url_canon::CharsetConverter* charset_converter,
                   url_canon::CanonOutput* output,
                   url_parse::Parsed* output_parsed);
 bool Canonicalize(const UTF16Char* spec,
                   int spec_len,
+                  url_canon::CharsetConverter* charset_converter,
                   url_canon::CanonOutput* output,
                   url_parse::Parsed* output_parsed);
 
@@ -115,7 +120,8 @@ bool Canonicalize(const UTF16Char* spec,
 // will be placed in to the given out variables.
 //
 // The relative need not be relative. If we discover that it's absolute, this
-// will produce a canonical version of that URL.
+// will produce a canonical version of that URL. See Canonicalize() for more
+// about the charset_converter.
 //
 // Returns true if the output is valid, false if the input could not produce
 // a valid URL.
@@ -123,12 +129,14 @@ bool ResolveRelative(const char* base_spec,
                      const url_parse::Parsed& base_parsed,
                      const char* relative,
                      int relative_length,
+                     url_canon::CharsetConverter* charset_converter,
                      url_canon::CanonOutput* output,
                      url_parse::Parsed* output_parsed);
 bool ResolveRelative(const char* base_spec,
                      const url_parse::Parsed& base_parsed,
                      const UTF16Char* relative,
                      int relative_length,
+                     url_canon::CharsetConverter* charset_converter,
                      url_canon::CanonOutput* output,
                      url_parse::Parsed* output_parsed);
 
@@ -139,11 +147,13 @@ bool ResolveRelative(const char* base_spec,
 bool ReplaceComponents(const char* spec,
                        const url_parse::Parsed& parsed,
                        const url_canon::Replacements<char>& replacements,
+                       url_canon::CharsetConverter* charset_converter,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* out_parsed);
 bool ReplaceComponents(const char* spec,
                        const url_parse::Parsed& parsed,
                        const url_canon::Replacements<UTF16Char>& replacements,
+                       url_canon::CharsetConverter* charset_converter,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* out_parsed);
 

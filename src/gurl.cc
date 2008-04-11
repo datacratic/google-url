@@ -56,7 +56,7 @@ bool InitCanonical(const std::basic_string<CHAR>& input_spec,
   url_canon::StdStringCanonOutput output(canonical);
   bool success = url_util::Canonicalize(
       input_spec.data(), static_cast<int>(input_spec.length()),
-      &output, parsed);
+      NULL, &output, parsed);
 
   output.Complete();  // Must be done before using string.
   return success;
@@ -170,7 +170,7 @@ GURL GURL::Resolve(const std::string& relative) const {
   url_canon::StdStringCanonOutput output(&result.spec_);
 
   if (!url_util::ResolveRelative(spec_.data(), parsed_, relative.data(),
-                                 static_cast<int>(relative.length()),
+                                 static_cast<int>(relative.length()), NULL,
                                  &output, &result.parsed_)) {
     // Error resolving, return an empty URL.
     return GURL();
@@ -195,7 +195,7 @@ GURL GURL::Resolve(const UTF16String& relative) const {
   url_canon::StdStringCanonOutput output(&result.spec_);
 
   if (!url_util::ResolveRelative(spec_.data(), parsed_, relative.data(),
-                                 static_cast<int>(relative.length()),
+                                 static_cast<int>(relative.length()), NULL,
                                  &output, &result.parsed_)) {
     // Error resolving, return an empty URL.
     return GURL();
@@ -221,7 +221,7 @@ GURL GURL::ReplaceComponents(
   url_canon::StdStringCanonOutput output(&result.spec_);
 
   result.is_valid_ = url_util::ReplaceComponents(
-      spec_.data(), parsed_, replacements,
+      spec_.data(), parsed_, replacements, NULL,
       &output, &result.parsed_);
 
   output.Complete();
@@ -243,7 +243,7 @@ GURL GURL::ReplaceComponents(
   url_canon::StdStringCanonOutput output(&result.spec_);
 
   result.is_valid_ = url_util::ReplaceComponents(
-      spec_.data(), parsed_, replacements,
+      spec_.data(), parsed_, replacements, NULL,
       &output, &result.parsed_);
 
   output.Complete();
