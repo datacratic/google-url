@@ -71,26 +71,13 @@ inline bool FindAndCompareScheme(const UTF16String& str,
                               compare, found_scheme);
 }
 
-// Returns true if the given string corresponds to a known scheme in the
-// database.
-bool IsStandardScheme(const char* scheme, int scheme_len);
-bool IsStandardScheme(const UTF16Char* scheme, int scheme_len);
-inline bool IsStandardScheme(const std::string& scheme) {
-  return IsStandardScheme(scheme.data(), static_cast<int>(scheme.size()));
-}
-inline bool IsStandardScheme(const UTF16String& scheme) {
-  return IsStandardScheme(scheme.data(), static_cast<int>(scheme.size()));
-}
-
-// Returns true if the given string represents a standard URL.
-bool IsStandard(const char* spec, int spec_len);
-bool IsStandard(const UTF16Char* spec, int spec_len);
-inline bool IsStandard(const std::string& spec) {
-  return IsStandard(spec.data(), static_cast<int>(spec.size()));
-}
-inline bool IsStandard(const UTF16String& spec) {
-  return IsStandard(spec.data(), static_cast<int>(spec.size()));
-}
+// Returns true if the given string represents a standard URL. This means that
+// either the scheme is in the list of known standard schemes, or there is a
+// "://" following the scheme.
+bool IsStandard(const char* spec, int spec_len,
+                const url_parse::Component& scheme);
+bool IsStandard(const UTF16Char* spec, int spec_len,
+                const url_parse::Component& scheme);
 
 // URL library wrappers -------------------------------------------------------
 
@@ -126,6 +113,7 @@ bool Canonicalize(const UTF16Char* spec,
 // Returns true if the output is valid, false if the input could not produce
 // a valid URL.
 bool ResolveRelative(const char* base_spec,
+                     int base_spec_len,
                      const url_parse::Parsed& base_parsed,
                      const char* relative,
                      int relative_length,
@@ -133,6 +121,7 @@ bool ResolveRelative(const char* base_spec,
                      url_canon::CanonOutput* output,
                      url_parse::Parsed* output_parsed);
 bool ResolveRelative(const char* base_spec,
+                     int base_spec_len,
                      const url_parse::Parsed& base_parsed,
                      const UTF16Char* relative,
                      int relative_length,
@@ -145,12 +134,14 @@ bool ResolveRelative(const char* base_spec,
 //
 // Returns true if the resulting URL is valid.
 bool ReplaceComponents(const char* spec,
+                       int spec_len,
                        const url_parse::Parsed& parsed,
                        const url_canon::Replacements<char>& replacements,
                        url_canon::CharsetConverter* charset_converter,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* out_parsed);
 bool ReplaceComponents(const char* spec,
+                       int spec_len,
                        const url_parse::Parsed& parsed,
                        const url_canon::Replacements<UTF16Char>& replacements,
                        url_canon::CharsetConverter* charset_converter,

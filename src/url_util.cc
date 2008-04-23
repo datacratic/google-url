@@ -93,9 +93,9 @@ inline bool CompareSchemeComponent(const CHAR* spec,
 }
 
 // Returns true if the given scheme is one of the registered "standard"
-// schemes.
+// schemes. Note that this does not check for "://", use IsStandard for that.
 template<typename CHAR>
-bool DoIsStandardScheme(const CHAR* scheme,
+bool IsStandardScheme(const CHAR* scheme,
                         int scheme_len) {
   InitStandardSchemes();
   for (size_t i = 0; i < standard_schemes->size(); i++) {
@@ -121,13 +121,10 @@ bool HasStandardSchemeSeparator(const CHAR* spec, int spec_len,
 }
 
 template<typename CHAR>
-bool DoIsStandard(const CHAR* spec, int spec_len) {
-  // TODO(brettw) bug 772441: treat URLs with "://" and possible ":/" as
-  // standard.
-  url_parse::Component scheme;
-  if (!url_parse::ExtractScheme(spec, spec_len, &scheme))
-    return false;
-  return IsStandardScheme(&spec[scheme.begin], scheme.len);
+bool DoIsStandard(const CHAR* spec, int spec_len,
+                  const url_parse::Component& scheme) {
+  return HasStandardSchemeSeparator(spec, spec_len, scheme) ||
+         IsStandardScheme(&spec[scheme.begin], scheme.len);
 }
 
 template<typename CHAR>
@@ -194,8 +191,7 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
                                              charset_converter,
                                              output, output_parsed);
 
-  } else if (HasStandardSchemeSeparator(spec, spec_len, scheme) ||
-             IsStandardScheme(&spec[scheme.begin], scheme.len)) {
+  } else if (IsStandard(spec, spec_len, scheme)) {
     // All "normal" URLs.
     url_parse::ParseStandardURL(spec, spec_len, &parsed_input);
     success = url_canon::CanonicalizeStandardURL(spec, spec_len, parsed_input,
@@ -213,6 +209,7 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
 
 template<typename CHAR>
 bool DoResolveRelative(const char* base_spec,
+                       int base_spec_len,
                        const url_parse::Parsed& base_parsed,
                        const CHAR* in_relative,
                        int in_relative_length,
@@ -227,9 +224,10 @@ bool DoResolveRelative(const char* base_spec,
                                              &whitespace_buffer,
                                              &relative_length);
 
-  bool standard_base_scheme = base_parsed.scheme.is_nonempty() &&
-      IsStandardScheme(&base_spec[base_parsed.scheme.begin],
-                       base_parsed.scheme.len);
+  // See if our base URL should be treated as "standard".
+  bool standard_base_scheme =
+      base_parsed.scheme.is_nonempty() &&
+      IsStandard(base_spec, base_spec_len, base_parsed.scheme);
 
   bool is_relative;
   url_parse::Component relative_component;
@@ -259,6 +257,7 @@ bool DoResolveRelative(const char* base_spec,
 
 template<typename CHAR>
 bool DoReplaceComponents(const char* spec,
+                         int spec_len,
                          const url_parse::Parsed& parsed,
                          const url_canon::Replacements<CHAR>& replacements,
                          url_canon::CharsetConverter* charset_converter,
@@ -282,7 +281,7 @@ bool DoReplaceComponents(const char* spec,
 
   if (// Either the scheme is not replaced and the old one is standard,
       (!replacements.IsSchemeOverridden() &&
-       IsStandardScheme(&spec[parsed.scheme.begin], parsed.scheme.len)) ||
+       IsStandard(spec, spec_len, parsed.scheme)) ||
       // Or it is being replaced and the new one is standard.
       (replacements.IsSchemeOverridden() &&
        IsStandardScheme(&replacements.sources().scheme[
@@ -313,20 +312,14 @@ void AddStandardScheme(const char* new_scheme) {
   standard_schemes->push_back(dup_scheme);
 }
 
-bool IsStandardScheme(const char* scheme, int scheme_len) {
-  return DoIsStandardScheme(scheme, scheme_len);
+bool IsStandard(const char* spec, int spec_len,
+                const url_parse::Component& scheme) {
+  return DoIsStandard(spec, spec_len, scheme);
 }
 
-bool IsStandardScheme(const UTF16Char* scheme, int scheme_len) {
-  return DoIsStandardScheme(scheme, scheme_len);
-}
-
-bool IsStandard(const char* spec, int spec_len) {
-  return DoIsStandard(spec, spec_len);
-}
-
-bool IsStandard(const UTF16Char* spec, int spec_len) {
-  return DoIsStandard(spec, spec_len);
+bool IsStandard(const UTF16Char* spec, int spec_len,
+                const url_parse::Component& scheme) {
+  return DoIsStandard(spec, spec_len, scheme);
 }
 
 bool FindAndCompareScheme(const char* str,
@@ -362,45 +355,51 @@ bool Canonicalize(const UTF16Char* spec,
 }
 
 bool ResolveRelative(const char* base_spec,
+                     int base_spec_len,
                      const url_parse::Parsed& base_parsed,
                      const char* relative,
                      int relative_length,
                      url_canon::CharsetConverter* charset_converter,
                      url_canon::CanonOutput* output,
                      url_parse::Parsed* output_parsed) {
-  return DoResolveRelative(base_spec, base_parsed, relative, relative_length,
+  return DoResolveRelative(base_spec, base_spec_len, base_parsed,
+                           relative, relative_length,
                            charset_converter, output, output_parsed);
 }
 
 bool ResolveRelative(const char* base_spec,
+                     int base_spec_len,
                      const url_parse::Parsed& base_parsed,
                      const UTF16Char* relative,
                      int relative_length,
-                       url_canon::CharsetConverter* charset_converter,
+                     url_canon::CharsetConverter* charset_converter,
                      url_canon::CanonOutput* output,
                      url_parse::Parsed* output_parsed) {
-  return DoResolveRelative(base_spec, base_parsed, relative, relative_length,
+  return DoResolveRelative(base_spec, base_spec_len, base_parsed,
+                           relative, relative_length,
                            charset_converter, output, output_parsed);
 }
 
 bool ReplaceComponents(const char* spec,
+                       int spec_len,
                        const url_parse::Parsed& parsed,
                        const url_canon::Replacements<char>& replacements,
                        url_canon::CharsetConverter* charset_converter,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* out_parsed) {
-  return DoReplaceComponents(spec, parsed, replacements, charset_converter,
-                             output, out_parsed);
+  return DoReplaceComponents(spec, spec_len, parsed, replacements,
+                             charset_converter, output, out_parsed);
 }
 
 bool ReplaceComponents(const char* spec,
+                       int spec_len,
                        const url_parse::Parsed& parsed,
                        const url_canon::Replacements<UTF16Char>& replacements,
                        url_canon::CharsetConverter* charset_converter,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* out_parsed) {
-  return DoReplaceComponents(spec, parsed, replacements, charset_converter,
-                             output, out_parsed);
+  return DoReplaceComponents(spec, spec_len, parsed, replacements,
+                             charset_converter, output, out_parsed);
 }
 
 // Front-ends for LowerCaseEqualsASCII.

@@ -169,9 +169,10 @@ GURL GURL::Resolve(const std::string& relative) const {
   result.spec_.reserve(spec_.size() + 32);
   url_canon::StdStringCanonOutput output(&result.spec_);
 
-  if (!url_util::ResolveRelative(spec_.data(), parsed_, relative.data(),
-                                 static_cast<int>(relative.length()), NULL,
-                                 &output, &result.parsed_)) {
+  if (!url_util::ResolveRelative(
+          spec_.data(), static_cast<int>(spec_.length()), parsed_,
+          relative.data(), static_cast<int>(relative.length()),
+          NULL, &output, &result.parsed_)) {
     // Error resolving, return an empty URL.
     return GURL();
   }
@@ -194,9 +195,10 @@ GURL GURL::Resolve(const UTF16String& relative) const {
   result.spec_.reserve(spec_.size() + 32);
   url_canon::StdStringCanonOutput output(&result.spec_);
 
-  if (!url_util::ResolveRelative(spec_.data(), parsed_, relative.data(),
-                                 static_cast<int>(relative.length()), NULL,
-                                 &output, &result.parsed_)) {
+  if (!url_util::ResolveRelative(
+          spec_.data(), static_cast<int>(spec_.length()), parsed_,
+          relative.data(), static_cast<int>(relative.length()),
+          NULL, &output, &result.parsed_)) {
     // Error resolving, return an empty URL.
     return GURL();
   }
@@ -221,8 +223,8 @@ GURL GURL::ReplaceComponents(
   url_canon::StdStringCanonOutput output(&result.spec_);
 
   result.is_valid_ = url_util::ReplaceComponents(
-      spec_.data(), parsed_, replacements, NULL,
-      &output, &result.parsed_);
+      spec_.data(), static_cast<int>(spec_.length()), parsed_, replacements,
+      NULL, &output, &result.parsed_);
 
   output.Complete();
   return result;
@@ -243,8 +245,8 @@ GURL GURL::ReplaceComponents(
   url_canon::StdStringCanonOutput output(&result.spec_);
 
   result.is_valid_ = url_util::ReplaceComponents(
-      spec_.data(), parsed_, replacements, NULL,
-      &output, &result.parsed_);
+      spec_.data(), static_cast<int>(spec_.length()), parsed_, replacements,
+      NULL, &output, &result.parsed_);
 
   output.Complete();
   return result;
@@ -253,9 +255,9 @@ GURL GURL::ReplaceComponents(
 GURL GURL::GetOrigin() const {
   // This doesn't make sense for invalid or nonstandard URLs, so return
   // the empty URL
-  if (!is_valid_ || !SchemeIsStandard())
+  if (!is_valid_ || !IsStandard())
     return GURL();
-  
+
   url_canon::Replacements<char> replacements;
   replacements.ClearUsername();
   replacements.ClearPassword();
@@ -269,7 +271,7 @@ GURL GURL::GetOrigin() const {
 GURL GURL::GetWithEmptyPath() const {
   // This doesn't make sense for invalid or nonstandard URLs, so return
   // the empty URL.
-  if (!is_valid_ || !SchemeIsStandard()) 
+  if (!is_valid_ || !IsStandard())
     return GURL();
 
   // We could optimize this since we know that the URL is canonical, and we are
@@ -290,17 +292,17 @@ GURL GURL::GetWithEmptyPath() const {
   return other;
 }
 
+bool GURL::IsStandard() const {
+  return url_util::IsStandard(spec_.data(), static_cast<int>(spec_.length()),
+                              parsed_.scheme);
+}
+
 bool GURL::SchemeIs(const char* lower_ascii_scheme) const {
   if (parsed_.scheme.len <= 0)
     return lower_ascii_scheme == NULL;
   return url_util::LowerCaseEqualsASCII(spec_.data() + parsed_.scheme.begin,
                                         spec_.data() + parsed_.scheme.end(),
                                         lower_ascii_scheme);
-}
-
-bool GURL::SchemeIsStandard() const {
-  return url_util::IsStandardScheme(&spec_[parsed_.scheme.begin],
-                                    parsed_.scheme.len);
 }
 
 int GURL::IntPort() const {

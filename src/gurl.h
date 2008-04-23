@@ -191,16 +191,17 @@ class GURL {
   // will be the empty URL.
   GURL GetOrigin() const;
 
+  // Returns true if the scheme for the current URL is a known "standard"
+  // scheme or there is a "://" after it. Standard schemes have an authority
+  // and a path section. This includes file:, which some callers may want to
+  // filter out explicitly by calling SchemeIsFile.
+  bool IsStandard() const;
+
   // Returns true if the given parameter (should be lower-case ASCII to match
   // the canonicalized scheme) is the scheme for this URL. This call is more
   // efficient than getting the scheme and comparing it because no copies or
   // object constructions are done.
   bool SchemeIs(const char* lower_ascii_scheme) const;
-
-  // Returns true if the scheme for the current URL is a "standard" scheme that
-  // has an authority and a path section. This includes file:, which some
-  // callers may want to filter out explicitly.
-  bool SchemeIsStandard() const;
 
   // We often need to know if this is a file URL. File URLs are "standard", but
   // are often treated separately by some programs.

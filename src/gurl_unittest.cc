@@ -166,9 +166,12 @@ TEST(GURLTest, Resolve) {
     {"http://www.google.com/blah/bloo?c#d", "../../../hello/./world.html?a#b", true, "http://www.google.com/hello/world.html?a#b"},
     {"http://www.google.com/foo#bar", "#com", true, "http://www.google.com/foo#com"},
     {"http://www.google.com/", "Https:images.google.com", true, "https://images.google.com/"},
+      // Unknown schemes with a "://" should be treated as standard.
+    {"somescheme://foo/", "bar", true, "somescheme://foo/bar"},
+      // Unknown schemes with no "://" are not standard.
     {"data:blahblah", "http://google.com/", true, "http://google.com/"},
     {"data:blahblah", "http:google.com", true, "http://google.com/"},
-    {"data:blahblah", "file.html", false, ""},
+    {"data:/blahblah", "file.html", false, ""},
   };
 
   for (int i = 0; i < ARRAYSIZE(resolve_cases); i++) {
@@ -348,4 +351,15 @@ TEST(GURLTest, Newlines) {
   EXPECT_EQ("http://www.google.com/foo", url_2.spec());
 
   // Note that newlines are NOT stripped from ReplaceComponents.
+}
+
+TEST(GURLTest, IsStandard) {
+  GURL a("http:foo/bar");
+  EXPECT_TRUE(a.IsStandard());
+
+  GURL b("foo:bar/baz");
+  EXPECT_FALSE(b.IsStandard());
+
+  GURL c("foo://bar/baz");
+  EXPECT_TRUE(c.IsStandard());
 }
