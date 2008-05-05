@@ -301,16 +301,13 @@ bool DoExtractScheme(const CHAR* url,
     if (url[i] == ':') {
       *scheme = MakeRange(begin, i);
       return true;
-    } else if (IsAuthorityTerminator(url[i])) {
-      // An authority terminator was found before the end of the scheme, so we
-      // say that there is no scheme (for example "google.com/foo:bar").
-      return false;
     }
   }
   return false;  // No colon found: no scheme
 }
 
-// The main parsing function for URLs, this is the backend for the 
+// The main parsing function for standard URLs. Standard URLs have a scheme,
+// host, path, etc.
 template<typename CHAR>
 void DoParseStandardURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   DCHECK(spec_len >= 0);
@@ -319,49 +316,13 @@ void DoParseStandardURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   int begin = 0;
   TrimURL(spec, &begin, &spec_len);
 
-  // Handle empty specs or ones that contain only whitespace or control chars.
-  if (begin == spec_len) {
-    // ParsedAfterScheme will fill in empty values if there is no more data.
-    parsed->scheme.reset();
-    DoParseAfterScheme(spec, spec_len, begin, parsed);
-    return;
-  }
-
-  // Find the first non-scheme character before the beginning of the path. This
-  // code handles URLs that may have empty schemes, which makes it different
-  // than the ExtractScheme code above, which can happily fail if it doesn't
-  // find a colon.
-  int scheme_colon = -1;  // Index of first colon that preceeds the authority
-  for (int i = begin; i < spec_len; i++) {
-    if (IsAuthorityTerminator(spec[i]) ||
-        spec[i] == '@' || spec[i] == '[') {
-      // Start of path, found a username ("@"), or start of an IPV6 address
-      // literal. This means there is no scheme found.
-      break;
-    }
-    if (spec[i] == ':') {
-      scheme_colon = i;
-      break;
-    }
-  }
-
   int after_scheme;
-  if (scheme_colon >= 0) {
-    //   spec = <scheme>:/<the-rest>
-    // or
-    //   spec = <scheme>:<authority>
-    //   spec = <scheme>:<path-no-slashes>
-    parsed->scheme = MakeRange(begin, scheme_colon);
-    after_scheme = scheme_colon + 1;  // Character following the colon.
+  if (DoExtractScheme(spec, spec_len, &parsed->scheme)) {
+    after_scheme = parsed->scheme.end() + 1;  // Skip past the colon.
   } else {
-    //   spec = <authority-no-port-or-password>/<path>
-    //   spec = <path>
-    // or
-    //   spec = <authority-no-port-or-password>/<path-with-colon>
-    //   spec = <path-with-colon>
-    // or
-    //   spec = <authority-no-port-or-password>
-    //   spec = <path-no-slashes-or-colon>
+    // Say there's no scheme when there is a colon. We could also say that
+    // everything is the scheme. Both would produce an invalid URL, but this way
+    // seems less wrong in more cases.
     parsed->scheme.reset();
     after_scheme = begin;
   }

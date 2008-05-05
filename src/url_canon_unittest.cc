@@ -275,6 +275,9 @@ TEST(URLCanonTest, Scheme) {
     {" HTTP ", "%20http%20:", url_parse::Component(0, 10), false},
     {"htt: ", "htt%3A%20:", url_parse::Component(0, 9), false},
     {"\xe4\xbd\xa0\xe5\xa5\xbdhttp", "%E4%BD%A0%E5%A5%BDhttp:", url_parse::Component(0, 22), false},
+      // Don't re-escape something already escaped. Note that it will
+      // "canonicalize" the 'A' to 'a', but that's OK.
+    {"ht%3Atp", "ht%3atp:", url_parse::Component(0, 7), false},
   };
 
   std::string out_str;
@@ -1460,7 +1463,7 @@ TEST(URLCanonTest, ResolveRelativeURL) {
       output.Complete();
 
       EXPECT_EQ(cur_case.succeed_resolve, succeed_resolve);
-      EXPECT_EQ(cur_case.resolved, resolved);
+      EXPECT_EQ(cur_case.resolved, resolved) << " on test " << i;
 
       // Verify that the output parsed structure is the same as parsing a
       // the URL freshly.
@@ -1478,7 +1481,7 @@ TEST(URLCanonTest, ResolveRelativeURL) {
 }
 
 // It used to be when we did a replacement with a long buffer of UTF-16
-// charatcers, we would get invalid data in the URL. This is because the buffer
+// characters, we would get invalid data in the URL. This is because the buffer
 // it used to hold the UTF-8 data was resized, while some pointers were still
 // kept to the old buffer that was removed.
 TEST(URLCanonTest, ReplacementOverflow) {

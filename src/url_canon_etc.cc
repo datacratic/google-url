@@ -137,6 +137,12 @@ bool DoScheme(const CHAR* spec,
 
     if (replacement) {
       output->push_back(replacement);
+    } else if (ch == '%') {
+      // Canonicalizing the scheme multiple times should lead to the same
+      // result. Since invalid characters will be escaped, we need to preserve
+      // the percent to avoid multiple escaping. The scheme will be invalid.
+      success = false;
+      output->push_back('%');
     } else {
       // Invalid character, store it but mark this scheme as invalid.
       success = false;

@@ -260,9 +260,8 @@ static URLParseCase cases[] = {
 {"?",                                   NULL,   NULL,  NULL,      NULL,         -1, NULL,      "",          NULL},
 {"/",                                   NULL,   NULL,  NULL,      NULL,         -1, NULL,      NULL,        NULL},
 {":23",                                 "",     NULL,  NULL,      "23",         -1, NULL,      NULL,        NULL},
-{"/:23",                                NULL,   NULL,  NULL,      NULL,         23, NULL,      NULL,        NULL},
+{"/:23",                                "/",    NULL,  NULL,      "23",         -1, NULL,      NULL,        NULL},
 {"//",                                  NULL,   NULL,  NULL,      NULL,         -1, NULL,      NULL,        NULL},
-{"/:",                                  NULL,   NULL,  NULL,      NULL,         -1, NULL,      NULL,        NULL},
 {"::",                                  "",     NULL,  NULL,      NULL,         -1, NULL,      NULL,        NULL},
 {"::23",                                "",     NULL,  NULL,      NULL,         23, NULL,      NULL,        NULL},
 {"foo://",                              "foo",  NULL,  NULL,      NULL,         -1, NULL,      NULL,        NULL},
@@ -296,7 +295,7 @@ static URLParseCase cases[] = {
 {"http://foo/abcd#foo?bar",             "http", NULL,  NULL,      "foo",        -1, "/abcd",   NULL,        "foo?bar"},
 
   // IPV6, check also interesting uses of colons.
-{"[61:24:74]:98",                       NULL,   NULL,  NULL,      "[61:24:74]", 98, NULL,      NULL,        NULL},
+{"[61:24:74]:98",                       "[61",  NULL,  NULL,      "24:74]",     98, NULL,      NULL,        NULL},
 {"http://[61:27]:98",                   "http", NULL,  NULL,      "[61:27]",    98, NULL,      NULL,        NULL},
 {"http:[61:27]/:foo",                   "http", NULL,  NULL,      "[61:27]",    -1, "/:foo",   NULL,        NULL},
 

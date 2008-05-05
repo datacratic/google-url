@@ -160,11 +160,22 @@ void DoParseFileURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   TrimURL(spec, &begin, &spec_len);
 
   // Find the scheme.
+  int num_slashes;
   int after_scheme;
 #ifdef WIN32
-  if (DoesBeginWindowsDriveSpec(spec, begin, spec_len) ||
-      DoesBeginUNCPath(spec, begin, spec_len, false)) {
+  // See how many slashes there are. We want to handle cases like UNC but also
+  // "/c:/foo". This is when there is no scheme, so we can allow pages to do
+  // links like "c:/foo/bar" or "//foo/bar". This is also called by the
+  // relative URL resolver when it determines there is an absolute URL, which
+  // may give us input like "/c:/foo".
+  num_slashes = CountConsecutiveSlashes(spec, begin, spec_len);
+  int after_slashes = begin + num_slashes;
+  if (DoesBeginWindowsDriveSpec(spec, after_slashes, spec_len)) {
     // Windows path, don't try to extract the scheme (for example, "c:\foo").
+    parsed->scheme.reset();
+    after_scheme = after_slashes;
+  } else if (DoesBeginUNCPath(spec, begin, spec_len, false)) {
+    // Windows UNC path: don't try to extract the scheme, but keep the slashes.
     parsed->scheme.reset();
     after_scheme = begin;
   } else
@@ -189,10 +200,14 @@ void DoParseFileURL(const CHAR* spec, int spec_len, Parsed* parsed) {
     return;
   }
 
-  int num_slashes = CountConsecutiveSlashes(spec, after_scheme, spec_len);
+  num_slashes = CountConsecutiveSlashes(spec, after_scheme, spec_len);
 
 #ifdef WIN32
-  int after_slashes = after_scheme + num_slashes;
+  // Check whether the input is a drive again. We checked above for windows
+  // drive specs, but that's only at the very beginning to see if we have a
+  // scheme at all. This test will be duplicated in that case, but will
+  // additionally handle all cases with a real scheme such as "file:///C:/".
+  after_slashes = after_scheme + num_slashes;
   if (!DoesBeginWindowsDriveSpec(spec, after_slashes, spec_len) &&
       num_slashes != 3) {
     // Anything not beginning with a drive spec ("c:\") on Windows is treated
