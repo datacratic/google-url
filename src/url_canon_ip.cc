@@ -27,6 +27,8 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "googleurl/src/url_canon_ip.h"
+
 #include <stdlib.h>
 
 #include "googleurl/src/url_canon_internal.h"
@@ -50,26 +52,8 @@ int BaseForType(SharedCharTypes type) {
   }
 }
 
-// Searches the host name for the portions of the IPv4 address. On success,
-// each component will be placed into |components| and it will return true.
-// It will return false if the host can not be separated as an IPv4 address
-// or if there are any non-7-bit characters or other characters that can not
-// be in an IP address. (This is important so we fail as early as possible for
-// common non-IP hostnames.)
-//
-// Not all components may exist. If there are only 3 components, for example,
-// the last one will have a length of -1 or 0 to indicate it does not exist.
-//
-// Note that many platform's inet_addr will ignore everything after a space
-// in certain curcumstances if the stuff before the space looks like an IP
-// address. IE6 is included in this. We do NOT handle this case. In many cases,
-// the browser's canonicalization will get run before this which converts
-// spaces to %20 (in the case of IE7) or rejects them (in the case of
-// Mozilla), so this code path never gets hit. Our host canonicalization will
-// notice these spaces and escape them, which will make IP address finding
-// fail. This seems like better behavior than stripping after a space.
 template<typename CHAR, typename UCHAR>
-bool FindIPv4Components(const CHAR* spec,
+bool DoFindIPv4Components(const CHAR* spec,
                         const url_parse::Component& host,
                         url_parse::Component components[4]) {
   int cur_component = 0;  // Index of the component we're working on.
@@ -202,7 +186,7 @@ bool DoCanonicalizeIPv4Address(const CHAR* spec,
                                url_parse::Component* out_host) {
   // The identified components. Not all may exist.
   url_parse::Component components[4];
-  if (!FindIPv4Components<CHAR, UCHAR>(spec, host, components))
+  if (!FindIPv4Components(spec, host, components))
     return false;
 
   // Convert existing components to digits. Values up to
@@ -241,6 +225,18 @@ bool DoCanonicalizeIPv4Address(const CHAR* spec,
 }
 
 }  // namespace
+
+bool FindIPv4Components(const char* spec,
+                        const url_parse::Component& host,
+                        url_parse::Component components[4]) {
+  return DoFindIPv4Components<char, unsigned char>(spec, host, components);
+}
+
+bool FindIPv4Components(const UTF16Char* spec,
+                        const url_parse::Component& host,
+                        url_parse::Component components[4]) {
+  return DoFindIPv4Components<UTF16Char, UTF16Char>(spec, host, components);
+}
 
 bool CanonicalizeIPAddress(const char* spec,
                            const url_parse::Component& host,
