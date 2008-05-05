@@ -84,13 +84,23 @@ struct URLParseCase {
   const char* ref;
 };
 
-// Simpler version of the above for testing path URLs.
+// Simpler version of URLParseCase for testing path URLs.
 struct PathURLParseCase {
   const char* input;
 
   const char* scheme;
   const char* path;
 };
+
+// Simpler version of URLParseCase for testing mailto URLs.
+struct MailtoURLParseCase {
+  const char* input;
+
+  const char* scheme;
+  const char* path;
+  const char* query;
+};
+
 
 bool ComponentMatches(const char* input,
                       const char* reference,
@@ -112,6 +122,11 @@ bool ComponentMatches(const char* input,
 
   // Now check the actual characters.
   return strncmp(reference, &input[component.begin], component.len) == 0;
+}
+
+void ExpectInvalidComponent(const url_parse::Component& component) {
+  EXPECT_EQ(0, component.begin);
+  EXPECT_EQ(-1, component.len);
 }
 
 }  // namespace
@@ -347,23 +362,13 @@ TEST(URLParser, PathURL) {
     EXPECT_TRUE(ComponentMatches(url, path_cases[i].scheme, parsed.scheme));
     EXPECT_TRUE(ComponentMatches(url, path_cases[i].path, parsed.path));
 
-    EXPECT_EQ(0, parsed.username.begin);
-    EXPECT_EQ(-1, parsed.username.len);
-
-    EXPECT_EQ(0, parsed.password.begin);
-    EXPECT_EQ(-1, parsed.password.len);
-
-    EXPECT_EQ(0, parsed.host.begin);
-    EXPECT_EQ(-1, parsed.host.len);
-
-    EXPECT_EQ(0, parsed.port.begin);
-    EXPECT_EQ(-1, parsed.port.len);
-
-    EXPECT_EQ(0, parsed.query.begin);
-    EXPECT_EQ(-1, parsed.query.len);
-
-    EXPECT_EQ(0, parsed.ref.begin);
-    EXPECT_EQ(-1, parsed.ref.len);
+    // The remaining components are never used for path urls.
+    ExpectInvalidComponent(parsed.username);
+    ExpectInvalidComponent(parsed.password);
+    ExpectInvalidComponent(parsed.host);
+    ExpectInvalidComponent(parsed.port);
+    ExpectInvalidComponent(parsed.query);
+    ExpectInvalidComponent(parsed.ref);
   }
 }
 
@@ -527,4 +532,41 @@ TEST(URLParser, ExtractQueryKeyValue) {
   EXPECT_TRUE(NthParameterIs(f, 3, "", "="));
   EXPECT_TRUE(NthParameterIs(f, 4, "", ""));
   EXPECT_TRUE(NthParameterIs(f, 5, NULL, NULL));
+}
+
+// MailtoURL --------------------------------------------------------------------
+
+static MailtoURLParseCase mailto_cases[] = {
+//|input                       |scheme   |path               |query
+{"mailto:foo@gmail.com",        "mailto", "foo@gmail.com",    NULL},
+{"  mailto: to  \t",            "mailto", " to",              NULL},
+{"mailto:addr1%2C%20addr2 ",    "mailto", "addr1%2C%20addr2", NULL},
+{"Mailto:addr1, addr2 ",        "Mailto", "addr1, addr2",     NULL},
+{"mailto:addr1:addr2 ",         "mailto", "addr1:addr2",      NULL},
+{"mailto:?to=addr1,addr2",      "mailto", NULL,               "to=addr1,addr2"},
+{"mailto:?to=addr1%2C%20addr2", "mailto", NULL,               "to=addr1%2C%20addr2"},
+{"mailto:addr1?to=addr2",       "mailto", "addr1",            "to=addr2"},
+{"mailto:?body=#foobar#",       "mailto", NULL,               "body=#foobar#",},
+{"mailto:#?body=#foobar#",      "mailto", "#",                "body=#foobar#"},
+};
+
+TEST(URLParser, MailtoUrl) {
+  // Declared outside for loop to try to catch cases in init() where we forget
+  // to reset something that is reset by the construtor.
+  url_parse::Parsed parsed;
+  for (int i = 0; i < arraysize(mailto_cases); ++i) {
+    const char* url = mailto_cases[i].input;
+    url_parse::ParseMailtoURL(url, static_cast<int>(strlen(url)), &parsed);
+    int port = url_parse::ParsePort(url, parsed.port);
+
+    EXPECT_TRUE(ComponentMatches(url, mailto_cases[i].scheme, parsed.scheme));
+    EXPECT_TRUE(ComponentMatches(url, mailto_cases[i].path, parsed.path));
+    EXPECT_TRUE(ComponentMatches(url, mailto_cases[i].query, parsed.query));
+
+    // The remaining components are never used for mailto urls.
+    ExpectInvalidComponent(parsed.username);
+    ExpectInvalidComponent(parsed.password);
+    ExpectInvalidComponent(parsed.port);
+    ExpectInvalidComponent(parsed.ref);
+  }
 }

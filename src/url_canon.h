@@ -505,6 +505,21 @@ bool CanonicalizePathURL(const UTF16Char* spec,
                          CanonOutput* output,
                          url_parse::Parsed* new_parsed);
 
+// Use for mailto URLs. This "canonicalizes" the url into a path and query
+// component. It does not attempt to merge "to" fields.
+bool CanonicalizeMailtoURL(const char* spec,
+                           int spec_len,
+                           const url_parse::Parsed& parsed,
+                           CharsetConverter* query_converter,
+                           CanonOutput* output,
+                           url_parse::Parsed* new_parsed);
+bool CanonicalizeMailtoURL(const UTF16Char* spec,
+                           int spec_len,
+                           const url_parse::Parsed& parsed,
+                           CharsetConverter* query_converter,
+                           CanonOutput* output,
+                           url_parse::Parsed* new_parsed);
+
 // Part replacer --------------------------------------------------------------
 
 // Internal structure used for storing separate strings for each component.
@@ -728,6 +743,21 @@ bool ReplacePathURL(const char* base,
                     const Replacements<UTF16Char>& replacements,
                     CanonOutput* output,
                     url_parse::Parsed* new_parsed);
+
+// Mailto URLs can only have the scheme, path, and query replaced.
+// All other components will be ignored.
+bool ReplaceMailtoURL(const char* base,
+                      const url_parse::Parsed& base_parsed,
+                      const Replacements<char>& replacements,
+                      CharsetConverter* query_converter,
+                      CanonOutput* output,
+                      url_parse::Parsed* new_parsed);
+bool ReplaceMailtoURL(const char* base,
+                      const url_parse::Parsed& base_parsed,
+                      const Replacements<UTF16Char>& replacements,
+                      CharsetConverter* query_converter,
+                      CanonOutput* output,
+                      url_parse::Parsed* new_parsed);
 
 // Relative URL ---------------------------------------------------------------
 

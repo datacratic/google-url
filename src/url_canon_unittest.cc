@@ -1110,6 +1110,58 @@ TEST(URLCanonTest, ReplacePathURL) {
   }
 }
 
+TEST(URLCanonTest, ReplaceMailtoURL) {
+  ReplaceCase replace_cases[] = {
+      // Replace everything
+    {"mailto:jon@foo.com?body=sup", "mailto", NULL, NULL, NULL, NULL, "addr1", "to=tony", NULL, "mailto:addr1?to=tony"},
+      // Replace nothing
+    {"mailto:jon@foo.com?body=sup", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "mailto:jon@foo.com?body=sup"},
+      // Replace the path
+    {"mailto:jon@foo.com?body=sup", NULL, NULL, NULL, NULL, NULL, "jason", NULL, NULL, "mailto:jason?body=sup"},
+      // Replace the query
+    {"mailto:jon@foo.com?body=sup", NULL, NULL, NULL, NULL, NULL, NULL, "custom=1", NULL, "mailto:jon@foo.com?custom=1"},
+      // Replace the path and query
+    {"mailto:jon@foo.com?body=sup", NULL, NULL, NULL, NULL, NULL, "jason", "custom=1", NULL, "mailto:jason?custom=1"},
+      // Set the query to empty (should leave trailing question mark)
+    {"mailto:jon@foo.com?body=sup", NULL, NULL, NULL, NULL, NULL, NULL, "", NULL, "mailto:jon@foo.com?"},
+      // Clear the query
+    {"mailto:jon@foo.com?body=sup", NULL, NULL, NULL, NULL, NULL, NULL, "|", NULL, "mailto:jon@foo.com"},
+      // Clear the path
+    {"mailto:jon@foo.com?body=sup", NULL, NULL, NULL, NULL, NULL, "|", NULL, NULL, "mailto:?body=sup"},
+      // Clear the path + query
+    {"mailto:", NULL, NULL, NULL, NULL, NULL, "|", "|", NULL, "mailto:"},
+      // Setting the ref should have no effect
+    {"mailto:addr1", NULL, NULL, NULL, NULL, NULL, NULL, NULL, "BLAH", "mailto:addr1"},
+  };
+
+  for (int i = 0; i < arraysize(replace_cases); i++) {
+    const ReplaceCase& cur = replace_cases[i];
+    int base_len = static_cast<int>(strlen(cur.base));
+    url_parse::Parsed parsed;
+    url_parse::ParseMailtoURL(cur.base, base_len, &parsed);
+
+    url_canon::Replacements<char> r;
+    typedef url_canon::Replacements<char> R;
+    SetupReplComp(&R::SetScheme, &R::ClearRef, &r, cur.scheme);
+    SetupReplComp(&R::SetUsername, &R::ClearUsername, &r, cur.username);
+    SetupReplComp(&R::SetPassword, &R::ClearPassword, &r, cur.password);
+    SetupReplComp(&R::SetHost, &R::ClearHost, &r, cur.host);
+    SetupReplComp(&R::SetPort, &R::ClearPort, &r, cur.port);
+    SetupReplComp(&R::SetPath, &R::ClearPath, &r, cur.path);
+    SetupReplComp(&R::SetQuery, &R::ClearQuery, &r, cur.query);
+    SetupReplComp(&R::SetRef, &R::ClearRef, &r, cur.ref);
+
+    std::string out_str;
+    url_canon::StdStringCanonOutput output(&out_str);
+    url_parse::Parsed out_parsed;
+    url_canon::ReplaceMailtoURL(cur.base, parsed,
+                                r, NULL, &output, &out_parsed);
+    output.Complete();
+
+    EXPECT_EQ(replace_cases[i].expected, out_str);
+  }
+}
+
 TEST(URLCanonTest, CanonicalizeFileURL) {
   struct URLCase {
     const char* input;
@@ -1225,6 +1277,65 @@ TEST(URLCanonTest, CanonicalizePathURL) {
       EXPECT_EQ(0, out_parsed.path.begin);
       EXPECT_EQ(-1, out_parsed.path.len);
     }
+  }
+}
+
+TEST(URLCanonTest, CanonicalizeMailtoURL) {
+  struct URLCase {
+    const char* input;
+    const char* expected;
+    bool expected_success;
+    url_parse::Component expected_path;
+    url_parse::Component expected_query;
+  } cases[] = {
+    {"mailto:addr1", "mailto:addr1", true, url_parse::Component(7, 5), url_parse::Component()},
+    {"mailto:addr1@foo.com", "mailto:addr1@foo.com", true, url_parse::Component(7, 13), url_parse::Component()},
+    // Trailing whitespace is stripped.
+    {"MaIlTo:addr1 \t ", "mailto:addr1", true, url_parse::Component(7, 5), url_parse::Component()},
+    {"MaIlTo:addr1?to=jon", "mailto:addr1?to=jon", true, url_parse::Component(7, 5), url_parse::Component(13,6)},
+    {"mailto:addr1,addr2", "mailto:addr1,addr2", true, url_parse::Component(7, 11), url_parse::Component()},
+    {"mailto:addr1, addr2", "mailto:addr1, addr2", true, url_parse::Component(7, 12), url_parse::Component()},
+    {"mailto:addr1%2caddr2", "mailto:addr1%2caddr2", true, url_parse::Component(7, 13), url_parse::Component()},
+    {"mailto:\xF0\x90\x8C\x80", "mailto:%F0%90%8C%80", true, url_parse::Component(7, 12), url_parse::Component()},
+    // Null character should be escaped to %00
+    {"mailto:addr1\0addr2?foo", "mailto:addr1%00addr2?foo", true, url_parse::Component(7, 13), url_parse::Component(21, 3)},
+    // Invalid -- UTF-8 encoded surrogate value.
+    {"mailto:\xed\xa0\x80", "mailto:%EF%BF%BD", false, url_parse::Component(7, 9), url_parse::Component()},
+    {"mailto:addr1?", "mailto:addr1?", true, url_parse::Component(7, 5), url_parse::Component(13, 0)},
+  };
+
+  // Define outside of loop to catch bugs where components aren't reset
+  url_parse::Parsed parsed;
+  url_parse::Parsed out_parsed;
+
+  for (int i = 0; i < ARRAYSIZE(cases); i++) {
+    int url_len = static_cast<int>(strlen(cases[i].input));
+    if (i == 8) {
+      // The 9th test case purposely has a '\0' in it -- don't count it
+      // as the string terminator.
+      url_len = 22;
+    }
+    url_parse::ParseMailtoURL(cases[i].input, url_len, &parsed);
+  
+    std::string out_str;
+    url_canon::StdStringCanonOutput output(&out_str);
+    bool success = url_canon::CanonicalizeMailtoURL(cases[i].input, url_len,
+                                                    parsed, NULL, &output,
+                                                    &out_parsed);
+    output.Complete();
+
+    EXPECT_EQ(cases[i].expected_success, success);
+    EXPECT_EQ(cases[i].expected, out_str);
+
+    // Make sure the spec was properly identified
+    EXPECT_EQ(0, out_parsed.scheme.begin);
+    EXPECT_EQ(6, out_parsed.scheme.len);
+
+    EXPECT_EQ(cases[i].expected_path.begin, out_parsed.path.begin);
+    EXPECT_EQ(cases[i].expected_path.len, out_parsed.path.len);
+
+    EXPECT_EQ(cases[i].expected_query.begin, out_parsed.query.begin);
+    EXPECT_EQ(cases[i].expected_query.len, out_parsed.query.len);
   }
 }
 

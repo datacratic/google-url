@@ -234,6 +234,10 @@ void ParsePathURL(const UTF16Char* url, int url_len, Parsed* parsed);
 void ParseFileURL(const char* url, int url_len, Parsed* parsed);
 void ParseFileURL(const UTF16Char* url, int url_len, Parsed* parsed);
 
+// MailtoURL is for mailto: urls. They are made up scheme,path,query
+void ParseMailtoURL(const char* url, int url_len, Parsed* parsed);
+void ParseMailtoURL(const UTF16Char* url, int url_len, Parsed* parsed);
+
 // Helper functions -----------------------------------------------------------
 
 // Locates the scheme according to the URL  parser's rules. This function is

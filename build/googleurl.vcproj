@@ -170,6 +170,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\src\url_canon_mailtourl.cc"
+			>
+		</File>
+		<File
 			RelativePath="..\src\url_canon_path.cc"
 			>
 		</File>

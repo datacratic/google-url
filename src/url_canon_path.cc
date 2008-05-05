@@ -190,7 +190,7 @@ void BackUpToPreviousSlash(int path_begin_in_output,
 
 // Appends the given path to the output. It assumes that if the input path
 // starts with a slash, it should be copied to the output. If no path has
-// have already been appended to the output (the case when not resolving
+// already been appended to the output (the case when not resolving
 // relative URLs), the path should begin with a slash.
 //
 // If there are already path components (this mode is used when appending

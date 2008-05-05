@@ -124,16 +124,8 @@ bool DoCanonicalizeFileURL(const URLComponentSource<CHAR>& source,
   // Scheme (known, so we don't bother running it through the more
   // complicated scheme canonicalizer).
   new_parsed->scheme.begin = output->length();
-  output->push_back('f');
-  output->push_back('i');
-  output->push_back('l');
-  output->push_back('e');
-  new_parsed->scheme.len = output->length() - new_parsed->scheme.begin;
-  output->push_back(':');
-
-  // Write the separator for the host.
-  output->push_back('/');
-  output->push_back('/');
+  output->Append("file://", 7);
+  new_parsed->scheme.len = 4;
 
   // Append the host. For many file URLs, this will be empty. For UNC, this
   // will be present.

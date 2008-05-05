@@ -56,6 +56,7 @@ inline bool DoLowerCaseEqualsASCII(Iter a_begin, Iter a_end, const char* b) {
 }
 
 const char kFileScheme[] = "file";  // Used in a number of places.
+const char kMailtoScheme[] = "mailto";
 
 const int kNumStandardURLSchemes = 5;
 const char* kStandardURLSchemes[kNumStandardURLSchemes] = {
@@ -198,6 +199,13 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
                                                  charset_converter,
                                                  output, output_parsed);
 
+  } else if (CompareSchemeComponent(spec, scheme, kMailtoScheme)) {
+    // Mailto are treated like a standard url with only a scheme, path, query
+    url_parse::ParseMailtoURL(spec, spec_len, &parsed_input);
+    success = url_canon::CanonicalizeMailtoURL(spec, spec_len, parsed_input,
+                                               charset_converter,
+                                               output, output_parsed);
+
   } else {
     // "Weird" URLs like data: and javascript:
     url_parse::ParsePathURL(spec, spec_len, &parsed_input);
@@ -270,7 +278,7 @@ bool DoReplaceComponents(const char* spec,
   if (// Either the scheme is not replaced and the old one is a file,
       (!replacements.IsSchemeOverridden() &&
        CompareSchemeComponent(spec, parsed.scheme, kFileScheme)) ||
-      // Or it is being replaced and the new one is a file.
+      // ...or it is being replaced and the new one is a file.
       (replacements.IsSchemeOverridden() &&
        CompareSchemeComponent(replacements.sources().scheme,
                               replacements.components().scheme,
@@ -282,7 +290,7 @@ bool DoReplaceComponents(const char* spec,
   if (// Either the scheme is not replaced and the old one is standard,
       (!replacements.IsSchemeOverridden() &&
        IsStandard(spec, spec_len, parsed.scheme)) ||
-      // Or it is being replaced and the new one is standard.
+      // ...or it is being replaced and the new one is standard.
       (replacements.IsSchemeOverridden() &&
        IsStandardScheme(&replacements.sources().scheme[
                             replacements.components().scheme.begin],
@@ -290,6 +298,18 @@ bool DoReplaceComponents(const char* spec,
     // Standard URL with all parts.
     return url_canon::ReplaceStandardURL(spec, parsed, replacements,
                                          charset_converter, output, out_parsed);
+  }
+
+  if (// Either the scheme is not replaced and the old one is mailto,
+      (!replacements.IsSchemeOverridden() &&
+       CompareSchemeComponent(spec, parsed.scheme, kMailtoScheme)) ||
+      // ...or it is being replaced and the new one is a mailto.
+      (replacements.IsSchemeOverridden() &&
+       CompareSchemeComponent(replacements.sources().scheme,
+                              replacements.components().scheme,
+                              kMailtoScheme))) {
+     return url_canon::ReplaceMailtoURL(spec, parsed, replacements,
+                                        charset_converter, output, out_parsed);
   }
 
   return url_canon::ReplacePathURL(spec, parsed, replacements,
