@@ -1155,7 +1155,7 @@ TEST(URLCanonTest, ReplaceMailtoURL) {
     url_canon::StdStringCanonOutput output(&out_str);
     url_parse::Parsed out_parsed;
     url_canon::ReplaceMailtoURL(cur.base, parsed,
-                                r, NULL, &output, &out_parsed);
+                                r, &output, &out_parsed);
     output.Complete();
 
     EXPECT_EQ(replace_cases[i].expected, out_str);
@@ -1320,7 +1320,7 @@ TEST(URLCanonTest, CanonicalizeMailtoURL) {
     std::string out_str;
     url_canon::StdStringCanonOutput output(&out_str);
     bool success = url_canon::CanonicalizeMailtoURL(cases[i].input, url_len,
-                                                    parsed, NULL, &output,
+                                                    parsed, &output,
                                                     &out_parsed);
     output.Complete();
 

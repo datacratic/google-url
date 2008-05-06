@@ -203,7 +203,6 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
     // Mailto are treated like a standard url with only a scheme, path, query
     url_parse::ParseMailtoURL(spec, spec_len, &parsed_input);
     success = url_canon::CanonicalizeMailtoURL(spec, spec_len, parsed_input,
-                                               charset_converter,
                                                output, output_parsed);
 
   } else {
@@ -309,7 +308,7 @@ bool DoReplaceComponents(const char* spec,
                               replacements.components().scheme,
                               kMailtoScheme))) {
      return url_canon::ReplaceMailtoURL(spec, parsed, replacements,
-                                        charset_converter, output, out_parsed);
+                                        output, out_parsed);
   }
 
   return url_canon::ReplacePathURL(spec, parsed, replacements,

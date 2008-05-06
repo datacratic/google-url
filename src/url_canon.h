@@ -506,17 +506,18 @@ bool CanonicalizePathURL(const UTF16Char* spec,
                          url_parse::Parsed* new_parsed);
 
 // Use for mailto URLs. This "canonicalizes" the url into a path and query
-// component. It does not attempt to merge "to" fields.
+// component. It does not attempt to merge "to" fields. It uses UTF-8 for
+// the query encoding if there is a query. This is because a mailto URL is
+// really intended for an external mail program, and the encoding of a page,
+// etc. which would influence a query encoding normally are irrelevant.
 bool CanonicalizeMailtoURL(const char* spec,
                            int spec_len,
                            const url_parse::Parsed& parsed,
-                           CharsetConverter* query_converter,
                            CanonOutput* output,
                            url_parse::Parsed* new_parsed);
 bool CanonicalizeMailtoURL(const UTF16Char* spec,
                            int spec_len,
                            const url_parse::Parsed& parsed,
-                           CharsetConverter* query_converter,
                            CanonOutput* output,
                            url_parse::Parsed* new_parsed);
 
@@ -749,13 +750,11 @@ bool ReplacePathURL(const char* base,
 bool ReplaceMailtoURL(const char* base,
                       const url_parse::Parsed& base_parsed,
                       const Replacements<char>& replacements,
-                      CharsetConverter* query_converter,
                       CanonOutput* output,
                       url_parse::Parsed* new_parsed);
 bool ReplaceMailtoURL(const char* base,
                       const url_parse::Parsed& base_parsed,
                       const Replacements<UTF16Char>& replacements,
-                      CharsetConverter* query_converter,
                       CanonOutput* output,
                       url_parse::Parsed* new_parsed);
 

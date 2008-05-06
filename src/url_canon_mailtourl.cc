@@ -42,7 +42,6 @@ namespace {
 template<typename CHAR, typename UCHAR>
 bool DoCanonicalizeMailtoURL(const URLComponentSource<CHAR>& source,
                              const url_parse::Parsed& parsed,
-                             CharsetConverter* query_converter,
                              CanonOutput* output,
                              url_parse::Parsed* new_parsed) {
 
@@ -83,8 +82,8 @@ bool DoCanonicalizeMailtoURL(const URLComponentSource<CHAR>& source,
     new_parsed->path.reset();
   }
 
-  // Query
-  CanonicalizeQuery(source.query, parsed.query, query_converter,
+  // Query -- always use the default utf8 charset converter.
+  CanonicalizeQuery(source.query, parsed.query, NULL,
                     output, &new_parsed->query);
 
   return success;
@@ -95,42 +94,36 @@ bool DoCanonicalizeMailtoURL(const URLComponentSource<CHAR>& source,
 bool CanonicalizeMailtoURL(const char* spec,
                           int spec_len,
                           const url_parse::Parsed& parsed,
-                          CharsetConverter* query_converter,
                           CanonOutput* output,
                           url_parse::Parsed* new_parsed) {
   return DoCanonicalizeMailtoURL<char, unsigned char>(
-      URLComponentSource<char>(spec), parsed, query_converter,
-      output, new_parsed);
+      URLComponentSource<char>(spec), parsed, output, new_parsed);
 }
 
 bool CanonicalizeMailtoURL(const UTF16Char* spec,
                            int spec_len,
                            const url_parse::Parsed& parsed,
-                           CharsetConverter* query_converter,
                            CanonOutput* output,
                            url_parse::Parsed* new_parsed) {
   return DoCanonicalizeMailtoURL<UTF16Char, UTF16Char>(
-      URLComponentSource<UTF16Char>(spec), parsed, query_converter,
-      output, new_parsed);
+      URLComponentSource<UTF16Char>(spec), parsed, output, new_parsed);
 }
 
 bool ReplaceMailtoURL(const char* base,
                       const url_parse::Parsed& base_parsed,
                       const Replacements<char>& replacements,
-                      CharsetConverter* query_converter,
                       CanonOutput* output,
                       url_parse::Parsed* new_parsed) {
   URLComponentSource<char> source(base);
   url_parse::Parsed parsed(base_parsed);
   SetupOverrideComponents(base, replacements, &source, &parsed);
   return DoCanonicalizeMailtoURL<char, unsigned char>(
-      source, parsed, query_converter, output, new_parsed);
+      source, parsed, output, new_parsed);
 }
 
 bool ReplaceMailtoURL(const char* base,
                       const url_parse::Parsed& base_parsed,
                       const Replacements<UTF16Char>& replacements,
-                      CharsetConverter* query_converter,
                       CanonOutput* output,
                       url_parse::Parsed* new_parsed) {
   RawCanonOutput<1024> utf8;
@@ -138,7 +131,7 @@ bool ReplaceMailtoURL(const char* base,
   url_parse::Parsed parsed(base_parsed);
   SetupUTF16OverrideComponents(base, replacements, &utf8, &source, &parsed);
   return DoCanonicalizeMailtoURL<char, unsigned char>(
-      source, parsed, query_converter, output, new_parsed);
+      source, parsed, output, new_parsed);
 }
 
 }  // namespace url_canon
