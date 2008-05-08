@@ -1495,9 +1495,14 @@ TEST(URLCanonTest, ResolveRelativeURL) {
     {"data:foobar", false, false, "baz.html", false, false, false, NULL},
     {"data:foobar", false, false, "data:baz", true, false, false, NULL},
     {"data:foobar", false, false, "data:/base", true, false, false, NULL},
-      // Non-hierarchical base: absolute input should succeed for
+      // Non-hierarchical base: absolute input should succeed.
     {"data:foobar", false, false, "http://host/", true, false, false, NULL},
     {"data:foobar", false, false, "http:host", true, false, false, NULL},
+      // Invalid schemes should be treated as relative.
+    {"http://foo/bar", true, false, "./asd:fgh", true, true, true, "http://foo/asd:fgh"},
+    {"http://foo/bar", true, false, ":foo", true, true, true, "http://foo/:foo"},
+    {"http://foo/bar", true, false, " hello world", true, true, true, "http://foo/hello%20world"},
+    {"data:asdf", false, false, ":foo", false, false, false, NULL},
       // We should treat semicolons like any other character in URL resolving 
     {"http://host/a", true, false, ";foo", true, true, true, "http://host/;foo"},
     {"http://host/a;", true, false, ";foo", true, true, true, "http://host/;foo"},
@@ -1574,9 +1579,10 @@ TEST(URLCanonTest, ResolveRelativeURL) {
         cur_case.base, parsed, cur_case.test, test_len, cur_case.is_base_hier,
         &is_relative, &relative_component);
 
-    EXPECT_EQ(cur_case.succeed_relative, succeed_is_rel);
-    EXPECT_EQ(cur_case.is_rel, is_relative);
-
+    EXPECT_EQ(cur_case.succeed_relative, succeed_is_rel) <<
+        "succeed is rel failure on " << cur_case.test;
+    EXPECT_EQ(cur_case.is_rel, is_relative) <<
+        "is rel failure on " << cur_case.test;
     // Now resolve it.
     if (succeed_is_rel && is_relative && cur_case.is_rel) {
       std::string resolved;
@@ -1589,7 +1595,7 @@ TEST(URLCanonTest, ResolveRelativeURL) {
       output.Complete();
 
       EXPECT_EQ(cur_case.succeed_resolve, succeed_resolve);
-      EXPECT_EQ(cur_case.resolved, resolved) << " on test " << i;
+      EXPECT_EQ(cur_case.resolved, resolved) << " on " << cur_case.test;
 
       // Verify that the output parsed structure is the same as parsing a
       // the URL freshly.

@@ -120,20 +120,12 @@ bool DoIsRelativeURL(const char* base,
     return true;
 #endif  // WIN32
 
-  // Beginning with a slash means for sure this scheme is relative. We do
-  // this before checking the scheme in case we have input like "/foo:bar"
-  // that the scheme finder will think is a scheme.
-  if (begin < url_len && url_parse::IsURLSlash(url[begin])) {
-    *relative_component = url_parse::MakeRange(begin, url_len);
-    *is_relative = true;
-    return true;
-  }
-
   // See if we've got a scheme, if not, we know this is a relative URL.
   // BUT: Just because we have a scheme, doesn't make it absolute.
-  // "http:foo.html" is a relative URL with path "foo.html".
+  // "http:foo.html" is a relative URL with path "foo.html". If the scheme is
+  // empty, we treat it as relative (":foo") like IE does.
   url_parse::Component scheme;
-  if (!url_parse::ExtractScheme(url, url_len, &scheme)) {
+  if (!url_parse::ExtractScheme(url, url_len, &scheme) || scheme.len == 0) {
     // Don't allow relative URLs if the base scheme doesn't support it.
     if (!is_base_hierarchical)
       return false;
@@ -141,6 +133,16 @@ bool DoIsRelativeURL(const char* base,
     *relative_component = url_parse::MakeRange(begin, url_len);
     *is_relative = true;
     return true;
+  }
+
+  // If the scheme isn't valid, then it's relative.
+  int scheme_end = scheme.end();
+  for (int i = scheme.begin; i < scheme_end; i++) {
+    if (!CanonicalSchemeChar(url[i])) {
+      *relative_component = url_parse::MakeRange(begin, url_len);
+      *is_relative = true;
+      return true;
+    }
   }
 
   // If the scheme is not the same, then we can't count it as relative.
