@@ -76,23 +76,19 @@ bool IsAllASCII(const CHAR* spec, const url_parse::Component& query) {
   return true;
 }
 
-// Given an input character, appends to the output, escaping as needed for
-// query values.
-inline void Append8BitQueryChar(unsigned char ch, CanonOutput* output) {
-  if (ch <= 0x20 || ch >= 0x7f) 
-    AppendEscapedChar(ch, output);
-  else
-    output->push_back(ch);
-}
-
-// Given an input string that is represented in no more than 8-bits per
-// character, appends the characters to the output according to query rules.
+// Appends the given string to the output, escaping characters that do not
+// match the given |type| in SharedCharTypes. This version will accept 8 or 16
+// bit characters, but assumes that they have only 7-bit values. It also assumes
+// that all UTF-8 values are correct, so doesn't bother checking 
 template<typename CHAR>
-void Append8BitQueryString(const CHAR* source,
-                           int length,
-                           CanonOutput* output) {
-  for (int i = 0; i < length; i++)
-    Append8BitQueryChar(static_cast<unsigned char>(source[i]), output);
+void AppendRaw8BitQueryString(const CHAR* source, int length,
+                              CanonOutput* output) {
+  for (int i = 0; i < length; i++) {
+    if (!IsQueryChar(static_cast<unsigned char>(source[i])))
+      AppendEscapedChar(static_cast<unsigned char>(source[i]), output);
+    else  // Doesn't need escaping.
+      output->push_back(static_cast<char>(source[i]));
+  }
 }
 
 // Runs the converter on the given UTF-8 input. Since the converter expects
@@ -126,7 +122,7 @@ void DoConvertToQueryEncoding(const CHAR* spec,
   int end = query.end();
   if (IsAllASCII<CHAR, UCHAR>(spec, query)) {
     // Easy: the input can just appended with no character set conversions.
-    Append8BitQueryString(&spec[query.begin], query.len, output);
+    AppendRaw8BitQueryString(&spec[query.begin], query.len, output);
 
   } else {
     // Harder: convert to the proper encoding first.
@@ -135,22 +131,11 @@ void DoConvertToQueryEncoding(const CHAR* spec,
       // necessary values.
       RawCanonOutput<1024> eight_bit;
       RunConverter(spec, query, converter, &eight_bit);
-      Append8BitQueryString(eight_bit.data(), eight_bit.length(), output);
+      AppendRaw8BitQueryString(eight_bit.data(), eight_bit.length(), output);
 
     } else {
       // No converter, do our own UTF-8 conversion.
-      for (int i = query.begin; i < end; i++) {
-        if (static_cast<UCHAR>(spec[i]) >= 0x80) {
-          // ReadChar will fill the code point with
-          // kUnicodeReplacementCharacter when the input is invalid, which is
-          // what we want.
-          unsigned code_point;
-          ReadUTFChar(spec, &i, end, &code_point);
-          AppendUTF8EscapedValue(code_point, output);
-        } else {
-          Append8BitQueryChar(static_cast<unsigned char>(spec[i]), output);
-        }
-      }
+      AppendStringOfType(&spec[query.begin], query.len, CHAR_QUERY, output);
     }
   }
 }

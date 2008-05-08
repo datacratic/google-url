@@ -333,9 +333,8 @@ TEST(URLCanonTest, Host) {
   DualComponentCase host_cases[] = {
        // Basic canonicalization, uppercase should be converted to lowercase.
     {"GoOgLe.CoM", L"GoOgLe.CoM", "google.com", url_parse::Component(0, 10), true},
-      // Spaces should be escaped
-    {"Goo goo.com", L"Goo goo.com", "goo%20goo.com", url_parse::Component(0, 13), true},
-    {"Goo%20 goo.com", L"Goo%20 goo.com", "goo%20%20goo.com", url_parse::Component(0, 16), true},
+      // Spaces and some other characters should be escaped.
+    {"Goo%20 goo%7C|.com", L"Goo%20 goo%7C|.com", "goo%20%20goo%7C%7C.com", url_parse::Component(0, 22), true},
       // Exciting different types of spaces!
     {NULL, L"GOO\x00a0\x3000goo.com", "goo%20%20goo.com", url_parse::Component(0, 16), true},
       // Other types of space (no-break, zero-width, zero-width-no-break) are
@@ -357,11 +356,11 @@ TEST(URLCanonTest, Host) {
       // Test that fullwidth escaped values are properly name-prepped,
       // then converted or rejected.
       // ...%41 in fullwidth = 'A' (also as escaped UTF-8 input)
-    {"\xef\xbc\x85\xef\xbc\x94\xef\xbc\x91.com", L"\xff05\xff14\xff11.com", "%2541.com", url_parse::Component(0, 9), false},
-    {"%ef%bc%85%ef%bc%94%ef%bc%91.com", L"%ef%bc%85%ef%bc%94%ef%bc%91.com", "%2541.com", url_parse::Component(0, 9), false},
+    {"\xef\xbc\x85\xef\xbc\x94\xef\xbc\x91.com", L"\xff05\xff14\xff11.com", "a.com", url_parse::Component(0, 5), true},
+    {"%ef%bc%85%ef%bc%94%ef%bc%91.com", L"%ef%bc%85%ef%bc%94%ef%bc%91.com", "a.com", url_parse::Component(0, 5), true},
       // ...%00 in fullwidth should fail (also as escaped UTF-8 input)
-    {"\xef\xbc\x85\xef\xbc\x90\xef\xbc\x90.com", L"\xff05\xff10\xff10.com", "%2500.com", url_parse::Component(0, 9), false},
-    {"%ef%bc%85%ef%bc%90%ef%bc%90.com", L"%ef%bc%85%ef%bc%90%ef%bc%90.com", "%2500.com", url_parse::Component(0, 9), false},
+    {"\xef\xbc\x85\xef\xbc\x90\xef\xbc\x90.com", L"\xff05\xff10\xff10.com", "%00.com", url_parse::Component(0, 7), false},
+    {"%ef%bc%85%ef%bc%90%ef%bc%90.com", L"%ef%bc%85%ef%bc%90%ef%bc%90.com", "%00.com", url_parse::Component(0, 7), false},
       // Basic IDN support, UTF-8 and UTF-16 input should be converted to IDN
     {"\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xbd\xa0\xe5\xa5\xbd", L"\x4f60\x597d\x4f60\x597d", "xn--6qqa088eba", url_parse::Component(0, 14), true},
       // Mixed UTF-8 and escaped UTF-8 (narrow case) and UTF-16 and escaped
@@ -414,7 +413,7 @@ TEST(URLCanonTest, Host) {
       int host_len = static_cast<int>(input16.length());
       url_parse::Component in_comp(0, host_len);
       url_parse::Component out_comp;
-
+  
       out_str.clear();
       url_canon::StdStringCanonOutput output(&out_str);
 
@@ -535,7 +534,7 @@ TEST(URLCanonTest, UserInfo) {
     {"http://:@host.com/", "", url_parse::Component(0, -1), url_parse::Component(0, -1), true},
     {"http://foo:@host.com/", "foo@", url_parse::Component(0, 3), url_parse::Component(0, -1), true},
     {"http://:foo@host.com/", ":foo@", url_parse::Component(0, 0), url_parse::Component(1, 3), true},
-    {"http://^ :$\t@host.com/", "^%20:$%09@", url_parse::Component(0, 4), url_parse::Component(5, 4), true},
+    {"http://^ :$\t@host.com/", "%5E%20:$%09@", url_parse::Component(0, 6), url_parse::Component(7, 4), true},
 
       // IE7 compatability: old versions allowed backslashes in usernames, but
       // IE7 does not. We disallow it as well.
@@ -777,6 +776,8 @@ TEST(URLCanonTest, Query) {
     {"foo=bar", L"foo=bar", "gb2312", "?foo=bar"},
       // Allow question marks in the query without escaping
     {"as?df", L"as?df", NULL, "?as?df"},
+      // Always escape '#' since it would mark the ref.
+    {"as#df", L"as#df", NULL, "?as%23df"},
       // Escape some questionable 8-bit characters, but never unescape.
     {"\x02hello\x7f bye", L"\x02hello\x7f bye", NULL, "?%02hello%7F%20bye"},
     {"%40%41123", L"%40%41123", NULL, "?%40%41123"},
@@ -854,8 +855,10 @@ TEST(URLCanonTest, Ref) {
       // Escaping should be preserved unchanged, even invalid ones
     {"%41%a", L"%41%a", "#%41%a", url_parse::Component(1, 5), true},
       // Invalid UTF-8/16 input should be flagged and the input made valid
-    {"\xc2", NULL, "#\xef\xbf\xbd", url_parse::Component(1, 3), false},
-    {NULL, L"\xd800\x597d", "#\xef\xbf\xbd\xe5\xa5\xbd", url_parse::Component(1, 6), false},
+    {"\xc2", NULL, "#\xef\xbf\xbd", url_parse::Component(1, 3), true},
+    {NULL, L"\xd800\x597d", "#\xef\xbf\xbd\xe5\xa5\xbd", url_parse::Component(1, 6), true},
+      // Test a Unicode invalid character.
+    {"a\xef\xb7\x90", L"a\xfdd0", "#a\xef\xbf\xbd", url_parse::Component(1, 4), true},
       // Refs can have # signs and we should preserve them.
     {"asdf#qwer", L"asdf#qwer", "#asdf#qwer", url_parse::Component(1, 9), true},
     {"#asdf", L"#asdf", "##asdf", url_parse::Component(1, 5), true},
@@ -870,11 +873,10 @@ TEST(URLCanonTest, Ref) {
 
       std::string out_str;
       url_canon::StdStringCanonOutput output(&out_str);
-      bool success = url_canon::CanonicalizeRef(ref_cases[i].input8, in_comp,
-                                                &output, &out_comp);
+      url_canon::CanonicalizeRef(ref_cases[i].input8, in_comp,
+                                 &output, &out_comp);
       output.Complete();
 
-      EXPECT_EQ(ref_cases[i].expected_success, success);
       EXPECT_EQ(ref_cases[i].expected_component.begin, out_comp.begin);
       EXPECT_EQ(ref_cases[i].expected_component.len, out_comp.len);
       EXPECT_EQ(ref_cases[i].expected, out_str);
@@ -889,16 +891,29 @@ TEST(URLCanonTest, Ref) {
 
       std::string out_str;
       url_canon::StdStringCanonOutput output(&out_str);
-      bool success = url_canon::CanonicalizeRef(input16.c_str(), in_comp,
-                                                &output, &out_comp);
+      url_canon::CanonicalizeRef(input16.c_str(), in_comp, &output, &out_comp);
       output.Complete();
 
-      EXPECT_EQ(ref_cases[i].expected_success, success);
       EXPECT_EQ(ref_cases[i].expected_component.begin, out_comp.begin);
       EXPECT_EQ(ref_cases[i].expected_component.len, out_comp.len);
       EXPECT_EQ(ref_cases[i].expected, out_str);
     }
   }
+
+  // Try one with an embedded NULL. It should be stripped.
+  const char null_input[5] = "ab\x00z";
+  url_parse::Component null_input_component(0, 4);
+  url_parse::Component out_comp;
+
+  std::string out_str;
+  url_canon::StdStringCanonOutput output(&out_str);
+  url_canon::CanonicalizeRef(null_input, null_input_component,
+                             &output, &out_comp);
+  output.Complete();
+
+  EXPECT_EQ(1, out_comp.begin);
+  EXPECT_EQ(3, out_comp.len);
+  EXPECT_EQ("#abz", out_str);
 }
 
 TEST(URLCanonTest, CanonicalizeStandardURL) {

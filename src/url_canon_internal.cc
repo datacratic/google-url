@@ -39,20 +39,25 @@ namespace url_canon {
 namespace {
 
 template<typename CHAR, typename UCHAR>
-static bool DoCanonicalizeEscaped(const CHAR* spec, int* begin, int end,
-                                  CanonOutput* output) {
-  char value;
-  if (DecodeEscaped<CHAR>(spec, begin, end, &value)) {
-    // Valid escape sequence, re-escape it so we normalize the case of the
-    // hex digits in the canonical form.
-    AppendEscapedChar(value, output);
-    return true;
+void DoAppendStringOfType(const CHAR* source, int length,
+                          SharedCharTypes type,
+                          CanonOutput* output) {
+  for (int i = 0; i < length; i++) {
+    if (static_cast<UCHAR>(source[i]) >= 0x80) {
+      // ReadChar will fill the code point with kUnicodeReplacementCharacter
+      // when the input is invalid, which is what we want.
+      unsigned code_point;
+      ReadUTFChar(source, &i, length, &code_point);
+      AppendUTF8EscapedValue(code_point, output);
+    } else {
+      // Just append the 7-bit character, possibly escaping it.
+      unsigned char uch = static_cast<unsigned char>(source[i]);
+      if (!IsCharOfType(uch, type)) 
+        AppendEscapedChar(uch, output);
+      else
+        output->push_back(uch);
+    }
   }
-
-  // Invalid escaped value, don't copy anything. The caller will pick up on the
-  // next character after the percent and treat it normally.
-  output->push_back('%');
-  return false;
 }
 
 // This function assumes the input values are all contained in 8-bit,
@@ -128,32 +133,32 @@ bool PrepareUTF16OverrideComponent(
 const unsigned char kSharedCharTypeTable[0x100] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 0x00 - 0x0f
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 0x10 - 0x1f
-    0,           // 0x20  ' ' (escape spaces in queries)
-    CHAR_QUERY,  // 0x21  !
-    CHAR_QUERY,  // 0x22  "  (IE doesn't escape this in the query!)
-    0,           // 0x23  #  (invalid in query since it marks the ref)
-    CHAR_QUERY,  // 0x24  $
-    CHAR_QUERY,  // 0x25  %
-    CHAR_QUERY,  // 0x26  &
-    CHAR_QUERY,  // 0x27  '
-    CHAR_QUERY,  // 0x28  (
-    CHAR_QUERY,  // 0x29  )
-    CHAR_QUERY,  // 0x2a  *
-    CHAR_QUERY,  // 0x2b  +
-    CHAR_QUERY,  // 0x2c  ,
-    CHAR_QUERY,  // 0x2d  -
-    CHAR_QUERY | CHAR_IPV4,  // 0x2e  .
-    CHAR_QUERY,  // 0x2f  /
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x30  0
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x31  1
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x32  2
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x33  3
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x34  4
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x35  5
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x36  6
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x37  7
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC,             // 0x38  8
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX | CHAR_DEC,             // 0x39  9
+    0,                           // 0x20  ' ' (escape spaces in queries)
+    CHAR_QUERY | CHAR_USERINFO,  // 0x21  !
+    CHAR_QUERY,                  // 0x22  "  (IE doesn't escape this in the query!)
+    0,                           // 0x23  #  (invalid in query since it marks the ref)
+    CHAR_QUERY | CHAR_USERINFO,  // 0x24  $
+    CHAR_QUERY,                  // 0x25  %
+    CHAR_QUERY | CHAR_USERINFO,  // 0x26  &
+    CHAR_QUERY | CHAR_USERINFO,  // 0x27  '
+    CHAR_QUERY | CHAR_USERINFO,  // 0x28  (
+    CHAR_QUERY | CHAR_USERINFO,  // 0x29  )
+    CHAR_QUERY | CHAR_USERINFO,  // 0x2a  *
+    CHAR_QUERY | CHAR_USERINFO,  // 0x2b  +
+    CHAR_QUERY | CHAR_USERINFO,  // 0x2c  ,
+    CHAR_QUERY | CHAR_USERINFO,  // 0x2d  -
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4,  // 0x2e  .
+    CHAR_QUERY,                              // 0x2f  /
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x30  0
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x31  1
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x32  2
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x33  3
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x34  4
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x35  5
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x36  6
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC | CHAR_OCT,  // 0x37  7
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC,             // 0x38  8
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC,             // 0x39  9
     CHAR_QUERY,  // 0x3a  :
     CHAR_QUERY,  // 0x3b  ;
     CHAR_QUERY,  // 0x3c  <
@@ -161,68 +166,68 @@ const unsigned char kSharedCharTypeTable[0x100] = {
     CHAR_QUERY,  // 0x3e  >
     CHAR_QUERY,  // 0x3f  ?
     CHAR_QUERY,  // 0x40  @
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x41  A
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x42  B
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x43  C
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x44  D
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x45  E
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x46  F
-    CHAR_QUERY,  // 0x47  G
-    CHAR_QUERY,  // 0x48  H
-    CHAR_QUERY,  // 0x49  I
-    CHAR_QUERY,  // 0x4a  J
-    CHAR_QUERY,  // 0x4b  K
-    CHAR_QUERY,  // 0x4c  L
-    CHAR_QUERY,  // 0x4d  M
-    CHAR_QUERY,  // 0x4e  N
-    CHAR_QUERY,  // 0x4f  O
-    CHAR_QUERY,  // 0x50  P
-    CHAR_QUERY,  // 0x51  Q
-    CHAR_QUERY,  // 0x52  R
-    CHAR_QUERY,  // 0x53  S
-    CHAR_QUERY,  // 0x54  T
-    CHAR_QUERY,  // 0x55  U
-    CHAR_QUERY,  // 0x56  V
-    CHAR_QUERY,  // 0x57  W
-    CHAR_QUERY | CHAR_IPV4, // 0x58  X
-    CHAR_QUERY,  // 0x59  Y
-    CHAR_QUERY,  // 0x5a  Z
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x41  A
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x42  B
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x43  C
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x44  D
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x45  E
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x46  F
+    CHAR_QUERY | CHAR_USERINFO,  // 0x47  G
+    CHAR_QUERY | CHAR_USERINFO,  // 0x48  H
+    CHAR_QUERY | CHAR_USERINFO,  // 0x49  I
+    CHAR_QUERY | CHAR_USERINFO,  // 0x4a  J
+    CHAR_QUERY | CHAR_USERINFO,  // 0x4b  K
+    CHAR_QUERY | CHAR_USERINFO,  // 0x4c  L
+    CHAR_QUERY | CHAR_USERINFO,  // 0x4d  M
+    CHAR_QUERY | CHAR_USERINFO,  // 0x4e  N
+    CHAR_QUERY | CHAR_USERINFO,  // 0x4f  O
+    CHAR_QUERY | CHAR_USERINFO,  // 0x50  P
+    CHAR_QUERY | CHAR_USERINFO,  // 0x51  Q
+    CHAR_QUERY | CHAR_USERINFO,  // 0x52  R
+    CHAR_QUERY | CHAR_USERINFO,  // 0x53  S
+    CHAR_QUERY | CHAR_USERINFO,  // 0x54  T
+    CHAR_QUERY | CHAR_USERINFO,  // 0x55  U
+    CHAR_QUERY | CHAR_USERINFO,  // 0x56  V
+    CHAR_QUERY | CHAR_USERINFO,  // 0x57  W
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4, // 0x58  X
+    CHAR_QUERY | CHAR_USERINFO,  // 0x59  Y
+    CHAR_QUERY | CHAR_USERINFO,  // 0x5a  Z
     CHAR_QUERY,  // 0x5b  [
     CHAR_QUERY,  // 0x5c  '\'
     CHAR_QUERY,  // 0x5d  ]
     CHAR_QUERY,  // 0x5e  ^
-    CHAR_QUERY,  // 0x5f  _
+    CHAR_QUERY | CHAR_USERINFO,  // 0x5f  _
     CHAR_QUERY,  // 0x60  `
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x61  a
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x62  b
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x63  c
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x64  d
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x65  e
-    CHAR_QUERY | CHAR_IPV4 | CHAR_HEX,  // 0x66  f
-    CHAR_QUERY,  // 0x67  g
-    CHAR_QUERY,  // 0x68  h
-    CHAR_QUERY,  // 0x69  i
-    CHAR_QUERY,  // 0x6a  j
-    CHAR_QUERY,  // 0x6b  k
-    CHAR_QUERY,  // 0x6c  l
-    CHAR_QUERY,  // 0x6d  m
-    CHAR_QUERY,  // 0x6e  n
-    CHAR_QUERY,  // 0x6f  o
-    CHAR_QUERY,  // 0x70  p
-    CHAR_QUERY,  // 0x71  q
-    CHAR_QUERY,  // 0x72  r
-    CHAR_QUERY,  // 0x73  s
-    CHAR_QUERY,  // 0x74  t
-    CHAR_QUERY,  // 0x75  u
-    CHAR_QUERY,  // 0x76  v
-    CHAR_QUERY,  // 0x77  w
-    CHAR_QUERY | CHAR_IPV4,  // 0x78  x
-    CHAR_QUERY,  // 0x79  y
-    CHAR_QUERY,  // 0x7a  z
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x61  a
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x62  b
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x63  c
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x64  d
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x65  e
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x66  f
+    CHAR_QUERY | CHAR_USERINFO,  // 0x67  g
+    CHAR_QUERY | CHAR_USERINFO,  // 0x68  h
+    CHAR_QUERY | CHAR_USERINFO,  // 0x69  i
+    CHAR_QUERY | CHAR_USERINFO,  // 0x6a  j
+    CHAR_QUERY | CHAR_USERINFO,  // 0x6b  k
+    CHAR_QUERY | CHAR_USERINFO,  // 0x6c  l
+    CHAR_QUERY | CHAR_USERINFO,  // 0x6d  m
+    CHAR_QUERY | CHAR_USERINFO,  // 0x6e  n
+    CHAR_QUERY | CHAR_USERINFO,  // 0x6f  o
+    CHAR_QUERY | CHAR_USERINFO,  // 0x70  p
+    CHAR_QUERY | CHAR_USERINFO,  // 0x71  q
+    CHAR_QUERY | CHAR_USERINFO,  // 0x72  r
+    CHAR_QUERY | CHAR_USERINFO,  // 0x73  s
+    CHAR_QUERY | CHAR_USERINFO,  // 0x74  t
+    CHAR_QUERY | CHAR_USERINFO,  // 0x75  u
+    CHAR_QUERY | CHAR_USERINFO,  // 0x76  v
+    CHAR_QUERY | CHAR_USERINFO,  // 0x77  w
+    CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4,  // 0x78  x
+    CHAR_QUERY | CHAR_USERINFO,  // 0x79  y
+    CHAR_QUERY | CHAR_USERINFO,  // 0x7a  z
     CHAR_QUERY,  // 0x7b  {
     CHAR_QUERY,  // 0x7c  |
     CHAR_QUERY,  // 0x7d  }
-    CHAR_QUERY,  // 0x7e  ~
+    CHAR_QUERY | CHAR_USERINFO,  // 0x7e  ~
     0,           // 0x7f
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 0x80 - 0x8f
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 0x90 - 0x9f
@@ -252,14 +257,16 @@ const char kCharToHexLookup[8] = {
 
 const UTF16Char kUnicodeReplacementCharacter = 0xfffd;
 
-bool CanonicalizeEscaped(const char* spec, int* begin, int end,
-                         CanonOutput* output) {
-  return DoCanonicalizeEscaped<char, unsigned char>(spec, begin, end, output);
+void AppendStringOfType(const char* source, int length,
+                        SharedCharTypes type,
+                        CanonOutput* output) {
+  DoAppendStringOfType<char, unsigned char>(source, length, type, output);
 }
 
-bool CanonicalizeEscaped(const UTF16Char* spec, int* begin, int end,
-                         CanonOutput* output) {
-  return DoCanonicalizeEscaped<UTF16Char, UTF16Char>(spec, begin, end, output);
+void AppendStringOfType(const UTF16Char* source, int length,
+                        SharedCharTypes type,
+                        CanonOutput* output) {
+  DoAppendStringOfType<UTF16Char, UTF16Char>(source, length, type, output);
 }
 
 void AppendInvalidNarrowString(const char* spec, int begin, int end,

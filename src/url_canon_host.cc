@@ -27,6 +27,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "base/logging.h"
 #include "googleurl/src/url_canon.h"
 #include "googleurl/src/url_canon_internal.h"
 
@@ -62,31 +63,34 @@ namespace {
 // Surprisingly, space is accepted in the input and always escaped.
 
 // This table lists the canonical version of all characters we allow in the
-// input, with 0 indicating it is disallowed. We are more restricive than IE,
-// but less restrictive than Firefox, and we only have two modes: either the
-// character is allowed and it is unescaped if escaped in the input, or it is
-// disallowed and we will prohibit it.
+// input, with 0 indicating it is disallowed. We use the magic kEscapedHostChar
+// value to indicate that this character should be escaped. We are a little more
+// restricive than IE, but less restrictive than Firefox.
 //
-// Space is a special case, IE always escapes space, and some sites actually
-// use it, so we want to support it. We try to duplicate IE's behavior by treating
-// space as valid and unescaping it, and then doing a separate pass at the end of
-// canonicalization that looks for spaces. We'll then escape them at that point.
-const char kHostCharLookup[0x80] = {
+// Note that we disallow the % character. We will allow it when part of an
+// escape sequence, of course, but this disallows "%25". Even though IE allows
+// it, allowing it would put us in a funny state. If there was an invalid
+// escape sequence like "%zz", we'll add "%25zz" to the output and fail.
+// Allowing percents means we'll succeed a second time, so validity would change
+// based on how many times you run the canonicalizer. We prefer to always report
+// the same vailidity, so reject this.
+const unsigned char kEsc = 0xff;
+const unsigned char kHostCharLookup[0x80] = {
 // 00-1f: all are invalid
      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 //  ' '   !    "    #    $    %    &    '    (    )    *    +    ,    -    .    /
-    ' ',  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  '+',  0,  '-', '.',  0,
+   kEsc,kEsc,kEsc,kEsc,kEsc,  0, kEsc,kEsc,kEsc,kEsc,kEsc, '+',kEsc, '-', '.',  0,
 //   0    1    2    3    4    5    6    7    8    9    :    ;    <    =    >    ?
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',  0 ,  0 ,  0 ,  0 ,  0 ,  0 ,
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',  0 ,  0 ,kEsc,kEsc,kEsc,  0 ,
 //   @    A    B    C    D    E    F    G    H    I    J    K    L    M    N    O
-     0 , 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+   kEsc, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
 //   P    Q    R    S    T    U    V    W    X    Y    Z    [    \    ]    ^    _
     'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '[',  0 , ']',  0 , '_',
 //   `    a    b    c    d    e    f    g    h    i    j    k    l    m    n    o
-     0 , 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+   kEsc, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
 //   p    q    r    s    t    u    v    w    x    y    z    {    |    }    ~    
-    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',  0 ,  0 ,  0 ,  0 ,  0 };
+    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',kEsc,kEsc,kEsc,  0 ,  0 };
 
 const int kTempHostBufferLen = 1024;
 typedef RawCanonOutputT<char, kTempHostBufferLen> StackBuffer;
@@ -97,25 +101,15 @@ typedef RawCanonOutputT<UTF16Char, kTempHostBufferLen> StackBufferW;
 // |has_escaped| will be true if there is a percent sign.
 template<typename CHAR, typename UCHAR>
 void ScanHostname(const CHAR* spec, const url_parse::Component& host,
-                  bool* has_non_ascii, bool* has_escaped, bool* has_space) {
+                  bool* has_non_ascii, bool* has_escaped) {
   int end = host.end();
   *has_non_ascii = false;
   *has_escaped = false;
-  *has_space = false;
   for (int i = host.begin; i < end; i++) {
-    // This branch is normally taken and will be predicted very well. Testing
-    // shows that is is slightly faster to eliminate all the "normal" common
-    // characters here and fall through below to find out exactly which one
-    // failed.
-    if (static_cast<UCHAR>(spec[i]) < 0x80 && spec[i] != '%' && spec[i] != ' ')
-      continue;
-
     if (static_cast<UCHAR>(spec[i]) >= 0x80)
       *has_non_ascii = true;
     else if (spec[i] == '%')
       *has_escaped = true;
-    else if (spec[i] == ' ')
-      *has_space = true;
   }
 }
 
@@ -140,67 +134,33 @@ void InterpretIPAddress(const url_parse::Component& host,
   }
 }
 
-// Unescapes all escaped characters in the input, writing the result to
-// |*unescaped| and the output length in |*unescaped_len|.
+// Canonicalizes a host name that is entirely 8-bit characters (even though
+// the characters holding them may be 16 bits. Escaped characters will be
+// unescaped. Non-7-bit characters (for example, UTF-8) will be passed
+// unchanged.
 //
-// This does validity checking of 7-bit characters based on the above table,
-// and allows all characters with the high bit set (UTF-8, hopefully).
+// The |*has_non_ascii| flag will be true if there are non-7-bit characters in
+// the output.
 //
-// Returns true on success. On failure, |*unescaped| and |*unescaped_len|
-// will still be consistent & valid, just the contents will be meaningless.
-// The caller should return failure in this case.
+// This function is used in two situations:
 //
-// |*has_non_ascii| will be set according to if there are any non-8-bit
-// values in the unescaped output.
-bool UnescapeAndValidateHost(const char* src, int src_len,
-                             CanonOutput* unescaped, bool* has_non_ascii) {
-  bool success = true;
+//  * When the caller knows there is no non-ASCII or percent escaped
+//    characters. This is what DoHost does. The result will be a completely
+//    canonicalized host since we know nothing weird can happen (escaped
+//    characters could be unescaped to non-7-bit, so they have to be treated
+//    with suspicion at this point). It does not use the |has_non_ascii| flag.
+//
+//  * When the caller has an 8-bit string that may need unescaping.
+//    DoComplexHost calls us this situation to do unescaping and validation.
+//    After this, it may do other IDN operations depending on the value of the
+//    |*has_non_ascii| flag.
+//
+// The return value indicates if the output is a potentially valid host name.
+template<typename CHAR>
+bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output,
+                  bool* has_non_ascii) {
   *has_non_ascii = false;
 
-  for (int i = 0; i < src_len; i++) {
-    char ch = static_cast<char>(src[i]);
-    if (ch == '%') {
-      if (!DecodeEscaped(src, &i, src_len, &ch)) {
-        // Invalid escaped character, there is nothing that can make this
-        // host valid. We append an escaped percent so the URL looks reasonable
-        // and mark as failed.
-        AppendEscapedChar('%', unescaped);
-        success = false;
-        continue;
-      }
-      // The unescaped character will now be in |ch|.
-    }
-
-    if (static_cast<unsigned char>(ch) >= 0x80) {
-      // Pass through all high-bit characters so we don't mangle UTF-8. Set the
-      // flag so the caller knows it should fix the non-ASCII characters.
-      unescaped->push_back(ch);
-      *has_non_ascii = true;
-    } else {
-      // Use the lookup table to canonicalize this ASCII value.
-      char replacement = kHostCharLookup[ch];
-      if (!replacement) {
-        // Invalid character, add it as percent-escaped and mark as failed.
-        AppendEscapedChar(ch, unescaped);
-        success = false;
-      } else {
-        // Common case, the given character is valid in a hostname, the lookup
-        // table tells us the canonical representation of that character (lower
-        // cased).
-        unescaped->push_back(replacement);
-      }
-    }
-  }
-  return success;
-}
-
-// Canonicalizes a host name assuming the input is 7-bit ASCII and requires
-// no unescaping. This is the most common case so it should be fast. We convert
-// to 8-bit by static_cast (input may be 16-bit) and check for validity.
-//
-// The return value will be false if there are invalid host characters.
-template<typename CHAR>
-bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output) {
   // First check if the host name is an IP address.
   url_parse::Component out_ip;  // Unused: we compute the size ourselves later.
   if (CanonicalizeIPAddress(host, url_parse::Component(0, host_len),
@@ -209,19 +169,39 @@ bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output) {
 
   bool success = true;
   for (int i = 0; i < host_len; i++) {
-    // Find the replacement character (lower case for letters, the same as the
-    // input if no change is required).
-    char source = static_cast<char>(host[i]);
-    char replacement = kHostCharLookup[source];
-    if (!replacement) {
-      // Invalid character, add it as percent-escaped and mark as failed.
-      AppendEscapedChar(source, output);
-      success = false;
+    char source = static_cast<unsigned char>(host[i]);
+    if (source == '%') {
+      // Handle unescaping, this will replace |source| with the unescaped char.
+      if (!DecodeEscaped(host, &i, host_len, &source)) {
+        // Invalid escaped character, there is nothing that can make this
+        // host valid. We append an escaped percent so the URL looks reasonable
+        // and mark as failed.
+        AppendEscapedChar('%', output);
+        success = false;
+        continue;
+      }
+    }
+
+    if (static_cast<unsigned char>(source) >= 0x80) {
+      // Handle non-ASCII.
+      *has_non_ascii = true;
+      output->push_back(source);
     } else {
-      // Common case, the given character is valid in a hostname, the lookup
-      // table tells us the canonical representation of that character (lower
-      // cased).
-      output->push_back(replacement);
+      // We have ASCII input, we can use our lookup table.
+      unsigned char replacement = kHostCharLookup[source];
+      if (!replacement) {
+        // Invalid character, add it as percent-escaped and mark as failed.
+        AppendEscapedChar(source, output);
+        success = false;
+      } else if (replacement == kEsc) {
+        // This character is valid but should be escaped.
+        AppendEscapedChar(source, output);
+      } else {
+        // Common case, the given character is valid in a hostname, the lookup
+        // table tells us the canonical representation of that character (lower
+        // cased).
+        output->push_back(replacement);
+      }
     }
   }
   return success;
@@ -237,16 +217,15 @@ bool DoIDNHost(const UTF16Char* src, int src_len, CanonOutput* output) {
     return false;
   }
 
-  // Now we check the ASCII output like a normal host. This will fail for any
-  // invalid characters, including most importantly "%". If somebody does %00
-  // as fullwidth, ICU will convert this to ASCII. We don't want to pass this
-  // on since it could be interpreted incorrectly.
-  //
-  // We could unescape at this point, that that could also produce percents
-  // or more UTF-8 input, and it gets too complicated. If people want to
-  // escape domain names, they will have to use ASCII instead of fullwidth.
-  return DoSimpleHost<UTF16Char>(wide_output.data(), wide_output.length(),
-                                 output);
+  // Now we check the ASCII output like a normal host. It will also handle
+  // unescaping. Although we unescaped everything before this function call, if
+  // somebody does %00 as fullwidth, ICU will convert this to ASCII.
+  bool has_non_ascii;
+  bool success = DoSimpleHost<UTF16Char>(wide_output.data(),
+                                         wide_output.length(),
+                                         output, &has_non_ascii);
+  DCHECK(!has_non_ascii);
+  return success;
 }
 
 // 8-bit convert host to its ASCII version: this converts the UTF-8 input to
@@ -268,10 +247,9 @@ bool DoComplexHost(const char* host, int host_len,
     // save another huge stack buffer. It will be replaced below if it requires
     // IDN. This will also update our non-ASCII flag so we know whether the
     // unescaped input requires IDN.
-    if (!UnescapeAndValidateHost(host, host_len, output, &has_non_ascii)) {
+    if (!DoSimpleHost(host, host_len, output, &has_non_ascii)) {
       // Error with some escape sequence. We'll call the current output
-      // complete. UnescapeAndValidateHost will have written some
-      // "reasonable" output.
+      // complete. DoSimpleHost will have written some "reasonable" output.
       return false;
     }
 
@@ -350,44 +328,6 @@ bool DoComplexHost(const UTF16Char* host, int host_len,
   return DoIDNHost(host, host_len, output);
 }
 
-// Takes an otherwise canonicalized hostname in the output buffer starting
-// at |host_begin| and ending at the end of |output|. This will do an in-place
-// conversion of any spaces to "%20" for IE compatability.
-void EscapeSpacesInHost(CanonOutput* output, int host_begin) {
-  // First count the number of spaces to see what needs to be done.
-  int num_spaces = 0;
-  int end = output->length();
-  for (int i = host_begin; i < end; i++) {
-    if (output->at(i) != ' ') {
-    } else {
-      num_spaces++;
-    }
-  }
-  if (num_spaces == 0)
-    return;  // Common case, nothing to do
-
-  // Resize the buffer so that there's enough room for all the inserted chars.
-  // "%20" takes 3 chars, but we delete one for the space we're replacing.
-  int num_inserted_characters = num_spaces * 2;
-  for (int i = 0; i < num_inserted_characters; i++)
-    output->push_back(0);
-
-  // Now do an in-place replacement from the end of the string of all spaces.
-  int src = end - 1;
-  int dest = src + num_inserted_characters;
-  // When src = dest, we're in sync and there are no more spaces.
-  while (src >= host_begin && src != dest) {
-    char src_char = output->at(src--);
-    if (src_char == ' ') {
-      output->set(dest--, '0');
-      output->set(dest--, '2');
-      output->set(dest--, '%');
-    } else {
-      output->set(dest--, src_char);
-    }
-  }
-}
-
 template<typename CHAR, typename UCHAR>
 bool DoHost(const CHAR* spec,
             const url_parse::Component& host,
@@ -400,30 +340,21 @@ bool DoHost(const CHAR* spec,
     return true;
   }
 
-  bool has_non_ascii, has_escaped, has_spaces;
-  ScanHostname<CHAR, UCHAR>(spec, host, &has_non_ascii, &has_escaped,
-                            &has_spaces);
+  bool has_non_ascii, has_escaped;
+  ScanHostname<CHAR, UCHAR>(spec, host, &has_non_ascii, &has_escaped);
 
   out_host->begin = output->length();
 
   if (!has_non_ascii && !has_escaped) {
-    success &= DoSimpleHost(&spec[host.begin], host.len, output);
-
-    // Don't look for spaces in the common case that we don't have any.
-    if (has_spaces)
-      EscapeSpacesInHost(output, out_host->begin);
+    success &= DoSimpleHost(&spec[host.begin], host.len,
+                            output, &has_non_ascii);
+    DCHECK(!has_non_ascii);
   } else {
     success &= DoComplexHost(&spec[host.begin], host.len,
                              has_non_ascii, has_escaped, output);
     // We could have had escaped numerals that should now be canonicalized as
     // an IP address. This should be exceedingly rare, it's probably mostly
     // used by scammers.
-
-    // Last, we need to fix up any spaces by escaping them. This must happen
-    // after we do everything so spaces get sent through IDN unescaped. We also
-    // can't rely on the has_spaces flag we computed above because unescaping
-    // could have produced new spaces.
-    EscapeSpacesInHost(output, out_host->begin);
   }
 
   out_host->len = output->length() - out_host->begin;

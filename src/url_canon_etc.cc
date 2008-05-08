@@ -179,14 +179,12 @@ bool DoUserInfo(const CHAR* username_spec,
     return true;
   }
 
-  // TODO(brettw) bug 735548: we should be checking that the user info
-  // characters are allowed in the input.
-
   // Write the username.
   out_username->begin = output->length();
   if (username.len > 0) {
-    AppendInvalidNarrowString(username_spec, username.begin, username.end(),
-                              output);
+    // This will escape characters not valid for the username.
+    AppendStringOfType(&username_spec[username.begin], username.len,
+                       CHAR_USERINFO, output);
   }
   out_username->len = output->length() - out_username->begin;
 
@@ -195,8 +193,8 @@ bool DoUserInfo(const CHAR* username_spec,
   if (password.len > 0) {
     output->push_back(':');
     out_password->begin = output->length();
-    AppendInvalidNarrowString(password_spec, password.begin, password.end(),
-                              output);
+    AppendStringOfType(&password_spec[password.begin], password.len,
+                       CHAR_USERINFO, output);
     out_password->len = output->length() - out_password->begin;
   } else {
     *out_password = url_parse::Component();
@@ -254,18 +252,49 @@ bool DoPort(const CHAR* spec,
   return true;
 }
 
-// Like ConvertUTF?ToUTF? except this is a UTF-8 -> UTF-8 converter. We'll
-// validate the input, and use the unicode replacement character for invalid
-// input, and append the result to the output.
-bool CopyAndValidateUTF8(const char* input, int input_len,
-                         CanonOutput* output) {
-  bool success = true;
-  for (int i = 0; i < input_len; i++) {
-    unsigned code_point;
-    success &= ReadUTFChar(input, &i, input_len, &code_point);
-    AppendUTF8Value(code_point, output);
+template<typename CHAR, typename UCHAR>
+void DoCanonicalizeRef(const CHAR* spec,
+                       const url_parse::Component& ref,
+                       CanonOutput* output,
+                       url_parse::Component* out_ref) {
+  if (ref.len < 0) {
+    // Common case of no ref.
+    *out_ref = url_parse::Component();
+    return;
   }
-  return success;
+
+  // Append the ref separator. Note that we need to do this even when the ref
+  // is empty but present.
+  output->push_back('#');
+  out_ref->begin = output->length();
+
+  // Now iterate through all the characters, converting to UTF-8 and validating.
+  int end = ref.end();
+  for (int i = ref.begin; i < end; i++) {
+    if (spec[i] == 0) {
+      // IE just strips NULLs, so we do too.
+      continue;
+    } else if (static_cast<UCHAR>(spec[i]) < 0x20) {
+      // Unline IE seems to, we escape control characters. This will probably
+      // make the reference fragment unusable on a web page, but people
+      // shouldn't be using control characters in their anchor names.
+      AppendEscapedChar(static_cast<unsigned char>(spec[i]), output);
+    } else if (static_cast<UCHAR>(spec[i]) < 0x80) {
+      // Normal ASCII characters are just appended.
+      output->push_back(static_cast<char>(spec[i]));
+    } else {
+      // Non-ASCII characters are appended unescaped, but only when they are
+      // valid. Invalid Unicode characters are replaced with the "invalid
+      // character" as IE seems to.
+      unsigned code_point;
+      if (!ReadUTFChar(spec, &i, end, &code_point))
+        AppendUTF8Value(kUnicodeReplacementCharacter, output);
+      else
+        AppendUTF8Value(code_point, output);
+    }
+  }
+
+  out_ref->len = output->length() - out_ref->begin;
 }
 
 }  // namespace
@@ -345,49 +374,18 @@ bool CanonicalizePort(const UTF16Char* spec,
                                       output, out_port);
 }
 
-// We don't do anything fancy with refs, we just validate that the input is
-// valid UTF-8 and return.
-bool CanonicalizeRef(const char* spec,
+void CanonicalizeRef(const char* spec,
                      const url_parse::Component& ref,
                      CanonOutput* output,
                      url_parse::Component* out_ref) {
-  if (ref.len < 0) {
-    // Common case of no ref.
-    *out_ref = url_parse::Component();
-    return true;
-  }
-
-  // Append the ref separator. Note that we need to do this even when the ref
-  // is empty but present.
-  output->push_back('#');
-  out_ref->begin = output->length();
-
-  bool success = CopyAndValidateUTF8(&spec[ref.begin], ref.len, output);
-  out_ref->len = output->length() - out_ref->begin;
-  return success;
+  DoCanonicalizeRef<char, unsigned char>(spec, ref, output, out_ref);
 }
 
-// 16-bit-character refs need to get converted to UTF-8.
-bool CanonicalizeRef(const UTF16Char* spec,
+void CanonicalizeRef(const UTF16Char* spec,
                      const url_parse::Component& ref,
                      CanonOutput* output,
                      url_parse::Component* out_ref) {
-  if (ref.len < 0) {
-    // Common case of no ref.
-    *out_ref = url_parse::Component();
-    return true;
-  }
-
-  // Append the ref separator. Note that we need to do this even when the ref
-  // is empty but present.
-  output->push_back('#');
-  out_ref->begin = output->length();
-
-  // The handy-dandy conversion function will validate the UTF-16 and convert
-  // to UTF-8 for us!
-  bool success = ConvertUTF16ToUTF8(&spec[ref.begin], ref.len, output);
-  out_ref->len = output->length() - out_ref->begin;
-  return success;
+  DoCanonicalizeRef<UTF16Char, UTF16Char>(spec, ref, output, out_ref);
 }
 
 }  // namespace url_canon

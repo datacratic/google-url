@@ -439,17 +439,13 @@ void CanonicalizeQuery(const UTF16Char* spec,
 // canonicalizer that does not produce ASCII output). The output is
 // guaranteed to be valid UTF-8.
 //
-// The only way this function will fail is if the input is invalid
-// UTF-8/UTF-16. In this case, we'll use the "Unicode replacement character"
-// for the confusing bits and copy the rest. The application will probably not
-// want to treat a failure converting the ref as a failure canonicalizing the
-// URL, since the page can probably still be loaded, just not scrolled
-// properly.
-bool CanonicalizeRef(const char* spec,
+// This function will not fail. If the input is invalid UTF-8/UTF-16, we'll use
+// the "Unicode replacement character" for the confusing bits and copy the rest.
+void CanonicalizeRef(const char* spec,
                      const url_parse::Component& path,
                      CanonOutput* output,
                      url_parse::Component* out_path);
-bool CanonicalizeRef(const UTF16Char* spec,
+void CanonicalizeRef(const UTF16Char* spec,
                      const url_parse::Component& path,
                      CanonOutput* output,
                      url_parse::Component* out_path);
