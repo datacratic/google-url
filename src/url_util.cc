@@ -88,19 +88,24 @@ template<typename CHAR>
 inline bool CompareSchemeComponent(const CHAR* spec,
                                    const url_parse::Component& component,
                                    const char* compare_to) {
+  if (!component.is_nonempty())
+    return compare_to[0] == 0;  // When component is empty, match empty scheme.
   return LowerCaseEqualsASCII(&spec[component.begin],
                               &spec[component.end()],
                               compare_to);
 }
 
-// Returns true if the given scheme is one of the registered "standard"
-// schemes. Note that this does not check for "://", use IsStandard for that.
+// Returns true if the given scheme identified by |scheme| within |spec| is one
+// of the registered "standard" schemes. Note that this does not check for
+// "://", use IsStandard for that.
 template<typename CHAR>
-bool IsStandardScheme(const CHAR* scheme,
-                        int scheme_len) {
+bool IsStandardScheme(const CHAR* spec, const url_parse::Component& scheme) {
+  if (!scheme.is_nonempty())
+    return false;  // Empty or invalid schemes are non-standard.
+
   InitStandardSchemes();
   for (size_t i = 0; i < standard_schemes->size(); i++) {
-    if (LowerCaseEqualsASCII(scheme, &scheme[scheme_len],
+    if (LowerCaseEqualsASCII(&spec[scheme.begin], &spec[scheme.end()],
                              standard_schemes->at(i)))
       return true;
   }
@@ -125,7 +130,7 @@ template<typename CHAR>
 bool DoIsStandard(const CHAR* spec, int spec_len,
                   const url_parse::Component& scheme) {
   return HasStandardSchemeSeparator(spec, spec_len, scheme) ||
-         IsStandardScheme(&spec[scheme.begin], scheme.len);
+         IsStandardScheme(spec, scheme);
 }
 
 template<typename CHAR>
@@ -291,9 +296,8 @@ bool DoReplaceComponents(const char* spec,
        IsStandard(spec, spec_len, parsed.scheme)) ||
       // ...or it is being replaced and the new one is standard.
       (replacements.IsSchemeOverridden() &&
-       IsStandardScheme(&replacements.sources().scheme[
-                            replacements.components().scheme.begin],
-                        replacements.components().scheme.len))) {
+       IsStandardScheme(replacements.sources().scheme,
+                        replacements.components().scheme))) {
     // Standard URL with all parts.
     return url_canon::ReplaceStandardURL(spec, parsed, replacements,
                                          charset_converter, output, out_parsed);
