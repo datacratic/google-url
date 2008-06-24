@@ -153,6 +153,20 @@ class GURL {
   GURL Resolve(const std::string& relative) const;
   GURL Resolve(const UTF16String& relative) const;
 
+  // Like Resolve() above but takes a character set encoder which will be used
+  // for any query text specified in the input. The charset converter parameter
+  // may be NULL, in which case it will be treated as UTF-8.
+  //
+  // TODO(brettw): These should be replaced with versions that take something
+  // more friendly than a raw CharsetConverter (maybe like an ICU character set
+  // name).
+  GURL ResolveWithCharsetConverter(
+      const std::string& relative,
+      url_canon::CharsetConverter* charset_converter) const;
+  GURL ResolveWithCharsetConverter(
+      const UTF16String& relative,
+      url_canon::CharsetConverter* charset_converter) const;
+
   // Creates a new GURL by replacing the current URL's components with the
   // supplied versions. See the Replacements class in url_canon.h for more.
   //

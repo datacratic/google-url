@@ -156,8 +156,17 @@ const std::string& GURL::spec() const {
   return EmptyStringForGURL();
 }
 
-// Note: code duplicated below (it's inconvenient to use a template here).
 GURL GURL::Resolve(const std::string& relative) const {
+  return ResolveWithCharsetConverter(relative, NULL);
+}
+GURL GURL::Resolve(const UTF16String& relative) const {
+  return ResolveWithCharsetConverter(relative, NULL);
+}
+
+// Note: code duplicated below (it's inconvenient to use a template here).
+GURL GURL::ResolveWithCharsetConverter(
+    const std::string& relative,
+    url_canon::CharsetConverter* charset_converter) const {
   // Not allowed for invalid URLs.
   if (!is_valid_)
     return GURL();
@@ -172,7 +181,7 @@ GURL GURL::Resolve(const std::string& relative) const {
   if (!url_util::ResolveRelative(
           spec_.data(), static_cast<int>(spec_.length()), parsed_,
           relative.data(), static_cast<int>(relative.length()),
-          NULL, &output, &result.parsed_)) {
+          charset_converter, &output, &result.parsed_)) {
     // Error resolving, return an empty URL.
     return GURL();
   }
@@ -183,7 +192,9 @@ GURL GURL::Resolve(const std::string& relative) const {
 }
 
 // Note: code duplicated above (it's inconvenient to use a template here).
-GURL GURL::Resolve(const UTF16String& relative) const {
+GURL GURL::ResolveWithCharsetConverter(
+    const UTF16String& relative,
+    url_canon::CharsetConverter* charset_converter) const {
   // Not allowed for invalid URLs.
   if (!is_valid_)
     return GURL();
@@ -198,7 +209,7 @@ GURL GURL::Resolve(const UTF16String& relative) const {
   if (!url_util::ResolveRelative(
           spec_.data(), static_cast<int>(spec_.length()), parsed_,
           relative.data(), static_cast<int>(relative.length()),
-          NULL, &output, &result.parsed_)) {
+          charset_converter, &output, &result.parsed_)) {
     // Error resolving, return an empty URL.
     return GURL();
   }
