@@ -29,7 +29,7 @@
 
 #include "base/basictypes.h"
 #include "googleurl/src/url_parse.h"
-#include "testing/base/gunit.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 // Some implementations of base/basictypes.h may define ARRAYSIZE.
 // If it's not defined, we define it to the ARRAYSIZE_UNSAFE macro
@@ -212,7 +212,7 @@ TEST(URLParser, CountCharactersBefore) {
     {"file:///c:/foo", Parsed::HOST, true, 7},
     {"file:///c:/foo", Parsed::PATH, true, 7},
   };
-  for (int i = 0; i < arraysize(count_cases); i++) {
+  for (int i = 0; i < ARRAYSIZE(count_cases); i++) {
     int length = static_cast<int>(strlen(count_cases[i].url));
 
     // Simple test to distinguish file and standard URLs.

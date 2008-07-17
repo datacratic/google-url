@@ -119,7 +119,6 @@ void DoConvertToQueryEncoding(const CHAR* spec,
                               const url_parse::Component& query,
                               CharsetConverter* converter,
                               CanonOutput* output) {
-  int end = query.end();
   if (IsAllASCII<CHAR, UCHAR>(spec, query)) {
     // Easy: the input can just appended with no character set conversions.
     AppendRaw8BitQueryString(&spec[query.begin], query.len, output);

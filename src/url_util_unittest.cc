@@ -31,7 +31,7 @@
 #include "googleurl/src/url_canon_stdstring.h"
 #include "googleurl/src/url_parse.h"
 #include "googleurl/src/url_util.h"
-#include "testing/base/gunit.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 TEST(URLUtilTest, FindAndCompareScheme) {
   url_parse::Component found_scheme;

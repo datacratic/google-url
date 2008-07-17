@@ -36,7 +36,7 @@
 #include "googleurl/src/url_canon_stdstring.h"
 #include "googleurl/src/url_parse.h"
 #include "googleurl/src/url_test_utils.h"
-#include "testing/base/gunit.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 // Some implementations of base/basictypes.h may define ARRAYSIZE.
 // If it's not defined, we define it to the ARRAYSIZE_UNSAFE macro
@@ -607,7 +607,7 @@ TEST(URLCanonTest, Port) {
     {"80", url_parse::PORT_UNSPECIFIED, ":80", url_parse::Component(1, 2), true},
   };
 
-  for (int i = 0; i < arraysize(port_cases); i++) {
+  for (int i = 0; i < ARRAYSIZE(port_cases); i++) {
     int url_len = static_cast<int>(strlen(port_cases[i].input));
     url_parse::Component in_comp(0, url_len);
     url_parse::Component out_comp;
@@ -1220,10 +1220,10 @@ TEST(URLCanonTest, CanonicalizeFileURL) {
     {"file:///C:/asdf#\xc2", "file:///C:/asdf#\xef\xbf\xbd", true, url_parse::Component(), url_parse::Component(7, 8)},
 #else
       // Unix-style paths
-    {"file:///home/me", "file:///home/me", true, url_parse::Component(7, 0), url_parse::Component(7, 8)},
+    {"file:///home/me", "file:///home/me", true, url_parse::Component(), url_parse::Component(7, 8)},
       // Windowsy ones should get still treated as Unix-style.
-    {"file:c:\\foo\\bar.html", "file:///c:/foo/bar.html", true, url_parse::Component(7, 0), url_parse::Component(7, 16)},
-    {"file:c|//foo\\bar.html", "file:///c%7C//foo/bar.html", true, url_parse::Component(7, 0), url_parse::Component(7, 19)},
+    {"file:c:\\foo\\bar.html", "file:///c:/foo/bar.html", true, url_parse::Component(), url_parse::Component(7, 16)},
+    {"file:c|//foo\\bar.html", "file:///c%7C//foo/bar.html", true, url_parse::Component(), url_parse::Component(7, 19)},
       // TODO(brettw) there should be a "file://localhost/" example here.
 #endif  // _WIN32
   };
@@ -1625,11 +1625,12 @@ TEST(URLCanonTest, ReplacementOverflow) {
   // Override two components, the path with something short, and the query with
   // sonething long enough to trigger the bug.
   url_canon::Replacements<UTF16Char> repl;
-  std::wstring new_query;
+  UTF16String new_query;
   for (int i = 0; i < 4800; i++)
     new_query.push_back('a');
 
-  repl.SetPath(L"/foo", url_parse::Component(0, 4));
+  UTF16String new_path(WStringToUTF16(L"/foo"));
+  repl.SetPath(new_path.c_str(), url_parse::Component(0, 4));
   repl.SetQuery(new_query.c_str(),
                 url_parse::Component(0, static_cast<int>(new_query.length())));
 
