@@ -791,6 +791,9 @@ TEST(URLCanonTest, Query) {
     {"q=Chinese\xef\xbc\xa7", L"q=Chinese\xff27", "iso-8859-1", "?q=Chinese%26%2365319%3B"},
       // Invalid UTF-8/16 input should be replaced with invalid characters.
     {"q=\xed\xed", L"q=\xd800\xd800", NULL, "?q=%EF%BF%BD%EF%BF%BD"},
+      // Don't allow < or > because sometimes they are used for XSS if the
+      // URL is echoed in content. Firefox does this, IE doesn't.
+    {"q=<asdf>", L"q=<asdf>", NULL, "?q=%3Casdf%3E"},
   };
 
   for (int i = 0; i < ARRAYSIZE(query_cases); i++) {

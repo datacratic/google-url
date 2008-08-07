@@ -161,9 +161,9 @@ const unsigned char kSharedCharTypeTable[0x100] = {
     CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX | CHAR_DEC,             // 0x39  9
     CHAR_QUERY,  // 0x3a  :
     CHAR_QUERY,  // 0x3b  ;
-    CHAR_QUERY,  // 0x3c  <
+    0,           // 0x3c  <  (Try to prevent certain types of XSS.)
     CHAR_QUERY,  // 0x3d  =
-    CHAR_QUERY,  // 0x3e  >
+    0,           // 0x3e  >  (Try to prevent certain types of XSS.)
     CHAR_QUERY,  // 0x3f  ?
     CHAR_QUERY,  // 0x40  @
     CHAR_QUERY | CHAR_USERINFO | CHAR_IPV4 | CHAR_HEX,  // 0x41  A
