@@ -1397,28 +1397,29 @@ TEST(URLCanonTest, _itow_s) {
   // null-terminated.  We also allocate one byte more than what we tell
   // _itoa_s about, and ensure that the extra byte is untouched.
   UTF16Char buf[6];
-  memset(buf, 0xff, sizeof(buf));
+  const char fill_mem = 0xff;
+  const UTF16Char fill_char = 0xffff;
+  memset(buf, fill_mem, sizeof(buf));
   EXPECT_EQ(0, url_canon::_itow_s(12, buf, sizeof(buf) / 2 - 1, 10));
   EXPECT_EQ(WStringToUTF16(L"12"), UTF16String(buf));
-  EXPECT_EQ(0xffff, buf[3]);
+  EXPECT_EQ(fill_char, buf[3]);
 
   // Test the edge cases - exactly the buffer size and one over
-  memset(buf, 0xff, sizeof(buf));
   EXPECT_EQ(0, url_canon::_itow_s(1234, buf, sizeof(buf) / 2 - 1, 10));
   EXPECT_EQ(WStringToUTF16(L"1234"), UTF16String(buf));
-  EXPECT_EQ(0xffff, buf[5]);
+  EXPECT_EQ(fill_char, buf[5]);
 
-  memset(buf, 0xff, sizeof(buf));
+  memset(buf, fill_mem, sizeof(buf));
   EXPECT_EQ(EINVAL, url_canon::_itow_s(12345, buf, sizeof(buf) / 2 - 1, 10));
-  EXPECT_EQ(0xffff, buf[5]);  // should never write to this location
+  EXPECT_EQ(fill_char, buf[5]);  // should never write to this location
 
   // Test the template overload (note that this will see the full buffer)
-  memset(buf, 0xff, sizeof(buf));
+  memset(buf, fill_mem, sizeof(buf));
   EXPECT_EQ(0, url_canon::_itow_s(12, buf, 10));
   EXPECT_EQ(WStringToUTF16(L"12"), UTF16String(buf));
-  EXPECT_EQ(0xffff, buf[3]);
+  EXPECT_EQ(fill_char, buf[3]);
 
-  memset(buf, 0xff, sizeof(buf));
+  memset(buf, fill_mem, sizeof(buf));
   EXPECT_EQ(0, url_canon::_itow_s(12345, buf, 10));
   EXPECT_EQ(WStringToUTF16(L"12345"), UTF16String(buf));
 

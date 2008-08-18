@@ -164,17 +164,19 @@ extern const UTF16Char kUnicodeReplacementCharacter;
 // can be incremented in a loop and will be ready for the next character.
 // (for a single-byte ASCII character, it will not be changed).
 inline bool ReadUTFChar(const char* str, int* begin, int length,
-                        unsigned* code_point) {
-  U8_NEXT(str, *begin, length, *code_point);
+                        unsigned* code_point_out) {
+  int code_point;  // Avoids warning when U8_NEXT writes -1 to it.
+  U8_NEXT(str, *begin, length, code_point);
+  *code_point_out = static_cast<unsigned>(code_point);
 
   // The ICU macro above moves to the next char, we want to point to the last
   // char consumed.
   (*begin)--;
 
   // Validate the decoded value.
-  if (U_IS_UNICODE_CHAR(*code_point))
+  if (U_IS_UNICODE_CHAR(code_point))
     return true;
-  *code_point = kUnicodeReplacementCharacter;
+  *code_point_out = kUnicodeReplacementCharacter;
   return false;
 }
 
