@@ -135,9 +135,8 @@ void InterpretIPAddress(const url_parse::Component& host,
 }
 
 // Canonicalizes a host name that is entirely 8-bit characters (even though
-// the characters holding them may be 16 bits. Escaped characters will be
-// unescaped. Non-7-bit characters (for example, UTF-8) will be passed
-// unchanged.
+// the type holding them may be 16 bits. Escaped characters will be unescaped.
+// Non-7-bit characters (for example, UTF-8) will be passed unchanged.
 //
 // The |*has_non_ascii| flag will be true if there are non-7-bit characters in
 // the output.
@@ -169,11 +168,11 @@ bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output,
 
   bool success = true;
   for (int i = 0; i < host_len; i++) {
-    char source = static_cast<unsigned char>(host[i]);
+    unsigned char source = static_cast<unsigned char>(host[i]);
     if (source == '%') {
-      // Handle unescaping, this will replace |source| with the unescaped char.
+      // Handle unescaping. This will replace |source| with the unescaped char.
       if (!DecodeEscaped(host, &i, host_len, &source)) {
-        // Invalid escaped character, there is nothing that can make this
+        // Invalid escaped character. There is nothing that can make this
         // host valid. We append an escaped percent so the URL looks reasonable
         // and mark as failed.
         AppendEscapedChar('%', output);
@@ -182,7 +181,7 @@ bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output,
       }
     }
 
-    if (static_cast<unsigned char>(source) >= 0x80) {
+    if (source >= 0x80) {
       // Handle non-ASCII.
       *has_non_ascii = true;
       output->push_back(source);

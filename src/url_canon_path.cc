@@ -268,12 +268,10 @@ bool DoPartialPath(const CHAR* spec,
 
         } else if (out_ch == '%') {
           // Handle escape sequences.
-          char unescaped_value;
+          unsigned char unescaped_value;
           if (DecodeEscaped(spec, &i, end, &unescaped_value)) {
             // Valid escape sequence, see if we keep, reject, or unescape it.
-            unsigned char unsigned_unescaped =
-                static_cast<unsigned char>(unescaped_value);
-            char unescaped_flags = kPathCharLookup[unsigned_unescaped];
+            char unescaped_flags = kPathCharLookup[unescaped_value];
 
             if (unescaped_flags & UNESCAPE) {
               // This escaped value shouldn't be escaped, copy it.

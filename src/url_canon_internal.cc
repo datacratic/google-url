@@ -390,8 +390,8 @@ int _itoa_s(int value, char* buffer, size_t size_in_chars, int radix) {
     return EINVAL;
 
   int written = snprintf(buffer, size_in_chars, "%d", value);
-  if (written >= size_in_chars) {
-    // Output was truncated
+  if (static_cast<size_t>(written) >= size_in_chars) {
+    // Output was truncated, or written was negative.
     return EINVAL;
   }
   return 0;
@@ -405,8 +405,8 @@ int _itow_s(int value, UTF16Char* buffer, size_t size_in_chars, int radix) {
   // Add an extra byte for the terminating null.
   char temp[13];
   int written = snprintf(temp, sizeof(temp), "%d", value);
-  if (written >= size_in_chars) {
-    // Output was truncated
+  if (static_cast<size_t>(written) >= size_in_chars) {
+    // Output was truncated, or written was negative.
     return EINVAL;
   }
 
