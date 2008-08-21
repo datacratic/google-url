@@ -56,7 +56,7 @@ TEST(GURLTest, Types) {
 #endif
   };
 
-  for (int i = 0; i < ARRAYSIZE(type_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(type_cases); i++) {
     GURL gurl(type_cases[i].src);
     EXPECT_STREQ(type_cases[i].expected, gurl.spec().c_str());
   }
@@ -174,7 +174,7 @@ TEST(GURLTest, Resolve) {
     {"data:/blahblah", "file.html", false, ""},
   };
 
-  for (int i = 0; i < ARRAYSIZE(resolve_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(resolve_cases); i++) {
     // 8-bit code path.
     GURL input(resolve_cases[i].base);
     GURL output = input.Resolve(resolve_cases[i].relative);
@@ -202,7 +202,7 @@ TEST(GURLTest, GetOrigin) {
     {"http://:pass@www.google.com", "http://www.google.com/"},
     {"http://:@www.google.com", "http://www.google.com/"},
   };
-  for (int i = 0; i < ARRAYSIZE(cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
     GURL url(cases[i].input);
     GURL origin = url.GetOrigin();
     EXPECT_EQ(cases[i].expected, origin.spec());
@@ -219,7 +219,7 @@ TEST(GURLTest, GetWithEmptyPath) {
     {"http://www.google.com/foo/bar.html?baz=22", "http://www.google.com/"},
   };
 
-  for (int i = 0; i < ARRAYSIZE(cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
     GURL url(cases[i].input);
     GURL empty_path = url.GetWithEmptyPath();
     EXPECT_EQ(cases[i].expected, empty_path.spec());
@@ -250,7 +250,7 @@ TEST(GURLTest, Replacements) {
 #endif
   };
 
-  for (int i = 0; i < ARRAYSIZE(replace_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(replace_cases); i++) {
     const ReplaceCase& cur = replace_cases[i];
     GURL url(cur.base);
     GURL::Replacements repl;
@@ -280,7 +280,7 @@ TEST(GURLTest, PathForRequest) {
     {"http://www.google.com/foo/bar.html?query#ref", "/foo/bar.html?query"},
   };
 
-  for (int i = 0; i < ARRAYSIZE(cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
     GURL url(cases[i].input);
     std::string path_request = url.PathForRequest();
     EXPECT_EQ(cases[i].expected, path_request);
@@ -300,7 +300,7 @@ TEST(GURLTest, IPAddress) {
     {"some random input!", false},
   };
 
-  for (int i = 0; i < ARRAYSIZE(ip_tests); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(ip_tests); i++) {
     GURL url(ip_tests[i].spec);
     EXPECT_EQ(ip_tests[i].expected_ip, url.HostIsIPAddress());
   }

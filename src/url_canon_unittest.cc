@@ -162,7 +162,7 @@ TEST(URLCanonTest, UTF) {
   };
 
   std::string out_str;
-  for (int i = 0; i < ARRAYSIZE(utf_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(utf_cases); i++) {
     if (utf_cases[i].input8) {
       out_str.clear();
       url_canon::StdStringCanonOutput output(&out_str);
@@ -225,7 +225,7 @@ TEST(URLCanonTest, ICUCharsetConverter) {
     {L"hello\x4f60\x06de\x597dworld", "big5", "hello\xa7\x41%26%231758%3B\xa6\x6eworld"},
   };
 
-  for (int i = 0; i < ARRAYSIZE(icu_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(icu_cases); i++) {
     UConvScoper conv(icu_cases[i].encoding);
     ASSERT_TRUE(conv.converter());
     url_canon::ICUCharsetConverter converter(conv.converter());
@@ -256,7 +256,7 @@ TEST(URLCanonTest, ICUCharsetConverter) {
     url_canon::RawCanonOutput<static_size> output;
     converter.ConvertFromUTF16(input.c_str(), static_cast<int>(input.length()),
                                &output);
-    EXPECT_TRUE(output.length() == input.length());
+    EXPECT_EQ(input.length(), static_cast<size_t>(output.length()));
   }
 }
 
@@ -282,7 +282,7 @@ TEST(URLCanonTest, Scheme) {
 
   std::string out_str;
 
-  for (int i = 0; i < arraysize(scheme_cases); i++) {
+  for (size_t i = 0; i < arraysize(scheme_cases); i++) {
     int url_len = static_cast<int>(strlen(scheme_cases[i].input));
     url_parse::Component in_comp(0, url_len);
     url_parse::Component out_comp;
@@ -387,7 +387,7 @@ TEST(URLCanonTest, Host) {
   };
 
   std::string out_str;
-  for (int i = 0; i < arraysize(host_cases); i++) {
+  for (size_t i = 0; i < arraysize(host_cases); i++) {
     // Narrow version.
     if (host_cases[i].input8) {
       int host_len = static_cast<int>(strlen(host_cases[i].input8));
@@ -479,7 +479,7 @@ TEST(URLCanonTest, IPv4) {
     {"000000000000000300.168.1", L"000000000000000300.168.1", "", url_parse::Component(), false},
   };
 
-  for (int i = 0; i < arraysize(cases); i++) {
+  for (size_t i = 0; i < arraysize(cases); i++) {
     // 8-bit version.
     url_parse::Component component(0,
                                    static_cast<int>(strlen(cases[i].input8)));
@@ -541,7 +541,7 @@ TEST(URLCanonTest, UserInfo) {
     {"ftp://me\\mydomain:pass@foo.com/", "", url_parse::Component(0, -1), url_parse::Component(0, -1), true},
   };
 
-  for (int i = 0; i < ARRAYSIZE(user_info_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(user_info_cases); i++) {
     int url_len = static_cast<int>(strlen(user_info_cases[i].input));
     url_parse::Parsed parsed;
     url_parse::ParseStandardURL(user_info_cases[i].input, url_len, &parsed);
@@ -607,7 +607,7 @@ TEST(URLCanonTest, Port) {
     {"80", url_parse::PORT_UNSPECIFIED, ":80", url_parse::Component(1, 2), true},
   };
 
-  for (int i = 0; i < ARRAYSIZE(port_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(port_cases); i++) {
     int url_len = static_cast<int>(strlen(port_cases[i].input));
     url_parse::Component in_comp(0, url_len);
     url_parse::Component out_comp;
@@ -711,7 +711,7 @@ TEST(URLCanonTest, Path) {
     {NULL, L"/\xfdd0zyx", "/%EF%BF%BDzyx", url_parse::Component(0, 13), false},
   };
 
-  for (int i = 0; i < arraysize(path_cases); i++) {
+  for (size_t i = 0; i < arraysize(path_cases); i++) {
     if (path_cases[i].input8) {
       int len = static_cast<int>(strlen(path_cases[i].input8));
       url_parse::Component in_comp(0, len);
@@ -796,7 +796,7 @@ TEST(URLCanonTest, Query) {
     {"q=<asdf>", L"q=<asdf>", NULL, "?q=%3Casdf%3E"},
   };
 
-  for (int i = 0; i < ARRAYSIZE(query_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(query_cases); i++) {
     url_parse::Component out_comp;
 
     UConvScoper conv(query_cases[i].encoding);
@@ -867,7 +867,7 @@ TEST(URLCanonTest, Ref) {
     {"#asdf", L"#asdf", "##asdf", url_parse::Component(1, 5), true},
   };
 
-  for (int i = 0; i < arraysize(ref_cases); i++) {
+  for (size_t i = 0; i < arraysize(ref_cases); i++) {
     // 8-bit input
     if (ref_cases[i].input8) {
       int len = static_cast<int>(strlen(ref_cases[i].input8));
@@ -955,7 +955,7 @@ TEST(URLCanonTest, CanonicalizeStandardURL) {
     {"gopher://foo:443/", "gopher://foo:443/", true},
   };
 
-  for (int i = 0; i < ARRAYSIZE(cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
     int url_len = static_cast<int>(strlen(cases[i].input));
     url_parse::Parsed parsed;
     url_parse::ParseStandardURL(cases[i].input, url_len, &parsed);
@@ -984,7 +984,7 @@ TEST(URLCanonTest, ReplaceStandardURL) {
     {"http://a:b@google.com:22/foo?baz@cat", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "http://a:b@google.com:22/foo?baz@cat"},
   };
 
-  for (int i = 0; i < arraysize(replace_cases); i++) {
+  for (size_t i = 0; i < arraysize(replace_cases); i++) {
     const ReplaceCase& cur = replace_cases[i];
     int base_len = static_cast<int>(strlen(cur.base));
     url_parse::Parsed parsed;
@@ -1060,7 +1060,7 @@ TEST(URLCanonTest, ReplaceFileURL) {
     {"file:///home/gaba", NULL, NULL, NULL, NULL, NULL, "interesting/", NULL, NULL, "file:///interesting/"},
   };
 
-  for (int i = 0; i < arraysize(replace_cases); i++) {
+  for (size_t i = 0; i < arraysize(replace_cases); i++) {
     const ReplaceCase& cur = replace_cases[i];
     int base_len = static_cast<int>(strlen(cur.base));
     url_parse::Parsed parsed;
@@ -1100,7 +1100,7 @@ TEST(URLCanonTest, ReplacePathURL) {
     {"data:foo", NULL, NULL, NULL, NULL, NULL, kDeleteComp, NULL, NULL, "data:"},
   };
 
-  for (int i = 0; i < arraysize(replace_cases); i++) {
+  for (size_t i = 0; i < arraysize(replace_cases); i++) {
     const ReplaceCase& cur = replace_cases[i];
     int base_len = static_cast<int>(strlen(cur.base));
     url_parse::Parsed parsed;
@@ -1152,7 +1152,7 @@ TEST(URLCanonTest, ReplaceMailtoURL) {
     {"mailto:addr1", NULL, NULL, NULL, NULL, NULL, NULL, NULL, "BLAH", "mailto:addr1"},
   };
 
-  for (int i = 0; i < arraysize(replace_cases); i++) {
+  for (size_t i = 0; i < arraysize(replace_cases); i++) {
     const ReplaceCase& cur = replace_cases[i];
     int base_len = static_cast<int>(strlen(cur.base));
     url_parse::Parsed parsed;
@@ -1231,7 +1231,7 @@ TEST(URLCanonTest, CanonicalizeFileURL) {
 #endif  // _WIN32
   };
 
-  for (int i = 0; i < ARRAYSIZE(cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
     int url_len = static_cast<int>(strlen(cases[i].input));
     url_parse::Parsed parsed;
     url_parse::ParseFileURL(cases[i].input, url_len, &parsed);
@@ -1271,7 +1271,7 @@ TEST(URLCanonTest, CanonicalizePathURL) {
     {":\":This /is interesting;?#", ":\":This /is interesting;?#"},
   };
 
-  for (int i = 0; i < ARRAYSIZE(path_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(path_cases); i++) {
     int url_len = static_cast<int>(strlen(path_cases[i].input));
     url_parse::Parsed parsed;
     url_parse::ParsePathURL(path_cases[i].input, url_len, &parsed);
@@ -1326,7 +1326,7 @@ TEST(URLCanonTest, CanonicalizeMailtoURL) {
   url_parse::Parsed parsed;
   url_parse::Parsed out_parsed;
 
-  for (int i = 0; i < ARRAYSIZE(cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
     int url_len = static_cast<int>(strlen(cases[i].input));
     if (i == 8) {
       // The 9th test case purposely has a '\0' in it -- don't count it
@@ -1367,23 +1367,23 @@ TEST(URLCanonTest, _itoa_s) {
   memset(buf, 0xff, sizeof(buf));
   EXPECT_EQ(0, url_canon::_itoa_s(12, buf, sizeof(buf) - 1, 10));
   EXPECT_STREQ("12", buf);
-  EXPECT_EQ(0xff, buf[3]);
+  EXPECT_EQ('\xFF', buf[3]);
 
   // Test the edge cases - exactly the buffer size and one over
   memset(buf, 0xff, sizeof(buf));
   EXPECT_EQ(0, url_canon::_itoa_s(1234, buf, sizeof(buf) - 1, 10));
   EXPECT_STREQ("1234", buf);
-  EXPECT_EQ(0xff, buf[5]);
+  EXPECT_EQ('\xFF', buf[5]);
 
   memset(buf, 0xff, sizeof(buf));
   EXPECT_EQ(EINVAL, url_canon::_itoa_s(12345, buf, sizeof(buf) - 1, 10));
-  EXPECT_EQ(0xff, buf[5]);  // should never write to this location
+  EXPECT_EQ('\xFF', buf[5]);  // should never write to this location
 
   // Test the template overload (note that this will see the full buffer)
   memset(buf, 0xff, sizeof(buf));
   EXPECT_EQ(0, url_canon::_itoa_s(12, buf, 10));
   EXPECT_STREQ("12", buf);
-  EXPECT_EQ(0xff, buf[3]);
+  EXPECT_EQ('\xFF', buf[3]);
 
   memset(buf, 0xff, sizeof(buf));
   EXPECT_EQ(0, url_canon::_itoa_s(12345, buf, 10));
@@ -1563,7 +1563,7 @@ TEST(URLCanonTest, ResolveRelativeURL) {
     {"http://host/a", true, false, "//c:\\foo", true, true, true, "http://c/foo"},
   };
 
-  for (int i = 0; i < ARRAYSIZE(rel_cases); i++) {
+  for (size_t i = 0; i < ARRAYSIZE(rel_cases); i++) {
     const RelativeCase& cur_case = rel_cases[i];
 
     url_parse::Parsed parsed;
