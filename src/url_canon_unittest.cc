@@ -517,6 +517,89 @@ TEST(URLCanonTest, IPv4) {
   }
 }
 
+TEST(URLCanonTest, IPv6) {
+  DualComponentCase cases[] = {
+      // Empty is not an IP address.
+    {"", L"", "", url_parse::Component(), false},
+    {":", L":", "", url_parse::Component(), false},
+    {"[", L"[", "", url_parse::Component(), false},
+    {"[:", L"[:", "", url_parse::Component(), false},
+    {"]", L"]", "", url_parse::Component(), false},
+    {":]", L":]", "", url_parse::Component(), false},
+    {"[]", L"[]", "", url_parse::Component(), false},
+    {"[:]", L"[:]", "", url_parse::Component(), false},
+      // Regular IP address is invalid without bounding '[' and ']'.
+    {"2001:db8::1", L"2001:db8::1", "", url_parse::Component(), false},
+    {"[2001:db8::1", L"[2001:db8::1", "", url_parse::Component(), false},
+    {"2001:db8::1]", L"2001:db8::1]", "", url_parse::Component(), false},
+      // Regular IP addresses.
+    {"[::]", L"[::]", "[::]", url_parse::Component(0,4), true},
+    {"[::1]", L"[::1]", "[::1]", url_parse::Component(0,5), true},
+    {"[::192.168.0.1]", L"[::192.168.0.1]", "[::192.168.0.1]", url_parse::Component(0,15), true},
+    {"[::ffff:192.168.0.1]", L"[::ffff:192.168.0.1]", "[::ffff:192.168.0.1]", url_parse::Component(0,20), true},
+      // Only mapped and compat addresses can have IPv4 syntax embedded.
+    // BROKEN {"[::eeee:192.168.0.1]", L"[::eeee:192.168.0.1]", "", url_parse::Component(), false},
+    // BROKEN {"[2001::192.168.0.1]", L"[2001::92.168.0.1]", "", url_parse::Component(), false},
+      // Can only have one "::" contraction in an IPv6 string literal.
+    // BROKEN {"[2001::db8::1]", L"[2001::db8::1]", "", url_parse::Component(), false},
+      // No more than 2 consecutive ':'s.
+    // BROKEN {"[2001:db8:::1]", L"[2001:db8:::1]", "", url_parse::Component(), false},
+      // Non-IP addresses due to invalid characters.
+    {"[2001::.com]", L"[2001::.com]", "", url_parse::Component(), false},
+      // If there are not enough components, the last one should fill them out.
+    // ... omitted at this time ...
+      // Too many components means not an IP address.  Similarly with too few if using IPv4 compat or mapped addresses.
+    {"[::192.168.0.0.1]", L"[::192.168.0.0.1]", "", url_parse::Component(), false},
+    {"[::ffff:192.168.0.0.1]", L"[::ffff:192.168.0.0.1]", "", url_parse::Component(), false},
+    {"[1:2:3:4:5:6:7:8:9]", L"[1:2:3:4:5:6:7:8:9]", "", url_parse::Component(), false},
+      // We allow a single trailing dot.
+    // ... omitted at this time ...
+      // Two dots in a row means not an IP address.
+    {"[::192.168..1]", L"[::192.168..1]", "", url_parse::Component(), false},
+      // Any non-first components get truncated to one byte.
+    // ... omitted at this time ...
+      // Spaces should be rejected.
+    {"[::1 hello]", L"[::1 hello]", "", url_parse::Component(), false},
+  };
+
+  for (size_t i = 0; i < arraysize(cases); i++) {
+    // 8-bit version.
+    url_parse::Component component(0,
+                                   static_cast<int>(strlen(cases[i].input8)));
+
+    std::string out_str1;
+    url_canon::StdStringCanonOutput output1(&out_str1);
+    url_parse::Component out_ip;
+    bool success = url_canon::CanonicalizeIPAddress(cases[i].input8, component,
+                                                    &output1, &out_ip);
+    output1.Complete();
+
+    EXPECT_EQ(cases[i].expected_success, success);
+    if (success) {
+      EXPECT_STREQ(cases[i].expected, out_str1.c_str());
+      EXPECT_EQ(cases[i].expected_component.begin, out_ip.begin);
+      EXPECT_EQ(cases[i].expected_component.len, out_ip.len);
+    }
+
+    // 16-bit version.
+    UTF16String input16(WStringToUTF16(cases[i].input16));
+    component = url_parse::Component(0, static_cast<int>(input16.length()));
+
+    std::string out_str2;
+    url_canon::StdStringCanonOutput output2(&out_str2);
+    success = url_canon::CanonicalizeIPAddress(input16.c_str(), component,
+                                               &output2, &out_ip);
+    output2.Complete();
+
+    EXPECT_EQ(cases[i].expected_success, success);
+    if (success) {
+      EXPECT_STREQ(cases[i].expected, out_str1.c_str());
+      EXPECT_EQ(cases[i].expected_component.begin, out_ip.begin);
+      EXPECT_EQ(cases[i].expected_component.len, out_ip.len);
+    }
+  }
+}
+
 TEST(URLCanonTest, UserInfo) {
   // Note that the canonicalizer should escape and treat empty components as
   // not being there.

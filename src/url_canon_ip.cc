@@ -89,7 +89,7 @@ bool DoFindIPv4Components(const CHAR* spec,
       }
     } else if (static_cast<UCHAR>(spec[i]) >= 0x80 ||
                !IsIPv4Char(static_cast<unsigned char>(spec[i]))) {
-      // Invalid character for an IP address.
+      // Invalid character for an IPv4 address.
       return false;
     }
   }
@@ -224,6 +224,67 @@ bool DoCanonicalizeIPv4Address(const CHAR* spec,
   return true;
 }
 
+// This function does NO canonicalization.  It does _some_ validation
+// and then copies the component as is to the output.
+// TODO: Actual canonicalization!
+template<typename CHAR, typename UCHAR>
+bool DoCanonicalizeIPv6Address(const CHAR* spec,
+                               const url_parse::Component& host,
+                               CanonOutput* output,
+                               url_parse::Component* out_host) {
+  // Make sure the component is bounded by '[' and ']'.
+  int end = host.end();
+  if (!host.is_nonempty() || spec[host.begin] != '[' || spec[end - 1] != ']')
+    return false;
+
+  int num_colons = 0;
+  int num_dots = 0;
+  int num_hex = 0;
+  for (int i = host.begin + 1; i < end - 1; i++) {
+    if (static_cast<UCHAR>(spec[i]) >= 0x80)
+      return false;
+
+    unsigned char u = static_cast<unsigned char>(spec[i]);
+    if (IsHexChar(u)) {
+      // No block between ':'s can be more than 4 hex characters.
+      if (num_hex > 3)
+        return false;
+      num_hex++;
+    } else if (u == ':') {
+      // No ':'s can appear after '.'s have appeared and there can be no
+      // more than 7 ':'s separating the 8 hex shorts.
+      if (num_dots > 0 || num_colons > 6)
+        return false;
+      num_colons++;
+      num_hex = 0;
+    } else if (u == '.') {
+      // No hex chars between ':'s is fine (signifies successive
+      // zeroed shorts concatentated, but can only be used once).  Not
+      // valid for embedded IPv4 addresses, however.
+      if (num_hex < 1)
+        return false;
+      num_dots++;
+      num_hex = 0;
+    } else {
+      // Invalid characters for an IPv6 address.
+      return false;
+    }
+  }
+  if (num_colons < 2)
+    return false;
+  if (num_dots != 0 && num_dots != 3)
+    return false;
+
+  // This passed all the checks thus far, so just copy input to output.
+  // NOTE: It may still be invalid, and it's definitely not canonicalized.
+  // TODO: Actually canonicalize.
+  out_host->begin = output->length();
+  for (int i = host.begin; i < end; i++)
+    output->push_back(static_cast<char>(spec[i]));
+  out_host->len = output->length() - out_host->begin;
+  return true;
+}
+
 }  // namespace
 
 bool FindIPv4Components(const char* spec,
@@ -242,16 +303,22 @@ bool CanonicalizeIPAddress(const char* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
                            url_parse::Component* out_host) {
-  return DoCanonicalizeIPv4Address<char, unsigned char>(
-      spec, host, output, out_host);
+  return
+      DoCanonicalizeIPv4Address<char, unsigned char>(
+          spec, host, output, out_host) ||
+      DoCanonicalizeIPv6Address<char, unsigned char>(
+          spec, host, output, out_host);
 }
 
 bool CanonicalizeIPAddress(const UTF16Char* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
                            url_parse::Component* out_host) {
-  return DoCanonicalizeIPv4Address<UTF16Char, UTF16Char>(
-      spec, host, output, out_host);
+  return
+      DoCanonicalizeIPv4Address<UTF16Char, UTF16Char>(
+          spec, host, output, out_host) ||
+      DoCanonicalizeIPv6Address<UTF16Char, UTF16Char>(
+          spec, host, output, out_host);
 }
 
 }  // namespace url_canon
