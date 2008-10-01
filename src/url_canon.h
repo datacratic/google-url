@@ -379,6 +379,10 @@ bool CanonicalizePort(const UTF16Char* spec,
                       CanonOutput* output,
                       url_parse::Component* out_port);
 
+// Returns the default port for the given canonical scheme, or PORT_UNSPECIFIED
+// if the scheme is unknown.
+int DefaultPortForScheme(const char* scheme, int scheme_len);
+
 // Path. If the input does not begin in a slash (including if the input is
 // empty), we'll prepend a slash to the path to make it canonical.
 //

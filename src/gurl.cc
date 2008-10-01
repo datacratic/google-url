@@ -322,6 +322,14 @@ int GURL::IntPort() const {
   return url_parse::PORT_UNSPECIFIED;
 }
 
+int GURL::EffectiveIntPort() const {
+  int int_port = IntPort();
+  if (int_port == url_parse::PORT_UNSPECIFIED && IsStandard())
+    return url_canon::DefaultPortForScheme(spec_.data() + parsed_.scheme.begin,
+                                           parsed_.scheme.len);
+  return int_port;
+}
+
 std::string GURL::ExtractFileName() const {
   url_parse::Component file_component;
   url_parse::ExtractFileName(spec_.data(), parsed_.path, &file_component);

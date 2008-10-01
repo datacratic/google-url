@@ -296,6 +296,11 @@ class GURL {
   // values defined in Parsed for ExtractPort.
   int IntPort() const;
 
+  // Returns the port number of the url, or the default port number.
+  // If the scheme has no concept of port (or unknown default) returns
+  // PORT_UNSPECIFIED.
+  int EffectiveIntPort() const;
+
   // Extracts the filename portion of the path and returns it. The filename
   // is everything after the last slash in the path. This may be empty.
   std::string ExtractFileName() const;

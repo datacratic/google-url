@@ -287,6 +287,46 @@ TEST(GURLTest, PathForRequest) {
   }
 }
 
+TEST(GURLTest, EffectiveIntPort) {
+  struct PortTest {
+    const char* spec;
+    int expected_int_port;
+  } port_tests[] = {
+    // http
+    {"http://www.google.com/", 80},
+    {"http://www.google.com:80/", 80},
+    {"http://www.google.com:443/", 443},
+
+    // https
+    {"https://www.google.com/", 443},
+    {"https://www.google.com:443/", 443},
+    {"https://www.google.com:80/", 80},
+
+    // ftp
+    {"ftp://www.google.com/", 21},
+    {"ftp://www.google.com:21/", 21},
+    {"ftp://www.google.com:80/", 80},
+
+    // gopher
+    {"gopher://www.google.com/", 70},
+    {"gopher://www.google.com:70/", 70},
+    {"gopher://www.google.com:80/", 80},
+
+    // file - no port
+    {"file://www.google.com/", url_parse::PORT_UNSPECIFIED},
+    {"file://www.google.com:443/", url_parse::PORT_UNSPECIFIED},
+
+    // data - no port
+    {"data:www.google.com:90", url_parse::PORT_UNSPECIFIED},
+    {"data:www.google.com", url_parse::PORT_UNSPECIFIED},
+  };
+
+  for (size_t i = 0; i < ARRAYSIZE(port_tests); i++) {
+    GURL url(port_tests[i].spec);
+    EXPECT_EQ(port_tests[i].expected_int_port, url.EffectiveIntPort());
+  }
+}
+
 TEST(GURLTest, IPAddress) {
   struct IPTest {
     const char* spec;
