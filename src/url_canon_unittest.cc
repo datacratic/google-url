@@ -1310,7 +1310,14 @@ TEST(URLCanonTest, CanonicalizeFileURL) {
       // Windowsy ones should get still treated as Unix-style.
     {"file:c:\\foo\\bar.html", "file:///c:/foo/bar.html", true, url_parse::Component(), url_parse::Component(7, 16)},
     {"file:c|//foo\\bar.html", "file:///c%7C//foo/bar.html", true, url_parse::Component(), url_parse::Component(7, 19)},
-      // TODO(brettw) there should be a "file://localhost/" example here.
+      // file: tests from WebKit (LayoutTests/fast/loader/url-parse-1.html)
+    {"//", "file:///", true, url_parse::Component(), url_parse::Component(7, 1)},
+    {"///", "file:///", true, url_parse::Component(), url_parse::Component(7, 1)},
+    {"///test", "file:///test", true, url_parse::Component(), url_parse::Component(7, 5)},
+    {"file://test", "file://test/", true, url_parse::Component(7, 4), url_parse::Component(11, 1)},
+    {"file://localhost",  "file://localhost/", true, url_parse::Component(7, 9), url_parse::Component(16, 1)},
+    {"file://localhost/", "file://localhost/", true, url_parse::Component(7, 9), url_parse::Component(16, 1)},
+    {"file://localhost/test", "file://localhost/test", true, url_parse::Component(7, 9), url_parse::Component(16, 5)},
 #endif  // _WIN32
   };
 

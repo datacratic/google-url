@@ -483,6 +483,17 @@ bool DoResolveRelativeURL(const char* base_url,
     return DoResolveAbsoluteFile(relative_url, relative_component,
                                  query_converter, output, out_parsed);
   }
+#else
+  // Other platforms need explicit handling for file: URLs with multiple
+  // slashes because the generic scheme parsing always extracts a host, but a
+  // file: URL only has a host if it has exactly 2 slashes. This also
+  // handles the special case where the URL is only slashes, since that
+  // doesn't have a host part either.
+  if (base_is_file &&
+      (num_slashes > 2 || num_slashes == relative_component.len)) {
+    return DoResolveAbsoluteFile(relative_url, relative_component,
+                                 query_converter, output, out_parsed);
+  }
 #endif
 
   // Any other double-slashes mean that this is relative to the scheme.
