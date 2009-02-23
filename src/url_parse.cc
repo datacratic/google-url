@@ -105,8 +105,8 @@ void DoParseAfterScheme(const CHAR* spec,
     full_path = Component(end_auth, spec_len - end_auth);
 
   // Now parse those two sub-parts.
-  ParseAuthority(spec, authority, &parsed->username, &parsed->password,
-                 &parsed->host, &parsed->port);
+  DoParseAuthority(spec, authority, &parsed->username, &parsed->password,
+                   &parsed->host, &parsed->port);
   ParsePath(spec, full_path, &parsed->path, &parsed->query, &parsed->ref);
 }
 
@@ -182,12 +182,12 @@ void ParseServerInfo(const CHAR* spec,
 // filled into the given *port variable, or -1 if there is no port number or it
 // is invalid.
 template<typename CHAR>
-void ParseAuthority(const CHAR* spec,
-                    const Component& auth,
-                    Component* username,
-                    Component* password,
-                    Component* hostname,
-                    Component* port_num) {
+void DoParseAuthority(const CHAR* spec,
+                      const Component& auth,
+                      Component* username,
+                      Component* password,
+                      Component* hostname,
+                      Component* port_num) {
   DCHECK(auth.is_valid()) << "We should always get an authority";
   if (auth.len == 0) {
     username->reset();
@@ -668,6 +668,24 @@ bool ExtractQueryKeyValue(const UTF16Char* url,
                           Component* key,
                           Component* value) {
   return DoExtractQueryKeyValue(url, query, key, value);
+}
+
+void ParseAuthority(const char* spec,
+                    const Component& auth,
+                    Component* username,
+                    Component* password,
+                    Component* hostname,
+                    Component* port_num) {
+  DoParseAuthority(spec, auth, username, password, hostname, port_num);
+}
+
+void ParseAuthority(UTF16Char* spec,
+                    const Component& auth,
+                    Component* username,
+                    Component* password,
+                    Component* hostname,
+                    Component* port_num) {
+  DoParseAuthority(spec, auth, username, password, hostname, port_num);
 }
 
 int ParsePort(const char* url, const Component& port) {

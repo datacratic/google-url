@@ -267,6 +267,21 @@ bool ExtractScheme(const UTF16Char* url, int url_len, Component* scheme);
 // of a URL.
 bool IsAuthorityTerminator(UTF16Char ch);
 
+// Does a best effort parse of input |spec|, in range |auth|. If a particular
+// component is not found, it will be set to invalid.
+void ParseAuthority(const char* spec,
+                    const Component& auth,
+                    Component* username,
+                    Component* password,
+                    Component* hostname,
+                    Component* port_num);
+void ParseAuthority(UTF16Char* spec,
+                    const Component& auth,
+                    Component* username,
+                    Component* password,
+                    Component* hostname,
+                    Component* port_num);
+
 // Computes the integer port value from the given port component. The port
 // component should have been identified by one of the init functions on
 // |Parsed| for the given input url.
