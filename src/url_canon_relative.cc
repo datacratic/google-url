@@ -252,7 +252,9 @@ int CopyBaseDriveSpecIfNecessary(const char* base_url,
 
   // The path should begin with a slash (as all canonical paths do). We check
   // if it is followed by a drive letter and copy it.
-  if (DoesBeginSlashWindowsDriveSpec(base_url, base_path_begin, base_path_end)) {
+  if (DoesBeginSlashWindowsDriveSpec(base_url,
+                                     base_path_begin,
+                                     base_path_end)) {
     // Copy the two-character drive spec to the output. It will now look like
     // "file:///C:" so the rest of it can be treated like a standard path.
     output->push_back('/');
@@ -282,7 +284,11 @@ bool DoResolveRelativePath(const char* base_url,
   // We know the authority section didn't change, copy it to the output. We
   // also know we have a path so can copy up to there.
   url_parse::Component path, query, ref;
-  url_parse::ParsePathInternal(relative_url, relative_component, &path, &query, &ref);
+  url_parse::ParsePathInternal(relative_url,
+                               relative_component,
+                               &path,
+                               &query,
+                               &ref);
   // Canonical URLs always have a path, so we can use that offset.
   output->Append(base_url, base_parsed.path.begin);
 
@@ -413,7 +419,7 @@ bool DoResolveAbsoluteFile(const CHAR* relative_url,
   // Parse the file URL. The file URl parsing function uses the same logic
   // as we do for determining if the file is absolute, in which case it will
   // not bother to look for a scheme.
-  url_parse::Parsed relative_parsed; 
+  url_parse::Parsed relative_parsed;
   url_parse::ParseFileURL(&relative_url[relative_component.begin],
                           relative_component.len, &relative_parsed);
 

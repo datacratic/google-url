@@ -545,7 +545,7 @@ struct URLComponentSource {
       : scheme(NULL),
         username(NULL),
         password(NULL),
-        host(NULL), 
+        host(NULL),
         port(NULL),
         path(NULL),
         query(NULL),

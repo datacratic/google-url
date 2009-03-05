@@ -313,8 +313,8 @@ class GURL {
   // the given input string. For example if this URL was "www.google.com",
   // this would match "com", "google.com", and "www.google.com
   // (input domain should be lower-case ASCII to match the canonicalized
-  // scheme). This call is more efficient than getting the host and check 
-  // whether host has the specific domain or not because no copies or 
+  // scheme). This call is more efficient than getting the host and check
+  // whether host has the specific domain or not because no copies or
   // object constructions are done.
   //
   // If function DomainIs has parameter domain_len, which means the parameter

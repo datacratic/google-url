@@ -38,7 +38,7 @@ namespace url_canon {
 
 namespace {
 
-  
+
 template<typename CHAR, typename UCHAR>
 bool DoCanonicalizeMailtoURL(const URLComponentSource<CHAR>& source,
                              const url_parse::Parsed& parsed,

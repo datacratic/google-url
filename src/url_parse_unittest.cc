@@ -157,7 +157,7 @@ TEST(URLParser, Length) {
 
     url_parse::Parsed parsed;
     url_parse::ParseStandardURL(length_cases[i], true_length, &parsed);
-    
+
     EXPECT_EQ(true_length, parsed.Length());
   }
 }
@@ -221,7 +221,7 @@ TEST(URLParser, CountCharactersBefore) {
       url_parse::ParseFileURL(count_cases[i].url, length, &parsed);
     else
       url_parse::ParseStandardURL(count_cases[i].url, length, &parsed);
-    
+
     int chars_before = parsed.CountCharactersBefore(
         count_cases[i].component, count_cases[i].include_delimiter);
     EXPECT_EQ(count_cases[i].expected_count, chars_before);
@@ -483,7 +483,7 @@ static bool NthParameterIs(const char* url,
     if (i == parameter) {
       if (!expected_key)
         return false;
-      
+
       if (strncmp(&url[key.begin], expected_key, key.len) != 0)
         return false;
       if (strncmp(&url[value.begin], expected_value, value.len) != 0)

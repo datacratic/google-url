@@ -105,7 +105,7 @@ bool DoFileCanonicalizePath(const CHAR* spec,
     // No input path, canonicalize to a slash.
     output->push_back('/');
   }
-  
+
   out_path->len = output->length() - out_path->begin;
   return success;
 }

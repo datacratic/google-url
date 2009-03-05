@@ -68,7 +68,7 @@ static int FileDoDriveSpec(const CHAR* spec, int begin, int end,
     output->push_back(spec[after_slashes] - 'a' + 'A');
   else
     output->push_back(static_cast<char>(spec[after_slashes]));
-  
+
   // Normalize the character following it to a colon rather than pipe.
   output->push_back(':');
   output->push_back('/');
@@ -131,7 +131,7 @@ static bool DoCanonicalizeFileURL(const URLComponentSource<CHAR>& source,
   // for regular IP hosts.
   bool success = URLCanonInternal<CHAR, UCHAR>::DoHost(
       source.host, parsed.host, output, &new_parsed->host);
-  
+
   // Write a separator for the start of the path. We'll ignore any slashes
   // already at the beginning of the path.
   new_parsed->path.begin = output->length();

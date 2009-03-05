@@ -79,7 +79,7 @@ bool IsAllASCII(const CHAR* spec, const url_parse::Component& query) {
 // Appends the given string to the output, escaping characters that do not
 // match the given |type| in SharedCharTypes. This version will accept 8 or 16
 // bit characters, but assumes that they have only 7-bit values. It also assumes
-// that all UTF-8 values are correct, so doesn't bother checking 
+// that all UTF-8 values are correct, so doesn't bother checking
 template<typename CHAR>
 void AppendRaw8BitQueryString(const CHAR* source, int length,
                               CanonOutput* output) {

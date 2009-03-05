@@ -65,7 +65,7 @@ bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
                                     output,
                                     &new_parsed->username,
                                     &new_parsed->password);
- 
+
     // Host: always write if we have an authority (may be empty).
     success &= CanonicalizeHost(source.host, parsed.host,
                                 output, &new_parsed->host);

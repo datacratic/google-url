@@ -84,7 +84,7 @@ namespace logging {
 
 // Where to record logging output? A flat file and/or system debug log via
 // OutputDebugString. Defaults to LOG_ONLY_TO_FILE.
-enum LoggingDestination { LOG_ONLY_TO_FILE, 
+enum LoggingDestination { LOG_ONLY_TO_FILE,
                           LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
                           LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG };
 
@@ -135,7 +135,7 @@ void SetLogItems(bool enable_process_id, bool enable_thread_id,
                  bool enable_timestamp, bool enable_tickcount);
 
 // Sets the Log Assert Handler that will be used to notify of check failures.
-// The default handler shows a dialog box, however clients can use this 
+// The default handler shows a dialog box, however clients can use this
 // function to override with their own handling (e.g. a silent one for Unit
 // Tests)
 typedef void (*LogAssertHandlerFunction)(const std::string& str);

@@ -44,7 +44,7 @@ namespace {
 //         unescaped form)
 //      % (only allowed escaped in the input, will be unmodified).
 //      I left blank alpha numeric characters.
-// 
+//
 //    00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 //    -----------------------------------------------
 // 0   0  E  E  E  E  E  E  E  E  E  E  E  E  E  E  E
@@ -89,7 +89,7 @@ const unsigned char kHostCharLookup[0x80] = {
     'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '[',  0 , ']',  0 , '_',
 //   `    a    b    c    d    e    f    g    h    i    j    k    l    m    n    o
    kEsc, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
-//   p    q    r    s    t    u    v    w    x    y    z    {    |    }    ~    
+//   p    q    r    s    t    u    v    w    x    y    z    {    |    }    ~
     'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',kEsc,kEsc,kEsc,  0 ,  0 };
 
 const int kTempHostBufferLen = 1024;

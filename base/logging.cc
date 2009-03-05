@@ -61,7 +61,7 @@ bool log_thread_id = false;
 bool log_timestamp = true;
 bool log_tickcount = false;
 
-// An assert handler override specified by the client to be called instead of 
+// An assert handler override specified by the client to be called instead of
 // the debug message dialog.
 LogAssertHandlerFunction log_assert_handler = NULL;
 
@@ -96,7 +96,7 @@ bool InitializeLogFileHandle() {
                         FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                         OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
   if (log_file == INVALID_HANDLE_VALUE || log_file == NULL) {
-    // try the current directory 
+    // try the current directory
     log_file = CreateFile(_T(".\\debug.log"), GENERIC_WRITE,
                           FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -134,7 +134,7 @@ void InitLogging(const TCHAR* new_log_file, LoggingDestination logging_dest,
 
   // ignore file options if logging is only to system
   if (logging_destination == LOG_ONLY_TO_SYSTEM_DEBUG_LOG)
-    return; 
+    return;
 
   _tcscpy_s(log_file_name, MAX_PATH, new_log_file);
   if (delete_old == DELETE_OLD_LOG_FILE)
@@ -225,7 +225,7 @@ void DisplayDebugMessage(const std::string& str) {
 }
 
 LogMessage::LogMessage(const char* file, int line, LogSeverity severity,
-		       int ctr)
+                       int ctr)
     : severity_(severity) {
   Init(file, line);
 }

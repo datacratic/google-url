@@ -398,7 +398,7 @@ bool GURL::DomainIs(const char* lower_ascii_domain,
     return false;
 
   // Check whether the host name is end with a dot. If yes, treat it
-  // the same as no-dot unless the input comparison domain is end 
+  // the same as no-dot unless the input comparison domain is end
   // with dot.
   const char* last_pos = spec_.data() + parsed_.host.end() - 1;
   int host_len = parsed_.host.len;
@@ -421,7 +421,7 @@ bool GURL::DomainIs(const char* lower_ascii_domain,
                                       lower_ascii_domain + domain_len))
     return false;
 
-  // Check whether host has right domain start with dot, make sure we got 
+  // Check whether host has right domain start with dot, make sure we got
   // right domain range. For example www.google.com has domain
   // "google.com" but www.iamnotgoogle.com does not.
   if ('.' != lower_ascii_domain[0] && host_len > domain_len &&

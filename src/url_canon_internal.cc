@@ -52,7 +52,7 @@ void DoAppendStringOfType(const CHAR* source, int length,
     } else {
       // Just append the 7-bit character, possibly escaping it.
       unsigned char uch = static_cast<unsigned char>(source[i]);
-      if (!IsCharOfType(uch, type)) 
+      if (!IsCharOfType(uch, type))
         AppendEscapedChar(uch, output);
       else
         output->push_back(uch);

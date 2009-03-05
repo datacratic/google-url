@@ -413,7 +413,7 @@ TEST(URLCanonTest, Host) {
       int host_len = static_cast<int>(input16.length());
       url_parse::Component in_comp(0, host_len);
       url_parse::Component out_comp;
-  
+
       out_str.clear();
       url_canon::StdStringCanonOutput output(&out_str);
 
@@ -800,7 +800,7 @@ TEST(URLCanonTest, Path) {
       url_parse::Component in_comp(0, len);
       url_parse::Component out_comp;
       std::string out_str;
-      url_canon::StdStringCanonOutput output(&out_str);    
+      url_canon::StdStringCanonOutput output(&out_str);
       bool success = url_canon::CanonicalizePath(path_cases[i].input8, in_comp,
                                                  &output, &out_comp);
       output.Complete();
@@ -817,7 +817,7 @@ TEST(URLCanonTest, Path) {
       url_parse::Component in_comp(0, len);
       url_parse::Component out_comp;
       std::string out_str;
-      url_canon::StdStringCanonOutput output(&out_str);    
+      url_canon::StdStringCanonOutput output(&out_str);
 
       bool success = url_canon::CanonicalizePath(input16.c_str(), in_comp,
                                                  &output, &out_comp);
@@ -835,9 +835,9 @@ TEST(URLCanonTest, Path) {
   const char path_with_null[] = "/ab\0c";
   url_parse::Component in_comp(0, 5);
   url_parse::Component out_comp;
-  
+
   std::string out_str;
-  url_canon::StdStringCanonOutput output(&out_str);    
+  url_canon::StdStringCanonOutput output(&out_str);
   bool success = url_canon::CanonicalizePath(path_with_null, in_comp,
                                              &output, &out_comp);
   output.Complete();
@@ -1424,7 +1424,7 @@ TEST(URLCanonTest, CanonicalizeMailtoURL) {
       url_len = 22;
     }
     url_parse::ParseMailtoURL(cases[i].input, url_len, &parsed);
-  
+
     std::string out_str;
     url_canon::StdStringCanonOutput output(&out_str);
     bool success = url_canon::CanonicalizeMailtoURL(cases[i].input, url_len,
@@ -1517,7 +1517,7 @@ TEST(URLCanonTest, _itow_s) {
 }
 
 #endif  // !WIN32
-  
+
 // Returns true if the given two structures are the same.
 static bool ParsedIsEqual(const url_parse::Parsed& a,
                           const url_parse::Parsed& b) {
@@ -1597,7 +1597,7 @@ TEST(URLCanonTest, ResolveRelativeURL) {
     {"http://foo/bar", true, false, ":foo", true, true, true, "http://foo/:foo"},
     {"http://foo/bar", true, false, " hello world", true, true, true, "http://foo/hello%20world"},
     {"data:asdf", false, false, ":foo", false, false, false, NULL},
-      // We should treat semicolons like any other character in URL resolving 
+      // We should treat semicolons like any other character in URL resolving
     {"http://host/a", true, false, ";foo", true, true, true, "http://host/;foo"},
     {"http://host/a;", true, false, ";foo", true, true, true, "http://host/;foo"},
     {"http://host/a", true, false, ";/../bar", true, true, true, "http://host/bar"},

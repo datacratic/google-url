@@ -85,7 +85,7 @@ bool DoFindIPv4Components(const CHAR* spec,
         // dot that would otherwise be treated as the end of input.
         if (spec[i] == '.' && i + 1 == end)
           break;
-        return false;  
+        return false;
       }
     } else if (static_cast<UCHAR>(spec[i]) >= 0x80 ||
                !IsIPv4Char(static_cast<unsigned char>(spec[i]))) {

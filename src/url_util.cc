@@ -168,7 +168,7 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
   // fixed up magically to file URLs. This is done for IE compatability. For
   // example, this will change "c:/foo" into a file URL rather than treating
   // it as a URL with the protocol "c". It also works for UNC ("\\foo\bar.txt").
-  // There is similar logic in url_canon_relative.cc for 
+  // There is similar logic in url_canon_relative.cc for
   //
   // For Max & Unix, we don't do this (the equivalent would be "/foo/bar" which
   // has no meaning as an absolute path name. This is because browsers on Mac

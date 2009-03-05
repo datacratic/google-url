@@ -71,7 +71,7 @@ int FindNextAuthorityTerminator(const CHAR* spec,
 // Compatability data points. I list "host", "path" extracted:
 // Input                IE6             Firefox                Us
 // -----                --------------  --------------         --------------
-// http://foo.com/      "foo.com", "/"  "foo.com", "/"         "foo.com", "/"                      
+// http://foo.com/      "foo.com", "/"  "foo.com", "/"         "foo.com", "/"
 // http:foo.com/        "foo.com", "/"  "foo.com", "/"         "foo.com", "/"
 // http:/foo.com/       fail(*)         "foo.com", "/"         "foo.com", "/"
 // http:\foo.com/       fail(*)         "\foo.com", "/"(fail)  "foo.com", "/"
@@ -539,7 +539,7 @@ bool DoExtractQueryKeyValue(const CHAR* spec,
   while (cur < end && spec[cur] != '&' && spec[cur] != '=')
     cur++;
   key->len = cur - key->begin;
-  
+
   // Skip the separator after the key (if any).
   if (cur < end && spec[cur] == '=')
     cur++;
