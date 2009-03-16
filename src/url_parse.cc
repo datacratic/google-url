@@ -36,6 +36,8 @@
 
 #include "googleurl/src/url_parse.h"
 
+#include <stdlib.h>
+
 #include "base/logging.h"
 #include "googleurl/src/url_parse_internal.h"
 
