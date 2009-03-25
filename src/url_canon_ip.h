@@ -26,14 +26,14 @@
 // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #ifndef GOOGLEURL_SRC_URL_CANON_IP_H__
 #define GOOGLEURL_SRC_URL_CANON_IP_H__
 
+#include "base/string16.h"
 #include "googleurl/src/url_parse.h"
 
 namespace url_canon {
-
-typedef url_parse::UTF16Char UTF16Char;
 
 // Searches the host name for the portions of the IPv4 address. On success,
 // each component will be placed into |components| and it will return true.
@@ -56,7 +56,7 @@ typedef url_parse::UTF16Char UTF16Char;
 bool FindIPv4Components(const char* spec,
                         const url_parse::Component& host,
                         url_parse::Component components[4]);
-bool FindIPv4Components(const UTF16Char* spec,
+bool FindIPv4Components(const char16* spec,
                         const url_parse::Component& host,
                         url_parse::Component components[4]);
 

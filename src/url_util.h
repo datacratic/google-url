@@ -32,13 +32,11 @@
 
 #include <string>
 
+#include "base/string16.h"
 #include "googleurl/src/url_parse.h"
 #include "googleurl/src/url_canon.h"
 
 namespace url_util {
-
-typedef url_parse::UTF16Char UTF16Char;
-typedef url_parse::UTF16String UTF16String;
 
 // Schemes --------------------------------------------------------------------
 
@@ -54,7 +52,7 @@ bool FindAndCompareScheme(const char* str,
                           int str_len,
                           const char* compare,
                           url_parse::Component* found_scheme);
-bool FindAndCompareScheme(const UTF16Char* str,
+bool FindAndCompareScheme(const char16* str,
                           int str_len,
                           const char* compare,
                           url_parse::Component* found_scheme);
@@ -64,7 +62,7 @@ inline bool FindAndCompareScheme(const std::string& str,
   return FindAndCompareScheme(str.data(), static_cast<int>(str.size()),
                               compare, found_scheme);
 }
-inline bool FindAndCompareScheme(const UTF16String& str,
+inline bool FindAndCompareScheme(const string16& str,
                                  const char* compare,
                                  url_parse::Component* found_scheme) {
   return FindAndCompareScheme(str.data(), static_cast<int>(str.size()),
@@ -76,7 +74,7 @@ inline bool FindAndCompareScheme(const UTF16String& str,
 // "://" following the scheme.
 bool IsStandard(const char* spec, int spec_len,
                 const url_parse::Component& scheme);
-bool IsStandard(const UTF16Char* spec, int spec_len,
+bool IsStandard(const char16* spec, int spec_len,
                 const url_parse::Component& scheme);
 
 // URL library wrappers -------------------------------------------------------
@@ -96,7 +94,7 @@ bool Canonicalize(const char* spec,
                   url_canon::CharsetConverter* charset_converter,
                   url_canon::CanonOutput* output,
                   url_parse::Parsed* output_parsed);
-bool Canonicalize(const UTF16Char* spec,
+bool Canonicalize(const char16* spec,
                   int spec_len,
                   url_canon::CharsetConverter* charset_converter,
                   url_canon::CanonOutput* output,
@@ -123,7 +121,7 @@ bool ResolveRelative(const char* base_spec,
 bool ResolveRelative(const char* base_spec,
                      int base_spec_len,
                      const url_parse::Parsed& base_parsed,
-                     const UTF16Char* relative,
+                     const char16* relative,
                      int relative_length,
                      url_canon::CharsetConverter* charset_converter,
                      url_canon::CanonOutput* output,
@@ -143,7 +141,7 @@ bool ReplaceComponents(const char* spec,
 bool ReplaceComponents(const char* spec,
                        int spec_len,
                        const url_parse::Parsed& parsed,
-                       const url_canon::Replacements<UTF16Char>& replacements,
+                       const url_canon::Replacements<char16>& replacements,
                        url_canon::CharsetConverter* charset_converter,
                        url_canon::CanonOutput* output,
                        url_parse::Parsed* out_parsed);
@@ -163,8 +161,8 @@ bool LowerCaseEqualsASCII(const char* a_begin,
                           const char* a_end,
                           const char* b_begin,
                           const char* b_end);
-bool LowerCaseEqualsASCII(const UTF16Char* a_begin,
-                          const UTF16Char* a_end,
+bool LowerCaseEqualsASCII(const char16* a_begin,
+                          const char16* a_end,
                           const char* b);
 
 }  // namespace url_util

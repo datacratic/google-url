@@ -293,10 +293,10 @@ bool FindIPv4Components(const char* spec,
   return DoFindIPv4Components<char, unsigned char>(spec, host, components);
 }
 
-bool FindIPv4Components(const UTF16Char* spec,
+bool FindIPv4Components(const char16* spec,
                         const url_parse::Component& host,
                         url_parse::Component components[4]) {
-  return DoFindIPv4Components<UTF16Char, UTF16Char>(spec, host, components);
+  return DoFindIPv4Components<char16, char16>(spec, host, components);
 }
 
 bool CanonicalizeIPAddress(const char* spec,
@@ -310,14 +310,14 @@ bool CanonicalizeIPAddress(const char* spec,
           spec, host, output, out_host);
 }
 
-bool CanonicalizeIPAddress(const UTF16Char* spec,
+bool CanonicalizeIPAddress(const char16* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
                            url_parse::Component* out_host) {
   return
-      DoCanonicalizeIPv4Address<UTF16Char, UTF16Char>(
+      DoCanonicalizeIPv4Address<char16, char16>(
           spec, host, output, out_host) ||
-      DoCanonicalizeIPv6Address<UTF16Char, UTF16Char>(
+      DoCanonicalizeIPv6Address<char16, char16>(
           spec, host, output, out_host);
 }
 

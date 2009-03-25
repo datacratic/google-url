@@ -40,10 +40,10 @@ namespace url_parse {
 #ifdef WIN32
 
 // We allow both "c:" and "c|" as drive identifiers.
-inline bool IsWindowsDriveSeparator(UTF16Char ch) {
+inline bool IsWindowsDriveSeparator(char16 ch) {
   return ch == ':' || ch == '|';
 }
-inline bool IsWindowsDriveLetter(UTF16Char ch) {
+inline bool IsWindowsDriveLetter(char16 ch) {
   return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
 }
 

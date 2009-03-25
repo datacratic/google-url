@@ -33,17 +33,15 @@
 #include <iostream>
 #include <string>
 
+#include "base/string16.h"
 #include "googleurl/src/url_canon.h"
 #include "googleurl/src/url_canon_stdstring.h"
 #include "googleurl/src/url_parse.h"
 
 class GURL {
  public:
-  typedef url_canon::UTF16Char UTF16Char;
-  typedef url_canon::UTF16String UTF16String;
-
   typedef url_canon::StdStringReplacements<std::string> Replacements;
-  typedef url_canon::StdStringReplacements<UTF16String> ReplacementsW;
+  typedef url_canon::StdStringReplacements<string16> ReplacementsW;
 
   // Creates an empty, invalid URL.
   GURL();
@@ -60,7 +58,7 @@ class GURL {
   // version to assume the query parameter encoding should be the same as the
   // input encoding.
   explicit GURL(const std::string& url_string /*, output_param_encoding*/);
-  explicit GURL(const UTF16String& url_string /*, output_param_encoding*/);
+  explicit GURL(const string16& url_string /*, output_param_encoding*/);
 
   // Constructor for URLs that have already been parsed and canonicalized. This
   // is used for conversions from KURL, for example. The caller must supply all
@@ -151,7 +149,7 @@ class GURL {
   // It is an error to resolve a URL relative to an invalid URL. The result
   // will be the empty URL.
   GURL Resolve(const std::string& relative) const;
-  GURL Resolve(const UTF16String& relative) const;
+  GURL Resolve(const string16& relative) const;
 
   // Like Resolve() above but takes a character set encoder which will be used
   // for any query text specified in the input. The charset converter parameter
@@ -164,7 +162,7 @@ class GURL {
       const std::string& relative,
       url_canon::CharsetConverter* charset_converter) const;
   GURL ResolveWithCharsetConverter(
-      const UTF16String& relative,
+      const string16& relative,
       url_canon::CharsetConverter* charset_converter) const;
 
   // Creates a new GURL by replacing the current URL's components with the
@@ -181,7 +179,7 @@ class GURL {
   GURL ReplaceComponents(
       const url_canon::Replacements<char>& replacements) const;
   GURL ReplaceComponents(
-      const url_canon::Replacements<UTF16Char>& replacements) const;
+      const url_canon::Replacements<char16>& replacements) const;
 
   // A helper function that is equivalent to replacing the path with a slash
   // and clearing out everything after that. We sometimes need to know just the

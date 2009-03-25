@@ -208,7 +208,7 @@ bool DoUserInfo(const CHAR* username_spec,
 inline void WritePortInt(char* output, int output_len, int port) {
   _itoa_s(port, output, output_len, 10);
 }
-inline void WritePortInt(UTF16Char* output, int output_len, int port) {
+inline void WritePortInt(char16* output, int output_len, int port) {
   _itow_s(port, output, output_len, 10);
 }
 
@@ -305,13 +305,13 @@ const char* RemoveURLWhitespace(const char* input, int input_len,
   return DoRemoveURLWhitespace(input, input_len, buffer, output_len);
 }
 
-const UTF16Char* RemoveURLWhitespace(const UTF16Char* input, int input_len,
-                                     CanonOutputT<UTF16Char>* buffer,
-                                     int* output_len) {
+const char16* RemoveURLWhitespace(const char16* input, int input_len,
+                                  CanonOutputT<char16>* buffer,
+                                  int* output_len) {
   return DoRemoveURLWhitespace(input, input_len, buffer, output_len);
 }
 
-char CanonicalSchemeChar(UTF16Char ch) {
+char CanonicalSchemeChar(char16 ch) {
   if (ch >= 0x80)
     return 0;  // Non-ASCII is not supported by schemes.
   return kSchemeCanonical[ch];
@@ -324,11 +324,11 @@ bool CanonicalizeScheme(const char* spec,
   return DoScheme<char, unsigned char>(spec, scheme, output, out_scheme);
 }
 
-bool CanonicalizeScheme(const UTF16Char* spec,
+bool CanonicalizeScheme(const char16* spec,
                         const url_parse::Component& scheme,
                         CanonOutput* output,
                         url_parse::Component* out_scheme) {
-  return DoScheme<UTF16Char, UTF16Char>(spec, scheme, output, out_scheme);
+  return DoScheme<char16, char16>(spec, scheme, output, out_scheme);
 }
 
 bool CanonicalizeUserInfo(const char* username_source,
@@ -343,14 +343,14 @@ bool CanonicalizeUserInfo(const char* username_source,
       output, out_username, out_password);
 }
 
-bool CanonicalizeUserInfo(const UTF16Char* username_source,
+bool CanonicalizeUserInfo(const char16* username_source,
                           const url_parse::Component& username,
-                          const UTF16Char* password_source,
+                          const char16* password_source,
                           const url_parse::Component& password,
                           CanonOutput* output,
                           url_parse::Component* out_username,
                           url_parse::Component* out_password) {
-  return DoUserInfo<UTF16Char, UTF16Char>(
+  return DoUserInfo<char16, char16>(
       username_source, username, password_source, password,
       output, out_username, out_password);
 }
@@ -365,12 +365,12 @@ bool CanonicalizePort(const char* spec,
                                      output, out_port);
 }
 
-bool CanonicalizePort(const UTF16Char* spec,
+bool CanonicalizePort(const char16* spec,
                       const url_parse::Component& port,
                       int default_port_for_scheme,
                       CanonOutput* output,
                       url_parse::Component* out_port) {
-  return DoPort<UTF16Char, UTF16Char>(spec, port, default_port_for_scheme,
+  return DoPort<char16, char16>(spec, port, default_port_for_scheme,
                                       output, out_port);
 }
 
@@ -381,11 +381,11 @@ void CanonicalizeRef(const char* spec,
   DoCanonicalizeRef<char, unsigned char>(spec, ref, output, out_ref);
 }
 
-void CanonicalizeRef(const UTF16Char* spec,
+void CanonicalizeRef(const char16* spec,
                      const url_parse::Component& ref,
                      CanonOutput* output,
                      url_parse::Component* out_ref) {
-  DoCanonicalizeRef<UTF16Char, UTF16Char>(spec, ref, output, out_ref);
+  DoCanonicalizeRef<char16, char16>(spec, ref, output, out_ref);
 }
 
 }  // namespace url_canon

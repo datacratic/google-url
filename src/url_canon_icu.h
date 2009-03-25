@@ -49,7 +49,7 @@ class ICUCharsetConverter : public CharsetConverter {
 
   virtual ~ICUCharsetConverter() {}
 
-  virtual void ConvertFromUTF16(const UTF16Char* input,
+  virtual void ConvertFromUTF16(const char16* input,
                                 int input_len,
                                 CanonOutput* output);
 

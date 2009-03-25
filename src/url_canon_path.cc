@@ -354,11 +354,11 @@ bool CanonicalizePath(const char* spec,
   return DoPath<char, unsigned char>(spec, path, output, out_path);
 }
 
-bool CanonicalizePath(const UTF16Char* spec,
+bool CanonicalizePath(const char16* spec,
                       const url_parse::Component& path,
                       CanonOutput* output,
                       url_parse::Component* out_path) {
-  return DoPath<UTF16Char, UTF16Char>(spec, path, output, out_path);
+  return DoPath<char16, char16>(spec, path, output, out_path);
 }
 
 bool CanonicalizePartialPath(const char* spec,
@@ -369,12 +369,12 @@ bool CanonicalizePartialPath(const char* spec,
                                             output);
 }
 
-bool CanonicalizePartialPath(const UTF16Char* spec,
+bool CanonicalizePartialPath(const char16* spec,
                              const url_parse::Component& path,
                              int path_begin_in_output,
                              CanonOutput* output) {
-  return DoPartialPath<UTF16Char, UTF16Char>(spec, path, path_begin_in_output,
-                                             output);
+  return DoPartialPath<char16, char16>(spec, path, path_begin_in_output,
+                                       output);
 }
 
 }  // namespace url_canon

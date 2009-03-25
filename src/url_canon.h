@@ -32,12 +32,10 @@
 #include <memory.h>
 #include <stdlib.h>
 
+#include "base/string16.h"
 #include "googleurl/src/url_parse.h"
 
 namespace url_canon {
-
-typedef url_parse::UTF16Char UTF16Char;
-typedef url_parse::UTF16String UTF16String;
 
 // Canonicalizer output -------------------------------------------------------
 
@@ -197,12 +195,12 @@ class RawCanonOutputT : public CanonOutputT<T> {
 // the templates so it can also be used internally if a wide buffer is
 // required.
 typedef CanonOutputT<char> CanonOutput;
-typedef CanonOutputT<UTF16Char> CanonOutputW;
+typedef CanonOutputT<char16> CanonOutputW;
 
 template<int fixed_capacity>
 class RawCanonOutput : public RawCanonOutputT<char, fixed_capacity> {};
 template<int fixed_capacity>
-class RawCanonOutputW : public RawCanonOutputT<UTF16Char, fixed_capacity> {};
+class RawCanonOutputW : public RawCanonOutputT<char16, fixed_capacity> {};
 
 // Character set converter ----------------------------------------------------
 //
@@ -228,7 +226,7 @@ class CharsetConverter {
   // decimal, (such as "&#20320;") with escaping of the ampersand, number
   // sign, and semicolon (in the previous example it would be
   // "%26%2320320%3B"). This rule is based on what IE does in this situation.
-  virtual void ConvertFromUTF16(const UTF16Char* input,
+  virtual void ConvertFromUTF16(const char16* input,
                                 int input_len,
                                 CanonOutput* output) = 0;
 };
@@ -253,9 +251,9 @@ class CharsetConverter {
 const char* RemoveURLWhitespace(const char* input, int input_len,
                                 CanonOutputT<char>* buffer,
                                 int* output_len);
-const UTF16Char* RemoveURLWhitespace(const UTF16Char* input, int input_len,
-                                     CanonOutputT<UTF16Char>* buffer,
-                                     int* output_len);
+const char16* RemoveURLWhitespace(const char16* input, int input_len,
+                                  CanonOutputT<char16>* buffer,
+                                  int* output_len);
 
 // IDN ------------------------------------------------------------------------
 
@@ -268,7 +266,7 @@ const UTF16Char* RemoveURLWhitespace(const UTF16Char* input, int input_len,
 // the length of the output will be set to the length of the new host name.
 //
 // On error, returns false. The output in this case is undefined.
-bool IDNToASCII(const UTF16Char* src, int src_len, CanonOutputW* output);
+bool IDNToASCII(const char16* src, int src_len, CanonOutputW* output);
 
 // Piece-by-piece canonicalizers ----------------------------------------------
 //
@@ -298,7 +296,7 @@ bool CanonicalizeScheme(const char* spec,
                         const url_parse::Component& scheme,
                         CanonOutput* output,
                         url_parse::Component* out_scheme);
-bool CanonicalizeScheme(const UTF16Char* spec,
+bool CanonicalizeScheme(const char16* spec,
                         const url_parse::Component& scheme,
                         CanonOutput* output,
                         url_parse::Component* out_scheme);
@@ -320,9 +318,9 @@ bool CanonicalizeUserInfo(const char* username_source,
                           CanonOutput* output,
                           url_parse::Component* out_username,
                           url_parse::Component* out_password);
-bool CanonicalizeUserInfo(const UTF16Char* username_source,
+bool CanonicalizeUserInfo(const char16* username_source,
                           const url_parse::Component& username,
-                          const UTF16Char* password_source,
+                          const char16* password_source,
                           const url_parse::Component& password,
                           CanonOutput* output,
                           url_parse::Component* out_username,
@@ -335,7 +333,7 @@ bool CanonicalizeHost(const char* spec,
                       const url_parse::Component& host,
                       CanonOutput* output,
                       url_parse::Component* out_host);
-bool CanonicalizeHost(const UTF16Char* spec,
+bool CanonicalizeHost(const char16* spec,
                       const url_parse::Component& host,
                       CanonOutput* output,
                       url_parse::Component* out_host);
@@ -358,7 +356,7 @@ bool CanonicalizeIPAddress(const char* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
                            url_parse::Component* out_host);
-bool CanonicalizeIPAddress(const UTF16Char* spec,
+bool CanonicalizeIPAddress(const char16* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
                            url_parse::Component* out_host);
@@ -373,7 +371,7 @@ bool CanonicalizePort(const char* spec,
                       int default_port_for_scheme,
                       CanonOutput* output,
                       url_parse::Component* out_port);
-bool CanonicalizePort(const UTF16Char* spec,
+bool CanonicalizePort(const char16* spec,
                       const url_parse::Component& port,
                       int default_port_for_scheme,
                       CanonOutput* output,
@@ -396,7 +394,7 @@ bool CanonicalizePath(const char* spec,
                       const url_parse::Component& path,
                       CanonOutput* output,
                       url_parse::Component* out_path);
-bool CanonicalizePath(const UTF16Char* spec,
+bool CanonicalizePath(const char16* spec,
                       const url_parse::Component& path,
                       CanonOutput* output,
                       url_parse::Component* out_path);
@@ -411,7 +409,7 @@ bool FileCanonicalizePath(const char* spec,
                           const url_parse::Component& path,
                           CanonOutput* output,
                           url_parse::Component* out_path);
-bool FileCanonicalizePath(const UTF16Char* spec,
+bool FileCanonicalizePath(const char16* spec,
                           const url_parse::Component& path,
                           CanonOutput* output,
                           url_parse::Component* out_path);
@@ -433,7 +431,7 @@ void CanonicalizeQuery(const char* spec,
                        CharsetConverter* converter,
                        CanonOutput* output,
                        url_parse::Component* out_query);
-void CanonicalizeQuery(const UTF16Char* spec,
+void CanonicalizeQuery(const char16* spec,
                        const url_parse::Component& query,
                        CharsetConverter* converter,
                        CanonOutput* output,
@@ -449,7 +447,7 @@ void CanonicalizeRef(const char* spec,
                      const url_parse::Component& path,
                      CanonOutput* output,
                      url_parse::Component* out_path);
-void CanonicalizeRef(const UTF16Char* spec,
+void CanonicalizeRef(const char16* spec,
                      const url_parse::Component& path,
                      CanonOutput* output,
                      url_parse::Component* out_path);
@@ -471,7 +469,7 @@ bool CanonicalizeStandardURL(const char* spec,
                              CharsetConverter* query_converter,
                              CanonOutput* output,
                              url_parse::Parsed* new_parsed);
-bool CanonicalizeStandardURL(const UTF16Char* spec,
+bool CanonicalizeStandardURL(const char16* spec,
                              int spec_len,
                              const url_parse::Parsed& parsed,
                              CharsetConverter* query_converter,
@@ -485,7 +483,7 @@ bool CanonicalizeFileURL(const char* spec,
                          CharsetConverter* query_converter,
                          CanonOutput* output,
                          url_parse::Parsed* new_parsed);
-bool CanonicalizeFileURL(const UTF16Char* spec,
+bool CanonicalizeFileURL(const char16* spec,
                          int spec_len,
                          const url_parse::Parsed& parsed,
                          CharsetConverter* query_converter,
@@ -499,7 +497,7 @@ bool CanonicalizePathURL(const char* spec,
                          const url_parse::Parsed& parsed,
                          CanonOutput* output,
                          url_parse::Parsed* new_parsed);
-bool CanonicalizePathURL(const UTF16Char* spec,
+bool CanonicalizePathURL(const char16* spec,
                          int spec_len,
                          const url_parse::Parsed& parsed,
                          CanonOutput* output,
@@ -515,7 +513,7 @@ bool CanonicalizeMailtoURL(const char* spec,
                            const url_parse::Parsed& parsed,
                            CanonOutput* output,
                            url_parse::Parsed* new_parsed);
-bool CanonicalizeMailtoURL(const UTF16Char* spec,
+bool CanonicalizeMailtoURL(const char16* spec,
                            int spec_len,
                            const url_parse::Parsed& parsed,
                            CanonOutput* output,
@@ -712,7 +710,7 @@ bool ReplaceStandardURL(const char* base,
                         url_parse::Parsed* new_parsed);
 bool ReplaceStandardURL(const char* base,
                         const url_parse::Parsed& base_parsed,
-                        const Replacements<UTF16Char>& replacements,
+                        const Replacements<char16>& replacements,
                         CharsetConverter* query_converter,
                         CanonOutput* output,
                         url_parse::Parsed* new_parsed);
@@ -727,7 +725,7 @@ bool ReplaceFileURL(const char* base,
                     url_parse::Parsed* new_parsed);
 bool ReplaceFileURL(const char* base,
                     const url_parse::Parsed& base_parsed,
-                    const Replacements<UTF16Char>& replacements,
+                    const Replacements<char16>& replacements,
                     CharsetConverter* query_converter,
                     CanonOutput* output,
                     url_parse::Parsed* new_parsed);
@@ -741,7 +739,7 @@ bool ReplacePathURL(const char* base,
                     url_parse::Parsed* new_parsed);
 bool ReplacePathURL(const char* base,
                     const url_parse::Parsed& base_parsed,
-                    const Replacements<UTF16Char>& replacements,
+                    const Replacements<char16>& replacements,
                     CanonOutput* output,
                     url_parse::Parsed* new_parsed);
 
@@ -754,7 +752,7 @@ bool ReplaceMailtoURL(const char* base,
                       url_parse::Parsed* new_parsed);
 bool ReplaceMailtoURL(const char* base,
                       const url_parse::Parsed& base_parsed,
-                      const Replacements<UTF16Char>& replacements,
+                      const Replacements<char16>& replacements,
                       CanonOutput* output,
                       url_parse::Parsed* new_parsed);
 
@@ -780,7 +778,7 @@ bool IsRelativeURL(const char* base,
                    url_parse::Component* relative_component);
 bool IsRelativeURL(const char* base,
                    const url_parse::Parsed& base_parsed,
-                   const UTF16Char* fragment,
+                   const char16* fragment,
                    int fragment_len,
                    bool is_base_hierarchical,
                    bool* is_relative,
@@ -815,7 +813,7 @@ bool ResolveRelativeURL(const char* base_url,
 bool ResolveRelativeURL(const char* base_url,
                         const url_parse::Parsed& base_parsed,
                         bool base_is_file,
-                        const UTF16Char* relative_url,
+                        const char16* relative_url,
                         const url_parse::Component& relative_component,
                         CharsetConverter* query_converter,
                         CanonOutput* output,

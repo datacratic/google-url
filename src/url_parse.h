@@ -37,8 +37,9 @@
 
 namespace url_parse {
 
+// Deprecated, but WebKit/WebCore/platform/KURLGooglePrivate.h and
+// KURLGoogle.cpp still rely on this type.
 typedef char16 UTF16Char;
-typedef string16 UTF16String;
 
 // Component ------------------------------------------------------------------
 
@@ -215,23 +216,23 @@ struct Parsed {
 // authority (host) like "http". This function will not handle weird ones
 // like "about:" and "javascript:", or do the right thing for "file:" URLs.
 void ParseStandardURL(const char* url, int url_len, Parsed* parsed);
-void ParseStandardURL(const UTF16Char* url, int url_len, Parsed* parsed);
+void ParseStandardURL(const char16* url, int url_len, Parsed* parsed);
 
 // PathURL is for when the scheme is known not to have an authority (host)
 // section but that aren't file URLs either. The scheme is parsed, and
 // everything after the scheme is considered as the path. This is used for
 // things like "about:" and "javascript:"
 void ParsePathURL(const char* url, int url_len, Parsed* parsed);
-void ParsePathURL(const UTF16Char* url, int url_len, Parsed* parsed);
+void ParsePathURL(const char16* url, int url_len, Parsed* parsed);
 
 // FileURL is for file URLs. There are some special rules for interpreting
 // these.
 void ParseFileURL(const char* url, int url_len, Parsed* parsed);
-void ParseFileURL(const UTF16Char* url, int url_len, Parsed* parsed);
+void ParseFileURL(const char16* url, int url_len, Parsed* parsed);
 
 // MailtoURL is for mailto: urls. They are made up scheme,path,query
 void ParseMailtoURL(const char* url, int url_len, Parsed* parsed);
-void ParseMailtoURL(const UTF16Char* url, int url_len, Parsed* parsed);
+void ParseMailtoURL(const char16* url, int url_len, Parsed* parsed);
 
 // Helper functions -----------------------------------------------------------
 
@@ -256,11 +257,11 @@ void ParseMailtoURL(const UTF16Char* url, int url_len, Parsed* parsed);
 //
 // The 8-bit version requires UTF-8 encoding.
 bool ExtractScheme(const char* url, int url_len, Component* scheme);
-bool ExtractScheme(const UTF16Char* url, int url_len, Component* scheme);
+bool ExtractScheme(const char16* url, int url_len, Component* scheme);
 
 // Returns true if ch is a character that terminates the authority segment
 // of a URL.
-bool IsAuthorityTerminator(UTF16Char ch);
+bool IsAuthorityTerminator(char16 ch);
 
 // Does a best effort parse of input |spec|, in range |auth|. If a particular
 // component is not found, it will be set to invalid.
@@ -270,7 +271,7 @@ void ParseAuthority(const char* spec,
                     Component* password,
                     Component* hostname,
                     Component* port_num);
-void ParseAuthority(UTF16Char* spec,
+void ParseAuthority(char16* spec,
                     const Component& auth,
                     Component* username,
                     Component* password,
@@ -285,7 +286,7 @@ void ParseAuthority(UTF16Char* spec,
 // the two special values below.
 enum SpecialPort { PORT_UNSPECIFIED = -1, PORT_INVALID = -2 };
 int ParsePort(const char* url, const Component& port);
-int ParsePort(const UTF16Char* url, const Component& port);
+int ParsePort(const char16* url, const Component& port);
 
 // Extracts the range of the file name in the given url. The path must
 // already have been computed by the parse function, and the matching URL
@@ -300,7 +301,7 @@ int ParsePort(const UTF16Char* url, const Component& port);
 void ExtractFileName(const char* url,
                      const Component& path,
                      Component* file_name);
-void ExtractFileName(const UTF16Char* url,
+void ExtractFileName(const char16* url,
                      const Component& path,
                      Component* file_name);
 
@@ -323,7 +324,7 @@ bool ExtractQueryKeyValue(const char* url,
                           Component* query,
                           Component* key,
                           Component* value);
-bool ExtractQueryKeyValue(const UTF16Char* url,
+bool ExtractQueryKeyValue(const char16* url,
                           Component* query,
                           Component* key,
                           Component* value);

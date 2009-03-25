@@ -35,34 +35,35 @@
 
 #include <string>
 
+#include "base/string16.h"
 #include "googleurl/src/url_canon_internal.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace url_test_utils {
 
-// Converts a UTF-16 string from native wchar_t format to
-// url_canon::UTF16Char, by truncating the high 32 bits.  This is not meant to
-// handle true UTF-32 encoded strings.
-inline url_canon::UTF16String WStringToUTF16(const wchar_t* src) {
-  url_canon::UTF16String str;
+// Converts a UTF-16 string from native wchar_t format to char16, by
+// truncating the high 32 bits.  This is not meant to handle true UTF-32
+// encoded strings.
+inline string16 WStringToUTF16(const wchar_t* src) {
+  string16 str;
   int length = static_cast<int>(wcslen(src));
   for (int i = 0; i < length; ++i) {
-    str.push_back(static_cast<url_canon::UTF16Char>(src[i]));
+    str.push_back(static_cast<char16>(src[i]));
   }
   return str;
 }
 
 // Converts a string from UTF-8 to UTF-16
-inline url_canon::UTF16String ConvertUTF8ToUTF16(const std::string& src) {
+inline string16 ConvertUTF8ToUTF16(const std::string& src) {
   int length = static_cast<int>(src.length());
   EXPECT_LT(length, 1024);
   url_canon::RawCanonOutputW<1024> output;
   EXPECT_TRUE(url_canon::ConvertUTF8ToUTF16(src.data(), length, &output));
-  return url_canon::UTF16String(output.data(), output.length());
+  return string16(output.data(), output.length());
 }
 
 // Converts a string from UTF-16 to UTF-8
-inline std::string ConvertUTF16ToUTF8(const url_canon::UTF16String& src) {
+inline std::string ConvertUTF16ToUTF8(const string16& src) {
   std::string str;
   url_canon::StdStringCanonOutput output(&str);
   EXPECT_TRUE(url_canon::ConvertUTF16ToUTF8(src.data(),
@@ -74,9 +75,9 @@ inline std::string ConvertUTF16ToUTF8(const url_canon::UTF16String& src) {
 
 }  // namespace url_test_utils
 
-// This operator allows EXPECT_EQ(aUTF16String, anotherUTF16String); to work.
+// This operator allows EXPECT_EQ(astring16, anotherstring16); to work.
 inline std::ostream& operator<<(std::ostream& os,
-                                const url_canon::UTF16String& str) {
+                                const string16& str) {
   // Convert to UTF-8 and print the string
   return os << url_test_utils::ConvertUTF16ToUTF8(str);
 }

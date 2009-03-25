@@ -37,13 +37,13 @@
 namespace url_parse {
 
 // We treat slashes and backslashes the same for IE compatability.
-inline bool IsURLSlash(UTF16Char ch) {
+inline bool IsURLSlash(char16 ch) {
   return ch == '/' || ch == '\\';
 }
 
 // Returns true if we should trim this character from the URL because it is a
 // space or a control character.
-inline bool ShouldTrimFromURL(UTF16Char ch) {
+inline bool ShouldTrimFromURL(char16 ch) {
   return ch <= ' ';
 }
 
@@ -88,7 +88,7 @@ void ParsePathInternal(const char* spec,
                        Component* filepath,
                        Component* query,
                        Component* ref);
-void ParsePathInternal(const UTF16Char* spec,
+void ParsePathInternal(const char16* spec,
                        const Component& path,
                        Component* filepath,
                        Component* query,
@@ -102,7 +102,7 @@ void ParseAfterScheme(const char* spec,
                       int spec_len,
                       int after_scheme,
                       Parsed* parsed);
-void ParseAfterScheme(const UTF16Char* spec,
+void ParseAfterScheme(const char16* spec,
                       int spec_len,
                       int after_scheme,
                       Parsed* parsed);
