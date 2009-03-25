@@ -46,8 +46,8 @@ namespace {
 // External template that can handle initialization of either character type.
 // The input spec is given, and the canonical version will be placed in
 // |*canonical|, along with the parsing of the canonical spec in |*parsed|.
-template<typename CHAR>
-bool InitCanonical(const std::basic_string<CHAR>& input_spec,
+template<typename STR>
+bool InitCanonical(const STR& input_spec,
                    std::string* canonical,
                    url_parse::Parsed* parsed) {
   // Reserve enough room in the output for the input, plus some extra so that

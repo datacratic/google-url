@@ -137,6 +137,10 @@
 			RelativePath="..\base\scoped_ptr.h"
 			>
 		</File>
+		<File
+			RelativePath="..\base\string16.h"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>

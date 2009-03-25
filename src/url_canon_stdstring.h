@@ -90,38 +90,39 @@ class StdStringCanonOutput : public CanonOutput {
 //
 // The strings passed as arguments are not copied and must remain valid until
 // this class goes out of scope.
-template<typename CHAR>
-class StdStringReplacements : public url_canon::Replacements<CHAR> {
+template<typename STR>
+class StdStringReplacements :
+    public url_canon::Replacements<typename STR::value_type> {
  public:
-  void SetSchemeStr(const std::basic_string<CHAR>& s) {
+  void SetSchemeStr(const STR& s) {
     this->SetScheme(s.data(),
                     url_parse::Component(0, static_cast<int>(s.length())));
   }
-  void SetUsernameStr(const std::basic_string<CHAR>& s) {
+  void SetUsernameStr(const STR& s) {
     this->SetUsername(s.data(),
                       url_parse::Component(0, static_cast<int>(s.length())));
   }
-  void SetPasswordStr(const std::basic_string<CHAR>& s) {
+  void SetPasswordStr(const STR& s) {
     this->SetPassword(s.data(),
                       url_parse::Component(0, static_cast<int>(s.length())));
   }
-  void SetHostStr(const std::basic_string<CHAR>& s) {
+  void SetHostStr(const STR& s) {
     this->SetHost(s.data(),
                   url_parse::Component(0, static_cast<int>(s.length())));
   }
-  void SetPortStr(const std::basic_string<CHAR>& s) {
+  void SetPortStr(const STR& s) {
     this->SetPort(s.data(),
                   url_parse::Component(0, static_cast<int>(s.length())));
   }
-  void SetPathStr(const std::basic_string<CHAR>& s) {
+  void SetPathStr(const STR& s) {
     this->SetPath(s.data(),
                   url_parse::Component(0, static_cast<int>(s.length())));
   }
-  void SetQueryStr(const std::basic_string<CHAR>& s) {
+  void SetQueryStr(const STR& s) {
     this->SetQuery(s.data(),
                    url_parse::Component(0, static_cast<int>(s.length())));
   }
-  void SetRefStr(const std::basic_string<CHAR>& s) {
+  void SetRefStr(const STR& s) {
     this->SetRef(s.data(),
                  url_parse::Component(0, static_cast<int>(s.length())));
   }

@@ -42,8 +42,8 @@ class GURL {
   typedef url_canon::UTF16Char UTF16Char;
   typedef url_canon::UTF16String UTF16String;
 
-  typedef url_canon::StdStringReplacements<char> Replacements;
-  typedef url_canon::StdStringReplacements<UTF16Char> ReplacementsW;
+  typedef url_canon::StdStringReplacements<std::string> Replacements;
+  typedef url_canon::StdStringReplacements<UTF16String> ReplacementsW;
 
   // Creates an empty, invalid URL.
   GURL();

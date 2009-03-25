@@ -33,17 +33,12 @@
 #include <string>
 
 #include "base/basictypes.h"
+#include "base/string16.h"
 
 namespace url_parse {
 
-// We represent UTF-16 data using a 2-byte character.  On platforms with
-// 2-byte wchar_t, we use that type directly.
-#ifdef WIN32
-typedef wchar_t UTF16Char;
-#else
-typedef uint16 UTF16Char;
-#endif
-typedef std::basic_string<UTF16Char> UTF16String;
+typedef char16 UTF16Char;
+typedef string16 UTF16String;
 
 // Component ------------------------------------------------------------------
 
