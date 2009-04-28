@@ -135,7 +135,7 @@ const unsigned char kSharedCharTypeTable[0x100] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 0x10 - 0x1f
     0,                           // 0x20  ' ' (escape spaces in queries)
     CHAR_QUERY | CHAR_USERINFO,  // 0x21  !
-    CHAR_QUERY,                  // 0x22  "  (IE doesn't escape this in the query!)
+    0,                           // 0x22  "
     0,                           // 0x23  #  (invalid in query since it marks the ref)
     CHAR_QUERY | CHAR_USERINFO,  // 0x24  $
     CHAR_QUERY,                  // 0x25  %

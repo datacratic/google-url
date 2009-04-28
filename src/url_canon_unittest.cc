@@ -874,6 +874,8 @@ TEST(URLCanonTest, Query) {
       // Don't allow < or > because sometimes they are used for XSS if the
       // URL is echoed in content. Firefox does this, IE doesn't.
     {"q=<asdf>", L"q=<asdf>", NULL, "?q=%3Casdf%3E"},
+      // Escape double quotemarks in the query.
+    {"q=\"asdf\"", L"q=\"asdf\"", NULL, "?q=%22asdf%22"},
   };
 
   for (size_t i = 0; i < ARRAYSIZE(query_cases); i++) {
