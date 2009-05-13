@@ -336,6 +336,8 @@ TEST(GURLTest, IPAddress) {
     {"http://192.168.9.1/", true},
     {"http://192.168.9.1.2/", false},
     {"http://192.168.m.1/", false},
+    {"http://2001:db8::1/", false},
+    {"http://[2001:db8::1]/", true},
     {"", false},
     {"some random input!", false},
   };
@@ -343,6 +345,32 @@ TEST(GURLTest, IPAddress) {
   for (size_t i = 0; i < ARRAYSIZE(ip_tests); i++) {
     GURL url(ip_tests[i].spec);
     EXPECT_EQ(ip_tests[i].expected_ip, url.HostIsIPAddress());
+  }
+}
+
+TEST(GURLTest, HostNoBrackets) {
+  struct TestCase {
+    const char* input;
+    const char* expected_host;
+    const char* expected_plainhost;
+  } cases[] = {
+    {"http://www.google.com", "www.google.com", "www.google.com"},
+    {"http://[2001:db8::1]/", "[2001:db8::1]", "2001:db8::1"},
+    {"http://[::]/", "[::]", "::"},
+
+    // Don't require a valid URL, but don't crash either.
+    {"http://[]/", "[]", ""},
+    {"http://[x]/", "[x]", "x"},
+    {"http://[x/", "[x", "[x"},
+    {"http://x]/", "x]", "x]"},
+    {"http://[/", "[", "["},
+    {"http://]/", "]", "]"},
+    {"", "", ""},
+  };
+  for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
+    GURL url(cases[i].input);
+    EXPECT_EQ(cases[i].expected_host, url.host());
+    EXPECT_EQ(cases[i].expected_plainhost, url.HostNoBrackets());
   }
 }
 

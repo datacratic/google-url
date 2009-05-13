@@ -242,6 +242,9 @@ class GURL {
   std::string password() const {
     return ComponentString(parsed_.password);
   }
+  // Note that this may be a hostname, an IPv4 address, or an IPv6 literal
+  // surrounded by square brackets, like "[2001:db8::1]".  To exclude these
+  // brackets, use HostNoBrackets() below.
   std::string host() const {
     return ComponentString(parsed_.host);
   }
@@ -306,6 +309,10 @@ class GURL {
   // Returns the path that should be sent to the server. This is the path,
   // parameter, and query portions of the URL. It is guaranteed to be ASCII.
   std::string PathForRequest() const;
+
+  // Returns the host, excluding the square brackets surrounding IPv6 address
+  // literals.  This can be useful for passing to getaddrinfo().
+  std::string HostNoBrackets() const;
 
   // Returns true if this URL's host matches or is in the same domain as
   // the given input string. For example if this URL was "www.google.com",

@@ -349,6 +349,16 @@ std::string GURL::PathForRequest() const {
   return std::string(spec_, parsed_.path.begin);
 }
 
+std::string GURL::HostNoBrackets() const {
+  // If host looks like an IPv6 literal, strip the square brackets.
+  url_parse::Component h(parsed_.host);
+  if (h.len >= 2 && spec_[h.begin] == '[' && spec_[h.end() - 1] == ']') {
+    h.begin++;
+    h.len -= 2;
+  }
+  return ComponentString(h);
+}
+
 bool GURL::HostIsIPAddress() const {
   if (!is_valid_ || spec_.empty())
      return false;
