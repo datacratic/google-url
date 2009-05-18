@@ -102,7 +102,7 @@ const char kSchemeCanonical[0x80] = {
 // valid character, but it's only called once per URL, and it makes the lookup
 // table easier to read not having extra stuff in it.
 inline bool IsSchemeFirstChar(unsigned char c) {
-  return (c >= 'a' && c < 'z') || (c >= 'A' && c < 'Z');
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
 template<typename CHAR, typename UCHAR>
