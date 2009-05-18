@@ -532,15 +532,44 @@ TEST(URLCanonTest, IPv6) {
       // Regular IP addresses.
     {"[::]", L"[::]", "[::]", url_parse::Component(0,4), true},
     {"[::1]", L"[::1]", "[::1]", url_parse::Component(0,5), true},
-    {"[::192.168.0.1]", L"[::192.168.0.1]", "[::192.168.0.1]", url_parse::Component(0,15), true},
-    {"[::ffff:192.168.0.1]", L"[::ffff:192.168.0.1]", "[::ffff:192.168.0.1]", url_parse::Component(0,20), true},
-      // Only mapped and compat addresses can have IPv4 syntax embedded.
-    // BROKEN {"[::eeee:192.168.0.1]", L"[::eeee:192.168.0.1]", "", url_parse::Component(), false},
-    // BROKEN {"[2001::192.168.0.1]", L"[2001::92.168.0.1]", "", url_parse::Component(), false},
+    {"[1::]", L"[1::]", "[1::]", url_parse::Component(0,5), true},
+    {"[::192.168.0.1]", L"[::192.168.0.1]", "[::c0a8:1]", url_parse::Component(0,10), true},
+    {"[::ffff:192.168.0.1]", L"[::ffff:192.168.0.1]", "[::ffff:c0a8:1]", url_parse::Component(0,15), true},
+
+    // Leading zeros should be stripped.
+    {"[000:01:02:003:004:5:6:007]", L"[000:01:02:003:004:5:6:007]", "[0:1:2:3:4:5:6:7]", url_parse::Component(0,17), true},
+
+    // Upper case letters should be lowercased.
+    {"[A:b:c:DE:fF:0:1:aC]", L"[A:b:c:DE:fF:0:1:aC]", "[a:b:c:de:ff:0:1:ac]", url_parse::Component(0,20), true},
+
+    // The same address can be written with different contractions, but should
+    // get canonicalized to the same thing.
+    {"[1:0:0:2::3:0]", L"[1:0:0:2::3:0]", "[1::2:0:0:3:0]", url_parse::Component(0,14), true},
+    {"[1::2:0:0:3:0]", L"[1::2:0:0:3:0]", "[1::2:0:0:3:0]", url_parse::Component(0,14), true},
+
+    // IPv4 addresses
+    // Only mapped and compat addresses can have IPv4 syntax embedded.
+    {"[::eeee:192.168.0.1]", L"[::eeee:192.168.0.1]", "", url_parse::Component(), false},
+    {"[2001::192.168.0.1]", L"[2001::92.168.0.1]", "", url_parse::Component(), false},
+    {"[1:2:192.168.0.1:5:6]", L"[1:2:192.168.0.1:5:6]", "", url_parse::Component(), false},
+
+    // IPv4 with truncation and last component missing.
+    {"[::ffff:276.1.2]", L"[::ffff:276.1.2]", "[::ffff:1401:2]", url_parse::Component(0,15), true},
+
+    // IPv4 using hex.
+    // TODO(eroman): Should this format be disallowed?
+    {"[::ffff:0xC0.0Xa8.0x0.0x1]", L"[::ffff:0xC0.0Xa8.0x0.0x1]", "[::ffff:c0a8:1]", url_parse::Component(0,15), true},
+
+    // There may be zeros surrounding the "::" contraction.
+    {"[0:0::0:0:8]", L"[0:0::0:0:8]", "[::8]", url_parse::Component(0,5), true},
+
+    {"[2001:db8::1]", L"[2001:db8::1]", "[2001:db8::1]", url_parse::Component(0,13), true},
+
       // Can only have one "::" contraction in an IPv6 string literal.
-    // BROKEN {"[2001::db8::1]", L"[2001::db8::1]", "", url_parse::Component(), false},
+    {"[2001::db8::1]", L"[2001::db8::1]", "", url_parse::Component(), false},
       // No more than 2 consecutive ':'s.
-    // BROKEN {"[2001:db8:::1]", L"[2001:db8:::1]", "", url_parse::Component(), false},
+    {"[2001:db8:::1]", L"[2001:db8:::1]", "", url_parse::Component(), false},
+    {"[:::]", L"[:::]", "", url_parse::Component(), false},
       // Non-IP addresses due to invalid characters.
     {"[2001::.com]", L"[2001::.com]", "", url_parse::Component(), false},
       // If there are not enough components, the last one should fill them out.
@@ -549,6 +578,41 @@ TEST(URLCanonTest, IPv6) {
     {"[::192.168.0.0.1]", L"[::192.168.0.0.1]", "", url_parse::Component(), false},
     {"[::ffff:192.168.0.0.1]", L"[::ffff:192.168.0.0.1]", "", url_parse::Component(), false},
     {"[1:2:3:4:5:6:7:8:9]", L"[1:2:3:4:5:6:7:8:9]", "", url_parse::Component(), false},
+    // Too many bits (even though 8 comonents, the last one holds 32 bits).
+    {"[0:0:0:0:0:0:0:192.168.0.1]", L"[0:0:0:0:0:0:0:192.168.0.1]", "", url_parse::Component(), false},
+
+    // Too many bits specified -- the contraction would have to be zero-length
+    // to not exceed 128 bits.
+    {"[1:2:3:4:5:6::192.168.0.1]", L"[1:2:3:4:5:6::192.168.0.1]", "", url_parse::Component(), false},
+
+    // The contraction is for 16 bits of zero.
+    {"[1:2:3:4:5:6::8]", L"[1:2:3:4:5:6::8]", "[1:2:3:4:5:6:0:8]", url_parse::Component(0,17), true},
+
+    // Cannot have a trailing colon.
+    {"[1:2:3:4:5:6:7:8:]", L"[1:2:3:4:5:6:7:8:]", "", url_parse::Component(), false},
+    {"[1:2:3:4:5:6:192.168.0.1:]", L"[1:2:3:4:5:6:192.168.0.1:]", "", url_parse::Component(), false},
+
+    // Cannot have negative numbers.
+    {"[-1:2:3:4:5:6:7:8]", L"[-1:2:3:4:5:6:7:8]", "", url_parse::Component(), false},
+
+    // Scope ID -- the URL may contain an optional ["%" <scope_id>] section.
+    // The scope_id should be included in the canonicalized URL, and is an
+    // unsigned decimal number.
+
+    // Invalid because no ID was given after the percent.
+
+    // Don't allow scope-id
+    {"[1::%1]", L"[1::%1]", "", url_parse::Component(), false},
+    {"[1::%eth0]", L"[1::%eth0]", "", url_parse::Component(), false},
+    {"[1::%]", L"[1::%]", "", url_parse::Component(), false},
+    {"[%]", L"[%]", "", url_parse::Component(), false},
+    {"[::%:]", L"[::%:]", "", url_parse::Component(), false},
+
+    // Don't allow leading or trailing colons.
+    {"[:0:0::0:0:8]", L"[:0:0::0:0:8]", "", url_parse::Component(), false},
+    {"[0:0::0:0:8:]", L"[0:0::0:0:8:]", "", url_parse::Component(), false},
+    {"[:0:0::0:0:8:]", L"[:0:0::0:0:8:]", "", url_parse::Component(), false},
+
       // We allow a single trailing dot.
     // ... omitted at this time ...
       // Two dots in a row means not an IP address.
@@ -560,6 +624,9 @@ TEST(URLCanonTest, IPv6) {
   };
 
   for (size_t i = 0; i < arraysize(cases); i++) {
+    // Print some context of what test we were on, to help debug failures.
+    SCOPED_TRACE(cases[i].input8);
+
     // 8-bit version.
     url_parse::Component component(0,
                                    static_cast<int>(strlen(cases[i].input8)));
@@ -1479,6 +1546,12 @@ TEST(URLCanonTest, _itoa_s) {
   EXPECT_STREQ("12345", buf);
 
   EXPECT_EQ(EINVAL, url_canon::_itoa_s(123456, buf, 10));
+
+  // Test that radix 16 is supported.
+  memset(buf, 0xff, sizeof(buf));
+  EXPECT_EQ(0, url_canon::_itoa_s(1234, buf, sizeof(buf) - 1, 16));
+  EXPECT_STREQ("4d2", buf);
+  EXPECT_EQ('\xFF', buf[5]);
 }
 
 TEST(URLCanonTest, _itow_s) {

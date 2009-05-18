@@ -65,7 +65,7 @@ namespace {
 // This table lists the canonical version of all characters we allow in the
 // input, with 0 indicating it is disallowed. We use the magic kEscapedHostChar
 // value to indicate that this character should be escaped. We are a little more
-// restricive than IE, but less restrictive than Firefox.
+// restrictive than IE, but less restrictive than Firefox.
 //
 // Note that we disallow the % character. We will allow it when part of an
 // escape sequence, of course, but this disallows "%25". Even though IE allows

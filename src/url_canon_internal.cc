@@ -386,10 +386,15 @@ bool SetupUTF16OverrideComponents(const char* base,
 #ifndef WIN32
 
 int _itoa_s(int value, char* buffer, size_t size_in_chars, int radix) {
-  if (radix != 10)
+  const char* format_str;
+  if (radix == 10)
+    format_str = "%d";
+  else if (radix == 16)
+    format_str = "%x";
+  else
     return EINVAL;
 
-  int written = snprintf(buffer, size_in_chars, "%d", value);
+  int written = snprintf(buffer, size_in_chars, format_str, value);
   if (static_cast<size_t>(written) >= size_in_chars) {
     // Output was truncated, or written was negative.
     return EINVAL;
