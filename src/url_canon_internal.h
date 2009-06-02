@@ -163,22 +163,10 @@ extern const char16 kUnicodeReplacementCharacter;
 // |*begin| will be updated to point to the last character consumed so it
 // can be incremented in a loop and will be ready for the next character.
 // (for a single-byte ASCII character, it will not be changed).
-inline bool ReadUTFChar(const char* str, int* begin, int length,
-                        unsigned* code_point_out) {
-  int code_point;  // Avoids warning when U8_NEXT writes -1 to it.
-  U8_NEXT(str, *begin, length, code_point);
-  *code_point_out = static_cast<unsigned>(code_point);
-
-  // The ICU macro above moves to the next char, we want to point to the last
-  // char consumed.
-  (*begin)--;
-
-  // Validate the decoded value.
-  if (U_IS_UNICODE_CHAR(code_point))
-    return true;
-  *code_point_out = kUnicodeReplacementCharacter;
-  return false;
-}
+//
+// Implementation is in url_canon_icu.cc.
+bool ReadUTFChar(const char* str, int* begin, int length,
+                 unsigned* code_point_out);
 
 // Generic To-UTF-8 converter. This will call the given append method for each
 // character that should be appended, with the given output method. Wrappers
@@ -260,31 +248,10 @@ inline void AppendUTF8EscapedValue(unsigned char_value, CanonOutput* output) {
 // |*begin| will be updated to point to the last character consumed so it
 // can be incremented in a loop and will be ready for the next character.
 // (for a single-16-bit-word character, it will not be changed).
-inline bool ReadUTFChar(const char16* str, int* begin, int length,
-                        unsigned* code_point) {
-  if (U16_IS_SURROGATE(str[*begin])) {
-    if (!U16_IS_SURROGATE_LEAD(str[*begin]) || *begin + 1 >= length ||
-        !U16_IS_TRAIL(str[*begin + 1])) {
-      // Invalid surrogate pair.
-      *code_point = kUnicodeReplacementCharacter;
-      return false;
-    } else {
-      // Valid surrogate pair.
-      *code_point = U16_GET_SUPPLEMENTARY(str[*begin], str[*begin + 1]);
-      (*begin)++;
-    }
-  } else {
-    // Not a surrogate, just one 16-bit word.
-    *code_point = str[*begin];
-  }
-
-  if (U_IS_UNICODE_CHAR(*code_point))
-    return true;
-
-  // Invalid code point.
-  *code_point = kUnicodeReplacementCharacter;
-  return false;
-}
+//
+// Implementation is in url_canon_icu.cc.
+bool ReadUTFChar(const char16* str, int* begin, int length,
+                 unsigned* code_point);
 
 // Equivalent to U16_APPEND_UNSAFE in ICU but uses our output method.
 inline void AppendUTF16Value(unsigned code_point,
