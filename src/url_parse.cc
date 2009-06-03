@@ -147,31 +147,33 @@ void ParseServerInfo(const CHAR* spec,
     return;
   }
 
-  // Search backwards for a ':' but stop on ']' (IPv6 address literal
-  // delimiter).
-  int i = serverinfo.begin + serverinfo.len - 1;
-  int colon = -1, bracket = -1;
-  while (i >= serverinfo.begin && colon < 0) {
+  // If the host starts with a left-bracket, assume the entire host is an
+  // IPv6 literal.  Otherwise, assume none of the host is an IPv6 literal.
+  // This assumption will be overridden if we find a right-bracket.
+  //
+  // Our IPv6 address canonicalization code requires both brackets to exist,
+  // but the ability to locate an incomplete address can still be useful.
+  int ipv6_terminator = spec[serverinfo.begin] == '[' ? serverinfo.end() : -1;
+  int colon = -1;
+
+  // Find the last right-bracket, and the last colon.
+  for (int i = serverinfo.begin; i < serverinfo.end(); i++) {
     switch (spec[i]) {
       case ']':
-        bracket = i;
+        ipv6_terminator = i;
         break;
       case ':':
-        if (bracket < 0)
-          colon = i;  // Will cause loop to terminate.
+        colon = i;
         break;
     }
-    i--;
   }
 
-  if (colon >= 0) {
+  if (colon > ipv6_terminator) {
     // Found a port number: <hostname>:<port>
-    int host_len = colon - serverinfo.begin;
-    if (host_len)
-      *hostname = MakeRange(serverinfo.begin, colon);
-    else
+    *hostname = MakeRange(serverinfo.begin, colon);
+    if (hostname->len == 0)
       hostname->reset();
-    *port_num = MakeRange(colon + 1, serverinfo.begin + serverinfo.len);
+    *port_num = MakeRange(colon + 1, serverinfo.end());
   } else {
     // No port: <hostname>
     *hostname = serverinfo;
@@ -386,7 +388,7 @@ void DoParseMailtoURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   parsed->host.reset();
   parsed->port.reset();
   parsed->ref.reset();
-  parsed->query.reset(); // May use this; reset for convenience.
+  parsed->query.reset();  // May use this; reset for convenience.
 
   // Strip leading & trailing spaces and control characters.
   int begin = 0;
@@ -444,7 +446,7 @@ void DoParseMailtoURL(const CHAR* spec, int spec_len, Parsed* parsed) {
 template<typename CHAR>
 int DoParsePort(const CHAR* spec, const Component& component) {
   // Easy success case when there is no port.
-  const int max_digits = 5;
+  const int kMaxDigits = 5;
   if (!component.is_nonempty())
     return PORT_UNSPECIFIED;
 
@@ -461,11 +463,11 @@ int DoParsePort(const CHAR* spec, const Component& component) {
 
   // Verify we don't have too many digits (we'll be copying to our buffer so
   // we need to double-check).
-  if (digits_comp.len > max_digits)
+  if (digits_comp.len > kMaxDigits)
     return PORT_INVALID;
 
   // Copy valid digits to the buffer.
-  char digits[max_digits + 1];  // +1 for null terminator
+  char digits[kMaxDigits + 1];  // +1 for null terminator
   for (int i = 0; i < digits_comp.len; i++) {
     CHAR ch = spec[digits_comp.begin + i];
     if (!IsPortDigit(ch)) {

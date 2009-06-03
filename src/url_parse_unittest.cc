@@ -309,10 +309,20 @@ static URLParseCase cases[] = {
 {"http://foo/abcd?efgh?ijkl",           "http", NULL,  NULL,      "foo",        -1, "/abcd",   "efgh?ijkl", NULL},
 {"http://foo/abcd#foo?bar",             "http", NULL,  NULL,      "foo",        -1, "/abcd",   NULL,        "foo?bar"},
 
-  // IPV6, check also interesting uses of colons.
+  // IPv6, check also interesting uses of colons.
 {"[61:24:74]:98",                       "[61",  NULL,  NULL,      "24:74]",     98, NULL,      NULL,        NULL},
 {"http://[61:27]:98",                   "http", NULL,  NULL,      "[61:27]",    98, NULL,      NULL,        NULL},
 {"http:[61:27]/:foo",                   "http", NULL,  NULL,      "[61:27]",    -1, "/:foo",   NULL,        NULL},
+{"http://[1::2]:3:4",                   "http", NULL,  NULL,      "[1::2]:3",    4, NULL,      NULL,        NULL},
+
+  // Partially-complete IPv6 literals, and related cases.
+{"http://2001::1",                      "http", NULL,  NULL,      "2001:",       1, NULL,      NULL,        NULL},
+{"http://[2001::1",                     "http", NULL,  NULL,      "[2001::1",   -1, NULL,      NULL,        NULL},
+{"http://2001::1]",                     "http", NULL,  NULL,      "2001::1]",   -1, NULL,      NULL,        NULL},
+{"http://2001::1]:80",                  "http", NULL,  NULL,      "2001::1]",   80, NULL,      NULL,        NULL},
+{"http://[2001::1]",                    "http", NULL,  NULL,      "[2001::1]",  -1, NULL,      NULL,        NULL},
+{"http://[2001::1]:80",                 "http", NULL,  NULL,      "[2001::1]",  80, NULL,      NULL,        NULL},
+{"http://[[::]]",                       "http", NULL,  NULL,      "[[::]]",     -1, NULL,      NULL,        NULL},
 
 };
 
