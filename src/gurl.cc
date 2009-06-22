@@ -364,9 +364,10 @@ bool GURL::HostIsIPAddress() const {
      return false;
 
   url_canon::RawCanonOutputT<char, 128> ignored_output;
-  url_parse::Component ignored_component;
-  return url_canon::CanonicalizeIPAddress(spec_.c_str(), parsed_.host,
-                                          &ignored_output, &ignored_component);
+  url_canon::CanonHostInfo host_info;
+  url_canon::CanonicalizeIPAddress(spec_.c_str(), parsed_.host,
+                                   &ignored_output, &host_info);
+  return host_info.IsIPAddress();
 }
 
 #ifdef WIN32

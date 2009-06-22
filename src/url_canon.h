@@ -326,9 +326,46 @@ bool CanonicalizeUserInfo(const char16* username_source,
                           url_parse::Component* out_username,
                           url_parse::Component* out_password);
 
+
+// This structure holds detailed state exported from the IP/Host canonicalizers.
+// Additional fields may be added as callers require them.
+struct CanonHostInfo {
+  CanonHostInfo() : family(NEUTRAL), num_ipv4_components(0), out_host() {}
+
+  // Convenience function to test if family is an IP address.
+  bool IsIPAddress() const { return family == IPV4 || family == IPV6; }
+
+  // This field summarizes how the input was classified by the canonicalizer.
+  enum Family {
+    NEUTRAL,   // - Doesn't resemble an IP address.  As far as the IP
+               //   canonicalizer is concerned, it should be treated as a
+               //   hostname.
+    BROKEN,    // - Almost an IP, but was not canonicalized.  This could be an
+               //   IPv4 address where truncation occurred, or something
+               //   containing the special characters :[] which did not parse
+               //   as an IPv6 address.  Never attempt to connect to this
+               //   address, because it might actually succeed!
+    IPV4,      // - Successfully canonicalized as an IPv4 address.
+    IPV6,      // - Successfully canonicalized as an IPv6 address.
+  };
+  Family family;
+
+  // If |family| is IPV4, then this is the number of nonempty dot-separated
+  // components in the input text, from 1 to 4.  If |family| is not IPV4,
+  // this value is undefined.
+  int num_ipv4_components;
+
+  // Location of host within the canonicalized output.
+  // CanonicalizeIPAddress() only sets this field if |family| is IPV4 or IPV6.
+  // CanonicalizeHostVerbose() always sets it.
+  url_parse::Component out_host;
+};
+
+
 // Host.
 //
-// The 8-bit version requires UTF-8 encoding.
+// The 8-bit version requires UTF-8 encoding.  Use this version when you only
+// need to know whether canonicalization succeeded.
 bool CanonicalizeHost(const char* spec,
                       const url_parse::Component& host,
                       CanonOutput* output,
@@ -338,28 +375,38 @@ bool CanonicalizeHost(const char16* spec,
                       CanonOutput* output,
                       url_parse::Component* out_host);
 
+// Extended version of CanonicalizeHost, which returns additional information.
+// Use this when you need to know whether the hostname was an IP address.
+// A successful return is indicated by host_info->family != BROKEN.  See the
+// definition of CanonHostInfo above for details.
+void CanonicalizeHostVerbose(const char* spec,
+                             const url_parse::Component& host,
+                             CanonOutput* output,
+                             CanonHostInfo* host_info);
+void CanonicalizeHostVerbose(const char16* spec,
+                             const url_parse::Component& host,
+                             CanonOutput* output,
+                             CanonHostInfo* host_info);
+
 
 // IP addresses.
 //
-// Tries to interpret the given host name as an IP address. If it is an IP
-// address, it will canonicalize it as such, appending it to |output| and
-// identifying the added regions in |*out_host|, and will return true. If it
-// is not an IP address, it will do nothing and will return false. This means
-// that the host name should be treated as a non-IP address and resolved using
-// DNS like most names.
+// Tries to interpret the given host name as an IPv4 or IPv6 address. If it is
+// an IP address, it will canonicalize it as such, appending it to |output|.
+// Additional status information is returned via the |*host_info| parameter.
+// See the definition of CanonHostInfo above for details.
 //
 // This is called AUTOMATICALLY from the host canonicalizer, which ensures that
 // the input is unescaped and name-prepped, etc. It should not normally be
-// necessary or wise to call this directly, other than to check if a given
-// canonical hostname is an IP address.
-bool CanonicalizeIPAddress(const char* spec,
+// necessary or wise to call this directly.
+void CanonicalizeIPAddress(const char* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
-                           url_parse::Component* out_host);
-bool CanonicalizeIPAddress(const char16* spec,
+                           CanonHostInfo* host_info);
+void CanonicalizeIPAddress(const char16* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
-                           url_parse::Component* out_host);
+                           CanonHostInfo* host_info);
 
 // Port: this function will add the colon for the port if a port is present.
 // The caller can pass url_parse::PORT_UNSPECIFIED as the

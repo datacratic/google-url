@@ -101,17 +101,21 @@ bool DoFindIPv4Components(const CHAR* spec,
   return true;
 }
 
-// Converts an IPv4 component to a 32-bit number, returning true on success.
-// False means that the number is invalid and that the input can not be an
-// IP address. The number will be truncated to 32 bits.
+// Converts an IPv4 component to a 32-bit number, while checking for overflow.
+//
+// Possible return values:
+// - IPV4    - The number was valid, and did not overflow.
+// - BROKEN  - The input was numeric, but too large for a 32-bit field.
+// - NEUTRAL - Input was not numeric.
 //
 // The input is assumed to be ASCII. FindIPv4Components should have stripped
 // out any input that is greater than 7 bits. The components are assumed
 // to be non-empty.
 template<typename CHAR>
-bool IPv4ComponentToNumber(const CHAR* spec,
-                           const url_parse::Component& component,
-                           uint32_t* number) {
+CanonHostInfo::Family IPv4ComponentToNumber(
+    const CHAR* spec,
+    const url_parse::Component& component,
+    uint32_t* number) {
   // Figure out the base
   SharedCharTypes base;
   int base_prefix_len = 0;  // Size of the prefix for this base.
@@ -131,33 +135,46 @@ bool IPv4ComponentToNumber(const CHAR* spec,
     base = CHAR_DEC;
   }
 
-  // Reject any components that are too long. This is generous, Windows
-  // allows at most 16 characters for the entire host name, and 12 per
-  // component, while Mac and Linux will take up to 10 per component.
-  const int kMaxComponentLen = 16;
-  if (component.len - base_prefix_len > kMaxComponentLen)
-    return false;
+  // Extend the prefix to consume all leading zeros.
+  while (base_prefix_len < component.len &&
+         spec[component.begin + base_prefix_len] == '0')
+    base_prefix_len++;
 
-  // Put the component, minus any base prefix, to a NULL-terminated buffer so
-  // we can call the standard library. We know the input is 7-bit, so convert
-  // to narrow (if this is the wide version of the template) by casting.
-  char buf[kMaxComponentLen + 1];
+  // Put the component, minus any base prefix, into a NULL-terminated buffer so
+  // we can call the standard library.  Because leading zeros have already been
+  // discarded, filling the entire buffer is guaranteed to trigger the 32-bit
+  // overflow check.
+  const int kMaxComponentLen = 16;
+  char buf[kMaxComponentLen + 1];  // digits + '\0'
   int dest_i = 0;
-  for (int i = base_prefix_len; i < component.len; i++, dest_i++) {
-    char input = static_cast<char>(spec[component.begin + i]);
+  for (int i = component.begin + base_prefix_len; i < component.end(); i++) {
+    // We know the input is 7-bit, so convert to narrow (if this is the wide
+    // version of the template) by casting.
+    char input = static_cast<char>(spec[i]);
 
     // Validate that this character is OK for the given base.
     if (!IsCharOfType(input, base))
-      return false;
-    buf[dest_i] = input;
+      return CanonHostInfo::NEUTRAL;
+
+    // Fill the buffer, if there's space remaining.  This check allows us to
+    // verify that all characters are numeric, even those that don't fit.
+    if (dest_i < kMaxComponentLen)
+      buf[dest_i++] = input;
   }
-  buf[dest_i] = 0;
+
+  buf[dest_i] = '\0';
 
   // Use the 64-bit strtoi so we get a big number (no hex, decimal, or octal
-  // number can overflow a 64-bit number in <= 16 characters). Then cast to
-  // truncate down to a 32-bit number. This may be further truncated later.
-  *number = static_cast<uint32_t>(_strtoui64(buf, NULL, BaseForType(base)));
-  return true;
+  // number can overflow a 64-bit number in <= 16 characters).
+  uint64_t num = _strtoui64(buf, NULL, BaseForType(base));
+
+  // Check for 32-bit overflow.
+  if (num > UINT32_MAX)
+    return CanonHostInfo::BROKEN;
+
+  // No overflow.  Success!
+  *number = static_cast<uint32_t>(num);
+  return CanonHostInfo::IPV4;
 }
 
 // Writes the given address (with each character representing one dotted
@@ -180,16 +197,26 @@ void AppendIPv4Address(const unsigned char address[4],
   out_host->len = output->length() - out_host->begin;
 }
 
-// Converts an IPv4 address to a 32-bit number (network byte order), returning
-// true on success. False means that the input is not a valid IPv4 address.
+// Converts an IPv4 address to a 32-bit number (network byte order).
+//
+// Possible return values:
+//   IPV4    - IPv4 address was successfully parsed.
+//   BROKEN  - Input was formatted like an IPv4 address, but overflow occurred
+//             during parsing.
+//   NEUTRAL - Input couldn't possibly be interpreted as an IPv4 address.
+//             It might be an IPv6 address, or a hostname.
+//
+// On success, |num_ipv4_components| will be populated with the number of
+// components in the IPv4 address.
 template<typename CHAR>
-bool IPv4AddressToNumber(const CHAR* spec,
-                         const url_parse::Component& host,
-                         unsigned char address[4]) {
+CanonHostInfo::Family IPv4AddressToNumber(const CHAR* spec,
+                                          const url_parse::Component& host,
+                                          unsigned char address[4],
+                                          int* num_ipv4_components) {
   // The identified components. Not all may exist.
   url_parse::Component components[4];
   if (!FindIPv4Components(spec, host, components))
-    return false;
+    return CanonHostInfo::NEUTRAL;
 
   // Convert existing components to digits. Values up to
   // |existing_components| will be valid.
@@ -198,43 +225,67 @@ bool IPv4AddressToNumber(const CHAR* spec,
   for (int i = 0; i < 4; i++) {
     if (components[i].len <= 0)
       continue;
-    if (!IPv4ComponentToNumber(spec, components[i],
-                               &component_values[existing_components]))
-      return false;
+    CanonHostInfo::Family family = IPv4ComponentToNumber(
+        spec, components[i], &component_values[existing_components]);
+
+    // Stop if we hit an invalid non-empty component.
+    if (family != CanonHostInfo::IPV4)
+      return family;
+
     existing_components++;
   }
 
   // Use that sequence of numbers to fill out the 4-component IP address.
 
-  // ...first fill all but the last component by truncating to one byte.
-  for (int i = 0; i < existing_components - 1; i++)
+  // First, process all components but the last, while making sure each fits
+  // within an 8-bit field.
+  for (int i = 0; i < existing_components - 1; i++) {
+    if (component_values[i] > UINT8_MAX)
+      return CanonHostInfo::BROKEN;
     address[i] = static_cast<unsigned char>(component_values[i]);
+  }
 
-  // ...then fill out the rest of the bytes by filling them with the last
-  // component.
+  // Next, consume the last component to fill in the remaining bytes.
   uint32_t last_value = component_values[existing_components - 1];
-  if (existing_components == 1)
-    address[0] = (last_value & 0xFF000000) >> 24;
-  if (existing_components <= 2)
-    address[1] = (last_value & 0x00FF0000) >> 16;
-  if (existing_components <= 3)
-    address[2] = (last_value & 0x0000FF00) >> 8;
-  address[3] = last_value & 0xFF;
+  for (int i = 3; i >= existing_components - 1; i--) {
+    address[i] = static_cast<unsigned char>(last_value);
+    last_value >>= 8;
+  }
 
-  return true;
+  // If the last component has residual bits, report overflow.
+  if (last_value != 0)
+    return CanonHostInfo::BROKEN;
+
+  // Tell the caller how many components we saw.
+  *num_ipv4_components = existing_components;
+
+  // Success!
+  return CanonHostInfo::IPV4;
 }
 
+// Return true if we've made a final IPV4/BROKEN decision, false if the result
+// is NEUTRAL, and we could use a second opinion.
 template<typename CHAR, typename UCHAR>
 bool DoCanonicalizeIPv4Address(const CHAR* spec,
                                const url_parse::Component& host,
                                CanonOutput* output,
-                               url_parse::Component* out_host) {
+                               CanonHostInfo* host_info) {
   unsigned char address[4];
-  if (!IPv4AddressToNumber<CHAR>(spec, host, address))
-    return false;
+  host_info->family = IPv4AddressToNumber<CHAR>(
+      spec, host, address, &host_info->num_ipv4_components);
 
-  AppendIPv4Address(address, output, out_host);
-  return true;
+  switch (host_info->family) {
+    case CanonHostInfo::IPV4:
+      // Definitely an IPv4 address.
+      AppendIPv4Address(address, output, &host_info->out_host);
+      return true;
+    case CanonHostInfo::BROKEN:
+      // Definitely broken.
+      return true;
+    default:
+      // Could be IPv6 or a hostname.
+      return false;
+  }
 }
 
 // Helper class that describes the main components of an IPv6 input string.
@@ -506,9 +557,12 @@ bool IPv6AddressToNumber(const CHAR* spec,
       return false;
 
     // Append the 32-bit number to |address|.
-    if (!IPv4AddressToNumber(spec,
-                             ipv6_parsed.ipv4_component,
-                             &address[cur_index_in_address]))
+    int ignored_num_ipv4_components;
+    if (CanonHostInfo::IPV4 !=
+        IPv4AddressToNumber(spec,
+                            ipv6_parsed.ipv4_component,
+                            &address[cur_index_in_address],
+                            &ignored_num_ipv4_components))
       return false;
   }
 
@@ -549,17 +603,34 @@ void ChooseIPv6ContractionRange(const unsigned char address[16],
   *contraction_range = max_range;
 }
 
+// Return true if we've made a final IPV6/BROKEN decision, false if the result
+// is NEUTRAL, and we could use a second opinion.
 template<typename CHAR, typename UCHAR>
 bool DoCanonicalizeIPv6Address(const CHAR* spec,
                                const url_parse::Component& host,
                                CanonOutput* output,
-                               url_parse::Component* out_host) {
+                               CanonHostInfo* host_info) {
   // Turn the IP address into a 128 bit number.
   unsigned char address[16];
-  if (!IPv6AddressToNumber<CHAR, UCHAR>(spec, host, address))
-    return false;
+  if (!IPv6AddressToNumber<CHAR, UCHAR>(spec, host, address)) {
+    // If it's not an IPv6 address, scan for characters that should *only*
+    // exist in an IPv6 address.
+    for (int i = host.begin; i < host.end(); i++) {
+      switch (spec[i]) {
+        case '[':
+        case ']':
+        case ':':
+          host_info->family = CanonHostInfo::BROKEN;
+          return true;
+      }
+    }
 
-  out_host->begin = output->length();
+    // No invalid characters.  Could still be IPv4 or a hostname.
+    host_info->family = CanonHostInfo::NEUTRAL;
+    return false;
+  }
+
+  host_info->out_host.begin = output->length();
   output->push_back('[');
 
   // We will now output the address according to the rules in:
@@ -595,8 +666,9 @@ bool DoCanonicalizeIPv6Address(const CHAR* spec,
   }
 
   output->push_back(']');
-  out_host->len = output->length() - out_host->begin;
+  host_info->out_host.len = output->length() - host_info->out_host.begin;
 
+  host_info->family = CanonHostInfo::IPV6;
   return true;
 }
 
@@ -614,26 +686,28 @@ bool FindIPv4Components(const char16* spec,
   return DoFindIPv4Components<char16, char16>(spec, host, components);
 }
 
-bool CanonicalizeIPAddress(const char* spec,
+void CanonicalizeIPAddress(const char* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
-                           url_parse::Component* out_host) {
-  return
-      DoCanonicalizeIPv4Address<char, unsigned char>(
-          spec, host, output, out_host) ||
-      DoCanonicalizeIPv6Address<char, unsigned char>(
-          spec, host, output, out_host);
+                           CanonHostInfo* host_info) {
+  if (DoCanonicalizeIPv4Address<char, unsigned char>(
+          spec, host, output, host_info))
+    return;
+  if (DoCanonicalizeIPv6Address<char, unsigned char>(
+          spec, host, output, host_info))
+    return;
 }
 
-bool CanonicalizeIPAddress(const char16* spec,
+void CanonicalizeIPAddress(const char16* spec,
                            const url_parse::Component& host,
                            CanonOutput* output,
-                           url_parse::Component* out_host) {
-  return
-      DoCanonicalizeIPv4Address<char16, char16>(
-          spec, host, output, out_host) ||
-      DoCanonicalizeIPv6Address<char16, char16>(
-          spec, host, output, out_host);
+                           CanonHostInfo* host_info) {
+  if (DoCanonicalizeIPv4Address<char16, char16>(
+          spec, host, output, host_info))
+    return;
+  if (DoCanonicalizeIPv6Address<char16, char16>(
+          spec, host, output, host_info))
+    return;
 }
 
 }  // namespace url_canon

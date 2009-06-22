@@ -82,7 +82,7 @@ const unsigned char kHostCharLookup[0x80] = {
 //  ' '   !    "    #    $    %    &    '    (    )    *    +    ,    -    .    /
    kEsc,kEsc,kEsc,kEsc,kEsc,  0, kEsc,kEsc,kEsc,kEsc,kEsc, '+',kEsc, '-', '.',  0,
 //   0    1    2    3    4    5    6    7    8    9    :    ;    <    =    >    ?
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',  0 ,  0 ,kEsc,kEsc,kEsc,  0 ,
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':',  0 ,kEsc,kEsc,kEsc,  0 ,
 //   @    A    B    C    D    E    F    G    H    I    J    K    L    M    N    O
    kEsc, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
 //   P    Q    R    S    T    U    V    W    X    Y    Z    [    \    ]    ^    _
@@ -113,27 +113,6 @@ void ScanHostname(const CHAR* spec, const url_parse::Component& host,
   }
 }
 
-// Considers the current contents of the output and sees if it looks like an
-// IP address. This is called because we canonicalize to the output assuming
-// that it's not an IP address, and now need to fix it if we produced one.
-//
-// The generated hostname is identified by |host|. The output will be fixed
-// with a canonical IP address if the host looks like one. Otherwise, there
-// will be no change.
-void InterpretIPAddress(const url_parse::Component& host,
-                        CanonOutput* output) {
-  // Canonicalize the IP address in the output to this temporary buffer.
-  // IP addresses are small, so this should not cause an allocation.
-  RawCanonOutput<64> canon_ip;
-  url_parse::Component out_host;  // Unused.
-  if (CanonicalizeIPAddress(output->data(), host, &canon_ip, &out_host)) {
-    // Looks like an IP address, overwrite the existing host with the newly
-    // canonicalized IP address.
-    output->set_length(host.begin);
-    output->Append(canon_ip.data(), canon_ip.length());
-  }
-}
-
 // Canonicalizes a host name that is entirely 8-bit characters (even though
 // the type holding them may be 16 bits. Escaped characters will be unescaped.
 // Non-7-bit characters (for example, UTF-8) will be passed unchanged.
@@ -159,12 +138,6 @@ template<typename CHAR>
 bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output,
                   bool* has_non_ascii) {
   *has_non_ascii = false;
-
-  // First check if the host name is an IP address.
-  url_parse::Component out_ip;  // Unused: we compute the size ourselves later.
-  if (CanonicalizeIPAddress(host, url_parse::Component(0, host_len),
-                            output, &out_ip))
-    return true;
 
   bool success = true;
   for (int i = 0; i < host_len; i++) {
@@ -255,10 +228,6 @@ bool DoComplexHost(const char* host, int host_len,
     // Unescaping may have left us with ASCII input, in which case the
     // unescaped version we wrote to output is complete.
     if (!has_non_ascii) {
-      // Need to be sure to check for IP addresses in the newly unescaped
-      // output. This will fix the output if necessary.
-      InterpretIPAddress(url_parse::MakeRange(begin_length, output->length()),
-                         output);
       return true;
     }
 
@@ -328,36 +297,55 @@ bool DoComplexHost(const char16* host, int host_len,
 }
 
 template<typename CHAR, typename UCHAR>
-bool DoHost(const CHAR* spec,
+void DoHost(const CHAR* spec,
             const url_parse::Component& host,
             CanonOutput* output,
-            url_parse::Component* out_host) {
-  bool success = true;
+            CanonHostInfo* host_info) {
   if (host.len <= 0) {
     // Empty hosts don't need anything.
-    *out_host = url_parse::Component();
-    return true;
+    host_info->family = CanonHostInfo::NEUTRAL;
+    host_info->out_host = url_parse::Component();
+    return;
   }
 
   bool has_non_ascii, has_escaped;
   ScanHostname<CHAR, UCHAR>(spec, host, &has_non_ascii, &has_escaped);
 
-  out_host->begin = output->length();
+  // Keep track of output's initial length, so we can rewind later.
+  const int output_begin = output->length();
 
+  bool success;
   if (!has_non_ascii && !has_escaped) {
-    success &= DoSimpleHost(&spec[host.begin], host.len,
-                            output, &has_non_ascii);
+    success = DoSimpleHost(&spec[host.begin], host.len,
+                           output, &has_non_ascii);
     DCHECK(!has_non_ascii);
   } else {
-    success &= DoComplexHost(&spec[host.begin], host.len,
-                             has_non_ascii, has_escaped, output);
-    // We could have had escaped numerals that should now be canonicalized as
-    // an IP address. This should be exceedingly rare, it's probably mostly
-    // used by scammers.
+    success = DoComplexHost(&spec[host.begin], host.len,
+                            has_non_ascii, has_escaped, output);
   }
 
-  out_host->len = output->length() - out_host->begin;
-  return success;
+  if (!success) {
+    // Canonicalization failed.  Set BROKEN to notify the caller.
+    host_info->family = CanonHostInfo::BROKEN;
+  } else {
+    // After all the other canonicalization, check if we ended up with an IP
+    // address.  IP addresses are small, so writing into this temporary buffer
+    // should not cause an allocation.
+    RawCanonOutput<64> canon_ip;
+    CanonicalizeIPAddress(output->data(),
+                          url_parse::MakeRange(output_begin, output->length()),
+                          &canon_ip, host_info);
+
+    // If we got an IPv4/IPv6 address, copy the canonical form back to the
+    // real buffer.  Otherwise, it's a hostname or broken IP, in which case
+    // we just leave it in place.
+    if (host_info->IsIPAddress()) {
+      output->set_length(output_begin);
+      output->Append(canon_ip.data(), canon_ip.length());
+    }
+  }
+
+  host_info->out_host = url_parse::MakeRange(output_begin, output->length());
 }
 
 }  // namespace
@@ -366,14 +354,34 @@ bool CanonicalizeHost(const char* spec,
                       const url_parse::Component& host,
                       CanonOutput* output,
                       url_parse::Component* out_host) {
-  return DoHost<char, unsigned char>(spec, host, output, out_host);
+  CanonHostInfo host_info;
+  DoHost<char, unsigned char>(spec, host, output, &host_info);
+  *out_host = host_info.out_host;
+  return (host_info.family != CanonHostInfo::BROKEN);
 }
 
 bool CanonicalizeHost(const char16* spec,
                       const url_parse::Component& host,
                       CanonOutput* output,
                       url_parse::Component* out_host) {
-  return DoHost<char16, char16>(spec, host, output, out_host);
+  CanonHostInfo host_info;
+  DoHost<char16, char16>(spec, host, output, &host_info);
+  *out_host = host_info.out_host;
+  return (host_info.family != CanonHostInfo::BROKEN);
+}
+
+void CanonicalizeHostVerbose(const char* spec,
+                             const url_parse::Component& host,
+                             CanonOutput* output,
+                             CanonHostInfo *host_info) {
+  DoHost<char, unsigned char>(spec, host, output, host_info);
+}
+
+void CanonicalizeHostVerbose(const char16* spec,
+                             const url_parse::Component& host,
+                             CanonOutput* output,
+                             CanonHostInfo *host_info) {
+  DoHost<char16, char16>(spec, host, output, host_info);
 }
 
 }  // namespace url_canon
