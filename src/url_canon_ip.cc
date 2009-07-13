@@ -1,4 +1,4 @@
-// Copyright 2007, Google Inc.
+// Copyright 2009, Google Inc.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -640,7 +640,9 @@ bool DoCanonicalizeIPv6Address(const CHAR* spec,
   url_parse::Component contraction_range;
   ChooseIPv6ContractionRange(address, &contraction_range);
 
-  for (int i = 0; i < 16;) {
+  for (int i = 0; i <= 14;) {
+    // We check 2 bytes at a time, from bytes (0, 1) to (14, 15), inclusive.
+    DCHECK(i % 2 == 0);
     if (i == contraction_range.begin && contraction_range.len > 0) {
       // Jump over the contraction.
       if (i == 0)
