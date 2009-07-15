@@ -197,22 +197,12 @@ void AppendIPv4Address(const unsigned char address[4],
   out_host->len = output->length() - out_host->begin;
 }
 
-// Converts an IPv4 address to a 32-bit number (network byte order).
-//
-// Possible return values:
-//   IPV4    - IPv4 address was successfully parsed.
-//   BROKEN  - Input was formatted like an IPv4 address, but overflow occurred
-//             during parsing.
-//   NEUTRAL - Input couldn't possibly be interpreted as an IPv4 address.
-//             It might be an IPv6 address, or a hostname.
-//
-// On success, |num_ipv4_components| will be populated with the number of
-// components in the IPv4 address.
+// See declaration of IPv4AddressToNumber for documentation.
 template<typename CHAR>
-CanonHostInfo::Family IPv4AddressToNumber(const CHAR* spec,
-                                          const url_parse::Component& host,
-                                          unsigned char address[4],
-                                          int* num_ipv4_components) {
+CanonHostInfo::Family DoIPv4AddressToNumber(const CHAR* spec,
+                                            const url_parse::Component& host,
+                                            unsigned char address[4],
+                                            int* num_ipv4_components) {
   // The identified components. Not all may exist.
   url_parse::Component components[4];
   if (!FindIPv4Components(spec, host, components))
@@ -271,7 +261,7 @@ bool DoCanonicalizeIPv4Address(const CHAR* spec,
                                CanonOutput* output,
                                CanonHostInfo* host_info) {
   unsigned char address[4];
-  host_info->family = IPv4AddressToNumber<CHAR>(
+  host_info->family = IPv4AddressToNumber(
       spec, host, address, &host_info->num_ipv4_components);
 
   switch (host_info->family) {
@@ -497,9 +487,9 @@ uint16_t IPv6HexComponentToNumber(const CHAR* spec,
 // Converts an IPv6 address to a 128-bit number (network byte order), returning
 // true on success. False means that the input was not a valid IPv6 address.
 template<typename CHAR, typename UCHAR>
-bool IPv6AddressToNumber(const CHAR* spec,
-                         const url_parse::Component& host,
-                         unsigned char address[16]) {
+bool DoIPv6AddressToNumber(const CHAR* spec,
+                           const url_parse::Component& host,
+                           unsigned char address[16]) {
   // Make sure the component is bounded by '[' and ']'.
   int end = host.end();
   if (!host.is_nonempty() || spec[host.begin] != '[' || spec[end - 1] != ']')
@@ -612,7 +602,7 @@ bool DoCanonicalizeIPv6Address(const CHAR* spec,
                                CanonHostInfo* host_info) {
   // Turn the IP address into a 128 bit number.
   unsigned char address[16];
-  if (!IPv6AddressToNumber<CHAR, UCHAR>(spec, host, address)) {
+  if (!IPv6AddressToNumber(spec, host, address)) {
     // If it's not an IPv6 address, scan for characters that should *only*
     // exist in an IPv6 address.
     for (int i = host.begin; i < host.end(); i++) {
@@ -711,5 +701,33 @@ void CanonicalizeIPAddress(const char16* spec,
           spec, host, output, host_info))
     return;
 }
+
+CanonHostInfo::Family IPv4AddressToNumber(const char* spec,
+                                          const url_parse::Component& host,
+                                          unsigned char address[4],
+                                          int* num_ipv4_components) {
+  return DoIPv4AddressToNumber<char>(spec, host, address, num_ipv4_components);
+}
+
+CanonHostInfo::Family IPv4AddressToNumber(const char16* spec,
+                                          const url_parse::Component& host,
+                                          unsigned char address[4],
+                                          int* num_ipv4_components) {
+  return DoIPv4AddressToNumber<char16>(
+      spec, host, address, num_ipv4_components);
+}
+
+bool IPv6AddressToNumber(const char* spec,
+                         const url_parse::Component& host,
+                         unsigned char address[16]) {
+  return DoIPv6AddressToNumber<char, unsigned char>(spec, host, address);
+}
+
+bool IPv6AddressToNumber(const char16* spec,
+                         const url_parse::Component& host,
+                         unsigned char address[16]) {
+  return DoIPv6AddressToNumber<char16, char16>(spec, host, address);
+}
+
 
 }  // namespace url_canon

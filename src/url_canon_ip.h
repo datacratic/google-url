@@ -31,6 +31,7 @@
 #define GOOGLEURL_SRC_URL_CANON_IP_H__
 
 #include "base/string16.h"
+#include "googleurl/src/url_canon.h"
 #include "googleurl/src/url_parse.h"
 
 namespace url_canon {
@@ -59,6 +60,38 @@ bool FindIPv4Components(const char* spec,
 bool FindIPv4Components(const char16* spec,
                         const url_parse::Component& host,
                         url_parse::Component components[4]);
+
+// Converts an IPv4 address to a 32-bit number (network byte order).
+//
+// Possible return values:
+//   IPV4    - IPv4 address was successfully parsed.
+//   BROKEN  - Input was formatted like an IPv4 address, but overflow occurred
+//             during parsing.
+//   NEUTRAL - Input couldn't possibly be interpreted as an IPv4 address.
+//             It might be an IPv6 address, or a hostname.
+//
+// On success, |num_ipv4_components| will be populated with the number of
+// components in the IPv4 address.
+CanonHostInfo::Family IPv4AddressToNumber(const char* spec,
+                                          const url_parse::Component& host,
+                                          unsigned char address[4],
+                                          int* num_ipv4_components);
+CanonHostInfo::Family IPv4AddressToNumber(const char16* spec,
+                                          const url_parse::Component& host,
+                                          unsigned char address[4],
+                                          int* num_ipv4_components);
+
+// Converts an IPv6 address to a 128-bit number (network byte order), returning
+// true on success. False means that the input was not a valid IPv6 address.
+//
+// NOTE that |host| is expected to be surrounded by square brackets.
+// i.e. "[::1]" rather than "::1".
+bool IPv6AddressToNumber(const char* spec,
+                         const url_parse::Component& host,
+                         unsigned char address[16]);
+bool IPv6AddressToNumber(const char16* spec,
+                         const url_parse::Component& host,
+                         unsigned char address[16]);
 
 }  // namespace url_canon
 
