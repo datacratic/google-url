@@ -66,9 +66,12 @@ bool DoCanonicalizeStandardURL(const URLComponentSource<CHAR>& source,
                                     &new_parsed->username,
                                     &new_parsed->password);
 
-    // Host: always write if we have an authority (may be empty).
     success &= CanonicalizeHost(source.host, parsed.host,
                                 output, &new_parsed->host);
+
+    // Host must not be empty for standard URLs.
+    if (!parsed.host.is_nonempty())
+      success = false;
 
     // Port: the port canonicalizer will handle the colon.
     int default_port = DefaultPortForScheme(

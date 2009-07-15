@@ -781,6 +781,7 @@ TEST(URLCanonTest, UserInfo) {
     {"http://foo:@host.com/", "foo@", url_parse::Component(0, 3), url_parse::Component(0, -1), true},
     {"http://:foo@host.com/", ":foo@", url_parse::Component(0, 0), url_parse::Component(1, 3), true},
     {"http://^ :$\t@host.com/", "%5E%20:$%09@", url_parse::Component(0, 6), url_parse::Component(7, 4), true},
+    {"http://user:pass@/", "user:pass@", url_parse::Component(0, 4), url_parse::Component(5, 4), true},
 
       // IE7 compatability: old versions allowed backslashes in usernames, but
       // IE7 does not. We disallow it as well.
@@ -1183,6 +1184,7 @@ TEST(URLCanonTest, CanonicalizeStandardURL) {
     {"www.google.com", ":www.google.com/", true},
     {"http://192.0x00A80001", "http://192.168.0.1/", true},
     {"http://www/foo%2Ehtml", "http://www/foo.html", true},
+    {"http://user:pass@/", "http://user:pass@/", false},
 
       // Backslashes should get converted to forward slashes.
     {"http:\\\\www.google.com\\foo", "http://www.google.com/foo", true},
