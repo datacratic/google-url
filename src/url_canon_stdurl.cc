@@ -133,10 +133,16 @@ int DefaultPortForScheme(const char* scheme, int scheme_len) {
     case 3:
       if (!strncmp(scheme, "ftp", scheme_len))
         default_port = 21;
+      else if (!strncmp(scheme, "wss", scheme_len))
+        default_port = 815;
       break;
     case 6:
       if (!strncmp(scheme, "gopher", scheme_len))
         default_port = 70;
+      break;
+    case 2:
+      if (!strncmp(scheme, "ws", scheme_len))
+        default_port = 81;
       break;
   }
   return default_port;
