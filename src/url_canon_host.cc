@@ -134,17 +134,21 @@ void ScanHostname(const CHAR* spec, const url_parse::Component& host,
 //    |*has_non_ascii| flag.
 //
 // The return value indicates if the output is a potentially valid host name.
-template<typename CHAR>
-bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output,
+template<typename INCHAR, typename OUTCHAR>
+bool DoSimpleHost(const INCHAR* host,
+                  int host_len,
+                  CanonOutputT<OUTCHAR>* output,
                   bool* has_non_ascii) {
   *has_non_ascii = false;
 
   bool success = true;
-  for (int i = 0; i < host_len; i++) {
-    unsigned char source = static_cast<unsigned char>(host[i]);
+  for (int i = 0; i < host_len; ++i) {
+    unsigned int source = host[i];
     if (source == '%') {
-      // Handle unescaping. This will replace |source| with the unescaped char.
-      if (!DecodeEscaped(host, &i, host_len, &source)) {
+      // Unescape first, if possible.
+      // Source will be used only if decode operation was successful.
+      if (!DecodeEscaped(host, &i, host_len,
+                         reinterpret_cast<unsigned char*>(&source))) {
         // Invalid escaped character. There is nothing that can make this
         // host valid. We append an escaped percent so the URL looks reasonable
         // and mark as failed.
@@ -154,11 +158,7 @@ bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output,
       }
     }
 
-    if (source >= 0x80) {
-      // Handle non-ASCII.
-      *has_non_ascii = true;
-      output->push_back(source);
-    } else {
+    if (source <= 0x80) {
       // We have ASCII input, we can use our lookup table.
       unsigned char replacement = kHostCharLookup[source];
       if (!replacement) {
@@ -174,15 +174,30 @@ bool DoSimpleHost(const CHAR* host, int host_len, CanonOutput* output,
         // cased).
         output->push_back(replacement);
       }
+    } else {
+      // It's a non-ascii char. Just push it to the output.
+      // In case where we have char16 input, and char output it's safe to
+      // cast char16->char only if input string was converted to ASCII.
+      output->push_back(static_cast<OUTCHAR>(source));
+      *has_non_ascii = true;
     }
   }
+
   return success;
 }
 
-// Canonicalizes a host that requires IDN conversion. Returns true on success.
+// Canonicalizes a host that requires IDN conversion. Returns true on success
 bool DoIDNHost(const char16* src, int src_len, CanonOutput* output) {
+  // We need to escape URL before doing IDN conversion, since punicode strings
+  // cannot be escaped after they are created.
+  RawCanonOutputW<kTempHostBufferLen> url_escaped_host;
+  bool has_non_ascii;
+  DoSimpleHost(src, src_len, &url_escaped_host, &has_non_ascii);
+
   StackBufferW wide_output;
-  if (!IDNToASCII(src, src_len, &wide_output)) {
+  if (!IDNToASCII(url_escaped_host.data(),
+                  url_escaped_host.length(),
+                  &wide_output)) {
     // Some error, give up. This will write some reasonable looking
     // representation of the string to the output.
     AppendInvalidNarrowString(src, 0, src_len, output);
@@ -192,10 +207,9 @@ bool DoIDNHost(const char16* src, int src_len, CanonOutput* output) {
   // Now we check the ASCII output like a normal host. It will also handle
   // unescaping. Although we unescaped everything before this function call, if
   // somebody does %00 as fullwidth, ICU will convert this to ASCII.
-  bool has_non_ascii;
-  bool success = DoSimpleHost<char16>(wide_output.data(),
-                                      wide_output.length(),
-                                      output, &has_non_ascii);
+  bool success = DoSimpleHost(wide_output.data(),
+                              wide_output.length(),
+                              output, &has_non_ascii);
   DCHECK(!has_non_ascii);
   return success;
 }

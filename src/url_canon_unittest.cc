@@ -99,7 +99,7 @@ struct ReplaceCase {
 // Wrapper around a UConverter object that managers creation and destruction.
 class UConvScoper {
  public:
-  UConvScoper(const char* charset_name) {
+  explicit UConvScoper(const char* charset_name) {
     UErrorCode err = U_ZERO_ERROR;
     converter_ = ucnv_open(charset_name, &err);
   }
@@ -238,7 +238,7 @@ TEST(URLCanonTest, ICUCharsetConverter) {
 
   for (size_t i = 0; i < ARRAYSIZE(icu_cases); i++) {
     UConvScoper conv(icu_cases[i].encoding);
-    ASSERT_TRUE(conv.converter());
+    ASSERT_TRUE(conv.converter() != NULL);
     url_canon::ICUCharsetConverter converter(conv.converter());
 
     std::string str;
@@ -398,6 +398,9 @@ TEST(URLCanonTest, Host) {
       // Broken IP addresses get marked as such.
     {"192.168.0.257", L"192.168.0.257", "192.168.0.257", url_parse::Component(0, 13), CanonHostInfo::BROKEN, -1},
     {"[google.com]", L"[google.com]", "[google.com]", url_parse::Component(0, 12), CanonHostInfo::BROKEN, -1},
+      // Cyrillic letter followed buy ( should return punicode for ( escaped before punicode string was created. I.e.
+      // if ( is escaped after punicode is created we would get xn--%28-8tb (incorrect).
+    {"\xd1\x82(", L"\x0442(", "xn--%28-7ed", url_parse::Component(0, 11), CanonHostInfo::NEUTRAL, -1},
   };
 
   // CanonicalizeHost() non-verbose.

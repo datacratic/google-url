@@ -143,8 +143,11 @@ char CanonicalSchemeChar(char16 ch);
 
 // Write a single character, escaped, to the output. This always escapes: it
 // does no checking that thee character requires escaping.
-inline void AppendEscapedChar(unsigned char ch,
-                              CanonOutput* output) {
+// Escaping makes sense only 8 bit chars, so code works in all cases of
+// input parameters (8/16bit).
+template<typename UINCHAR, typename OUTCHAR>
+inline void AppendEscapedChar(UINCHAR ch,
+                              CanonOutputT<OUTCHAR>* output) {
   output->push_back('%');
   output->push_back(kHexCharLookup[ch >> 4]);
   output->push_back(kHexCharLookup[ch & 0xf]);
