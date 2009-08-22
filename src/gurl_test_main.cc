@@ -55,14 +55,15 @@
 #endif  // ICU_UTIL_DATA_IMPL
 
 #if defined(OS_WIN)
-#define ICU_UTIL_DATA_SYMBOL "icudt38_dat"
-#define ICU_UTIL_DATA_SHARED_MODULE_NAME L"icudt38.dll"
+#define ICU_UTIL_DATA_SYMBOL "icudt" U_ICU_VERSION_SHORT "_dat"
+#define ICU_UTIL_DATA_SHARED_MODULE_NAME "icudt" U_ICU_VERSION_SHORT ".dll"
 #endif
 
 bool InitializeICU() {
 #if (ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_SHARED)
   // We expect to find the ICU data module alongside the current module.
-  HMODULE module = LoadLibrary(ICU_UTIL_DATA_SHARED_MODULE_NAME);
+  // Because the module name is ASCII-only, "A" API should be safe.
+  HMODULE module = LoadLibraryA(ICU_UTIL_DATA_SHARED_MODULE_NAME);
   if (!module)
     return false;
 
