@@ -1476,8 +1476,12 @@ TEST(URLCanonTest, CanonicalizeFileURL) {
       // does this, which makes the resulting request invalid).
     {"file:///foo/bar.txt", "file:///foo/bar.txt", true, url_parse::Component(), url_parse::Component(7, 12)},
       // TODO(brettw) we should probably fail for invalid host names, which
-      // would change the expected result on this test.
-    {"FILE:/\\/\\7:\\\\//foo\\bar.html", "file://7%3A////foo/bar.html", false, url_parse::Component(7, 4), url_parse::Component(11, 16)},
+      // would change the expected result on this test. We also currently allow
+      // colon even though it's probably invalid, because its currently the
+      // "natural" result of the way the canonicalizer is written. There doesn't
+      // seem to be a strong argument for why allowing it here would be bad, so
+      // we just tolerate it and the load will fail later.
+    {"FILE:/\\/\\7:\\\\//foo\\bar.html", "file://7:////foo/bar.html", false, url_parse::Component(7, 2), url_parse::Component(9, 16)},
     {"file:filer/home\\me", "file://filer/home/me", true, url_parse::Component(7, 5), url_parse::Component(12, 8)},
       // Make sure relative paths can't go above the "C:"
     {"file:///C:/foo/../../../bar.html", "file:///C:/bar.html", true, url_parse::Component(), url_parse::Component(7, 12)},
