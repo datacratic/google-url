@@ -1209,12 +1209,14 @@ TEST(URLCanonTest, CanonicalizeStandardURL) {
     {"ftp://foo:80/", "ftp://foo:80/", true},
     {"gopher://foo:70/", "gopher://foo/", true},
     {"gopher://foo:443/", "gopher://foo:443/", true},
-    {"ws://foo:80/", "ws://foo:80/", true},
-    {"ws://foo:81/", "ws://foo/", true},
+    {"ws://foo:80/", "ws://foo/", true},
+    {"ws://foo:81/", "ws://foo:81/", true},
+    {"ws://foo:443/", "ws://foo:443/", true},
     {"ws://foo:815/", "ws://foo:815/", true},
     {"wss://foo:80/", "wss://foo:80/", true},
     {"wss://foo:81/", "wss://foo:81/", true},
-    {"wss://foo:815/", "wss://foo/", true},
+    {"wss://foo:443/", "wss://foo/", true},
+    {"wss://foo:815/", "wss://foo:815/", true},
   };
 
   for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
