@@ -158,7 +158,7 @@ bool DoSimpleHost(const INCHAR* host,
       }
     }
 
-    if (source <= 0x80) {
+    if (source < 0x80) {
       // We have ASCII input, we can use our lookup table.
       unsigned char replacement = kHostCharLookup[source];
       if (!replacement) {
