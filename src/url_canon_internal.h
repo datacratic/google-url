@@ -36,7 +36,6 @@
 #define GOOGLEURL_SRC_URL_CANON_INTERNAL_H__
 
 #include <stdlib.h>
-#include <unicode/utf.h>
 
 #include "googleurl/src/url_canon.h"
 

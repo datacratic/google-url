@@ -31,6 +31,7 @@
 
 #include <stdlib.h>
 
+#include "base/basictypes.h"
 #include "base/logging.h"
 #include "googleurl/src/url_canon_internal.h"
 
@@ -115,7 +116,7 @@ template<typename CHAR>
 CanonHostInfo::Family IPv4ComponentToNumber(
     const CHAR* spec,
     const url_parse::Component& component,
-    uint32_t* number) {
+    uint32* number) {
   // Figure out the base
   SharedCharTypes base;
   int base_prefix_len = 0;  // Size of the prefix for this base.
@@ -166,14 +167,14 @@ CanonHostInfo::Family IPv4ComponentToNumber(
 
   // Use the 64-bit strtoi so we get a big number (no hex, decimal, or octal
   // number can overflow a 64-bit number in <= 16 characters).
-  uint64_t num = _strtoui64(buf, NULL, BaseForType(base));
+  uint64 num = _strtoui64(buf, NULL, BaseForType(base));
 
   // Check for 32-bit overflow.
-  if (num > UINT32_MAX)
+  if (num > kuint32max)
     return CanonHostInfo::BROKEN;
 
   // No overflow.  Success!
-  *number = static_cast<uint32_t>(num);
+  *number = static_cast<uint32>(num);
   return CanonHostInfo::IPV4;
 }
 
@@ -210,7 +211,7 @@ CanonHostInfo::Family DoIPv4AddressToNumber(const CHAR* spec,
 
   // Convert existing components to digits. Values up to
   // |existing_components| will be valid.
-  uint32_t component_values[4];
+  uint32 component_values[4];
   int existing_components = 0;
   for (int i = 0; i < 4; i++) {
     if (components[i].len <= 0)
@@ -230,13 +231,13 @@ CanonHostInfo::Family DoIPv4AddressToNumber(const CHAR* spec,
   // First, process all components but the last, while making sure each fits
   // within an 8-bit field.
   for (int i = 0; i < existing_components - 1; i++) {
-    if (component_values[i] > UINT8_MAX)
+    if (component_values[i] > kuint8max)
       return CanonHostInfo::BROKEN;
     address[i] = static_cast<unsigned char>(component_values[i]);
   }
 
   // Next, consume the last component to fill in the remaining bytes.
-  uint32_t last_value = component_values[existing_components - 1];
+  uint32 last_value = component_values[existing_components - 1];
   for (int i = 3; i >= existing_components - 1; i--) {
     address[i] = static_cast<unsigned char>(last_value);
     last_value >>= 8;
@@ -469,8 +470,8 @@ bool CheckIPv6ComponentsSize(const IPv6Parsed& parsed,
 // already verified that each character in the string was a hex digit, and
 // that there were no more than 4 characters.
 template<typename CHAR>
-uint16_t IPv6HexComponentToNumber(const CHAR* spec,
-                                  const url_parse::Component& component) {
+uint16 IPv6HexComponentToNumber(const CHAR* spec,
+                                const url_parse::Component& component) {
   DCHECK(component.len <= 4);
 
   // Copy the hex string into a C-string.
@@ -481,7 +482,7 @@ uint16_t IPv6HexComponentToNumber(const CHAR* spec,
 
   // Convert it to a number (overflow is not possible, since with 4 hex
   // characters we can at most have a 16 bit number).
-  return static_cast<uint16_t>(_strtoui64(buf, NULL, 16));
+  return static_cast<uint16>(_strtoui64(buf, NULL, 16));
 }
 
 // Converts an IPv6 address to a 128-bit number (network byte order), returning
@@ -523,7 +524,7 @@ bool DoIPv6AddressToNumber(const CHAR* spec,
     // Append the hex component's value.
     if (i != ipv6_parsed.num_hex_components) {
       // Get the 16-bit value for this hex component.
-      uint16_t number = IPv6HexComponentToNumber<CHAR>(
+      uint16 number = IPv6HexComponentToNumber<CHAR>(
           spec, ipv6_parsed.hex_components[i]);
       // Append to |address|, in network byte order.
       address[cur_index_in_address++] = (number & 0xFF00) >> 8;
