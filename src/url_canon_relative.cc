@@ -351,7 +351,8 @@ bool DoResolveRelativePath(const char* base_url,
   if (query.is_valid()) {
     // Just the query specified, replace the query and reference (ignore
     // failures for refs)
-    CanonicalizeQuery(relative_url, query, NULL, output, &out_parsed->query);
+    CanonicalizeQuery(relative_url, query, query_converter,
+                      output, &out_parsed->query);
     CanonicalizeRef(relative_url, ref, output, &out_parsed->ref);
     return success;
   }
