@@ -63,7 +63,7 @@ class GURL {
   // Constructor for URLs that have already been parsed and canonicalized. This
   // is used for conversions from KURL, for example. The caller must supply all
   // information associated with the URL, which must be correct and consistent.
-  GURL(const char* canonical_spec, int canonical_spec_len,
+  GURL(const char* canonical_spec, size_t canonical_spec_len,
        const url_parse::Parsed& parsed, bool is_valid);
 
   // Returns true when this object represents a valid parsed URL. When not

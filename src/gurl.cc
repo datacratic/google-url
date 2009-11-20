@@ -121,7 +121,7 @@ GURL::GURL(const string16& url_string) {
   is_valid_ = InitCanonical(url_string, &spec_, &parsed_);
 }
 
-GURL::GURL(const char* canonical_spec, int canonical_spec_len,
+GURL::GURL(const char* canonical_spec, size_t canonical_spec_len,
            const url_parse::Parsed& parsed, bool is_valid)
     : spec_(canonical_spec, canonical_spec_len),
       is_valid_(is_valid),
