@@ -457,10 +457,11 @@ bool DoResolveRelativeURL(const char* base_url,
   }
 
   if (relative_component.len <= 0) {
-    // Empty relative URL, make no changes.
+    // Empty relative URL, leave unchanged, only removing the ref component.
     int base_len = base_parsed.Length();
-    for (int i = 0; i < base_len; i++)
-      output->push_back(base_url[i]);
+    base_len -= base_parsed.ref.len + 1;
+    out_parsed->ref.reset();
+    output->Append(base_url, base_len);
     return true;
   }
 

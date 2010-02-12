@@ -1736,8 +1736,11 @@ TEST(URLCanonTest, ResolveRelativeURL) {
       // Basic absolute input.
     {"http://host/a", true, false, "http://another/", true, false, false, NULL},
     {"http://host/a", true, false, "http:////another/", true, false, false, NULL},
-      // Empty relative URLs shouldn't change the input.
+      // Empty relative URLs should only remove the ref part of the URL,
+      // leaving the rest unchanged.
     {"http://foo/bar", true, false, "", true, true, true, "http://foo/bar"},
+    {"http://foo/bar#ref", true, false, "", true, true, true, "http://foo/bar"},
+    {"http://foo/bar#", true, false, "", true, true, true, "http://foo/bar"},
       // Spaces at the ends of the relative path should be ignored.
     {"http://foo/bar", true, false, "  another  ", true, true, true, "http://foo/another"},
     {"http://foo/bar", true, false, "  .  ", true, true, true, "http://foo/"},
