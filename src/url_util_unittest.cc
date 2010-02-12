@@ -96,3 +96,51 @@ TEST(URLUtilTest, ReplaceComponents) {
                               &new_parsed);
 }
 
+static std::string CheckReplaceScheme(const char* base_url,
+                                      const char* scheme) {
+  // Make sure the input is canonicalized.
+  url_canon::RawCanonOutput<32> original;
+  url_parse::Parsed original_parsed;
+  url_util::Canonicalize(base_url, strlen(base_url), NULL,
+                         &original, &original_parsed);
+
+  url_canon::Replacements<char> replacements;
+  replacements.SetScheme(scheme, url_parse::Component(0, strlen(scheme)));
+
+  std::string output_string;
+  url_canon::StdStringCanonOutput output(&output_string);
+  url_parse::Parsed output_parsed;
+  url_util::ReplaceComponents(original.data(), original.length(),
+                              original_parsed, replacements, NULL,
+                              &output, &output_parsed);
+
+  output.Complete();
+  return output_string;
+}
+
+TEST(URLUtilTest, ReplaceScheme) {
+  EXPECT_EQ("https://google.com/",
+            CheckReplaceScheme("http://google.com/", "https"));
+  EXPECT_EQ("file://google.com/",
+            CheckReplaceScheme("http://google.com/", "file"));
+  EXPECT_EQ("http://home/Build",
+            CheckReplaceScheme("file:///Home/Build", "http"));
+  EXPECT_EQ("javascript:foo",
+            CheckReplaceScheme("about:foo", "javascript"));
+  EXPECT_EQ("://google.com/",
+            CheckReplaceScheme("http://google.com/", ""));
+  EXPECT_EQ("http://google.com/",
+            CheckReplaceScheme("about:google.com", "http"));
+  EXPECT_EQ("http:", CheckReplaceScheme("", "http"));
+
+#ifdef WIN32
+  // Magic Windows drive letter behavior when converting to a file URL.
+  EXPECT_EQ("file:///E:/foo/",
+            CheckReplaceScheme("http://localhost/e:foo/", "file"));
+#endif
+
+  // This will probably change to "about://google.com/" when we fix
+  // http://crbug.com/160 which should also be an acceptable result.
+  EXPECT_EQ("about://google.com/",
+            CheckReplaceScheme("http://google.com/", "about"));
+}

@@ -204,9 +204,9 @@ class GURL {
   GURL GetOrigin() const;
 
   // Returns true if the scheme for the current URL is a known "standard"
-  // scheme or there is a "://" after it. Standard schemes have an authority
-  // and a path section. This includes file:, which some callers may want to
-  // filter out explicitly by calling SchemeIsFile.
+  // scheme. Standard schemes have an authority and a path section. This
+  // includes file:, which some callers may want to filter out explicitly by
+  // calling SchemeIsFile.
   bool IsStandard() const;
 
   // Returns true if the given parameter (should be lower-case ASCII to match

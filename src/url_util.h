@@ -70,12 +70,9 @@ inline bool FindAndCompareScheme(const string16& str,
 }
 
 // Returns true if the given string represents a standard URL. This means that
-// either the scheme is in the list of known standard schemes, or there is a
-// "://" following the scheme.
-bool IsStandard(const char* spec, int spec_len,
-                const url_parse::Component& scheme);
-bool IsStandard(const char16* spec, int spec_len,
-                const url_parse::Component& scheme);
+// either the scheme is in the list of known standard schemes.
+bool IsStandard(const char* spec, const url_parse::Component& scheme);
+bool IsStandard(const char16* spec, const url_parse::Component& scheme);
 
 // URL library wrappers -------------------------------------------------------
 

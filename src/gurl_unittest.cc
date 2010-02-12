@@ -31,35 +31,36 @@ void SetupReplacement(void (url_canon::Replacements<CHAR>::*func)(const CHAR*,
   }
 }
 
+// Returns the canonicalized string for the given URL string for the
+// GURLTest.Types test.
+std::string TypesTestCase(const char* src) {
+  GURL gurl(src);
+  return gurl.possibly_invalid_spec();
+}
+
 }  // namespace
 
 // Different types of URLs should be handled differently by url_util, and
 // handed off to different canonicalizers.
 TEST(GURLTest, Types) {
-  struct TypeTest {
-    const char* src;
-    const char* expected;
-  } type_cases[] = {
-      // URLs with "://" should be treated as standard and have a hostname, even
-      // when the scheme is unknown.
-    {"something:///HOSTNAME.com/", "something://hostname.com/"},
-      // In the reverse, lacking a "://" means a path URL so no canonicalization
-      // should happen.
-    {"something:HOSTNAME.com/", "something:HOSTNAME.com/"},
-    {"something:/HOSTNAME.com/", "something:/HOSTNAME.com/"},
-#ifdef WIN32
-      // URLs that look like absolute Windows drive specs.
-    {"c:\\foo.txt", "file:///C:/foo.txt"},
-    {"Z|foo.txt", "file:///Z:/foo.txt"},
-    {"\\\\server\\foo.txt", "file://server/foo.txt"},
-    {"//server/foo.txt", "file://server/foo.txt"},
-#endif
-  };
+  // URLs with unknown schemes should be treated as path URLs, even when they
+  // have things like "://".
+  EXPECT_EQ("something:///HOSTNAME.com/",
+            TypesTestCase("something:///HOSTNAME.com/"));
 
-  for (size_t i = 0; i < ARRAYSIZE(type_cases); i++) {
-    GURL gurl(type_cases[i].src);
-    EXPECT_STREQ(type_cases[i].expected, gurl.spec().c_str());
-  }
+  // In the reverse, known schemes should always trigger standard URL handling.
+  EXPECT_EQ("http://hostname.com/", TypesTestCase("http:HOSTNAME.com"));
+  EXPECT_EQ("http://hostname.com/", TypesTestCase("http:/HOSTNAME.com"));
+  EXPECT_EQ("http://hostname.com/", TypesTestCase("http://HOSTNAME.com"));
+  EXPECT_EQ("http://hostname.com/", TypesTestCase("http:///HOSTNAME.com"));
+
+#ifdef WIN32
+  // URLs that look like absolute Windows drive specs.
+  EXPECT_EQ("file:///C:/foo.txt", TypesTestCase("c:\\foo.txt"));
+  EXPECT_EQ("file:///Z:/foo.txt", TypesTestCase("Z|foo.txt"));
+  EXPECT_EQ("file://server/foo.txt", TypesTestCase("\\\\server\\foo.txt"));
+  EXPECT_EQ("file://server/foo.txt", TypesTestCase("//server/foo.txt"));
+#endif
 }
 
 // Test the basic creation and querying of components in a GURL. We assume
@@ -166,9 +167,7 @@ TEST(GURLTest, Resolve) {
     {"http://www.google.com/blah/bloo?c#d", "../../../hello/./world.html?a#b", true, "http://www.google.com/hello/world.html?a#b"},
     {"http://www.google.com/foo#bar", "#com", true, "http://www.google.com/foo#com"},
     {"http://www.google.com/", "Https:images.google.com", true, "https://images.google.com/"},
-      // Unknown schemes with a "://" should be treated as standard.
-    {"somescheme://foo/", "bar", true, "somescheme://foo/bar"},
-      // Unknown schemes with no "://" are not standard.
+      // Unknown schemes are not standard.
     {"data:blahblah", "http://google.com/", true, "http://google.com/"},
     {"data:blahblah", "http:google.com", true, "http://google.com/"},
     {"data:/blahblah", "file.html", false, ""},
@@ -178,15 +177,15 @@ TEST(GURLTest, Resolve) {
     // 8-bit code path.
     GURL input(resolve_cases[i].base);
     GURL output = input.Resolve(resolve_cases[i].relative);
-    EXPECT_EQ(resolve_cases[i].expected_valid, output.is_valid());
-    EXPECT_EQ(resolve_cases[i].expected, output.spec());
+    EXPECT_EQ(resolve_cases[i].expected_valid, output.is_valid()) << i;
+    EXPECT_EQ(resolve_cases[i].expected, output.spec()) << i;
 
     // Wide code path.
     GURL inputw(ConvertUTF8ToUTF16(resolve_cases[i].base));
     GURL outputw =
         input.Resolve(ConvertUTF8ToUTF16(resolve_cases[i].relative));
-    EXPECT_EQ(resolve_cases[i].expected_valid, outputw.is_valid());
-    EXPECT_EQ(resolve_cases[i].expected, outputw.spec());
+    EXPECT_EQ(resolve_cases[i].expected_valid, outputw.is_valid()) << i;
+    EXPECT_EQ(resolve_cases[i].expected, outputw.spec()) << i;
   }
 }
 
@@ -429,5 +428,5 @@ TEST(GURLTest, IsStandard) {
   EXPECT_FALSE(b.IsStandard());
 
   GURL c("foo://bar/baz");
-  EXPECT_TRUE(c.IsStandard());
+  EXPECT_FALSE(c.IsStandard());
 }

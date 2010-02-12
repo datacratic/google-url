@@ -170,6 +170,15 @@ bool CanonicalizeStandardURL(const char16* spec,
       output, new_parsed);
 }
 
+// It might be nice in the future to optimize this so unchanged components don't
+// need to be recanonicalized. This is especially true since the common case for
+// ReplaceComponents is removing things we don't want, like reference fragments
+// and usernames. These cases can become more efficient if we can assume the
+// rest of the URL is OK with these removed (or only the modified parts
+// recanonicalized). This would be much more complex to implement, however.
+//
+// You would also need to update DoReplaceComponents in url_util.cc which
+// relies on this re-checking everything (see the comment there for why).
 bool ReplaceStandardURL(const char* base,
                         const url_parse::Parsed& base_parsed,
                         const Replacements<char>& replacements,
