@@ -74,6 +74,11 @@ inline bool FindAndCompareScheme(const string16& str,
 bool IsStandard(const char* spec, const url_parse::Component& scheme);
 bool IsStandard(const char16* spec, const url_parse::Component& scheme);
 
+// TODO(brettw) remove this. This is a temporary compatibility hack to avoid
+// breaking the WebKit build when this version is synced via Chrome.
+bool IsStandard(const char* spec, int spec_len,
+                const url_parse::Component& scheme);
+
 // URL library wrappers -------------------------------------------------------
 
 // Parses the given spec according to the extracted scheme type. Normal users
