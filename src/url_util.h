@@ -38,6 +38,27 @@
 
 namespace url_util {
 
+// Init ------------------------------------------------------------------------
+
+// Initialization is NOT required, it will be implicitly initialized when first
+// used. However, this implicit initialization is threadsafe. If you are using
+// this library in a threaded environment and don't have a consistent "first
+// call" (an example might be calling "AddStandardScheme" with your special
+// application-specific schemes) then you will want to call initialize before
+// spawning any threads.
+//
+// It is OK to call this function more than once, subsequent calls will simply
+// "noop", unless TerminateGoogleUrl() was called in the mean time. This will
+// also be a "noop" if other calls to the library have forced an initialization
+// beforehand.
+void Initialize();
+
+// Cleanup is not required, except some strings may leak. For most user
+// applications, this is fine. If you're using it in a library that may get
+// loaded and unloaded, you'll want to unload to properly clean up your
+// library.
+void Shutdown();
+
 // Schemes --------------------------------------------------------------------
 
 // Adds an application-defined scheme to the internal list of "standard" URL

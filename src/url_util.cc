@@ -337,6 +337,17 @@ bool DoReplaceComponents(const char* spec,
 
 }  // namespace
 
+void Initialize() {
+  InitStandardSchemes();
+}
+
+void Shutdown() {
+  if (standard_schemes) {
+    delete standard_schemes;
+    standard_schemes = NULL;
+  }
+}
+
 void AddStandardScheme(const char* new_scheme) {
   size_t scheme_len = strlen(new_scheme);
   if (scheme_len == 0)
