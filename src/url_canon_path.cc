@@ -84,7 +84,7 @@ const unsigned char kPathCharLookup[0x100] = {
 //   0        1        2        3        4        5        6        7        8        9        :        ;        <        =        >        ?
      UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,PASS,    PASS,    ESCAPE,  PASS,    ESCAPE,  ESCAPE,
 //   @        A        B        C        D        E        F        G        H        I        J        K        L        M        N        O
-     UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,
+     PASS,    UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,
 //   P        Q        R        S        T        U        V        W        X        Y        Z        [        \        ]        ^        _
      UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,UNESCAPE,PASS,    ESCAPE,  PASS,    ESCAPE,  UNESCAPE,
 //   `        a        b        c        d        e        f        g        h        i        j        k        l        m        n        o

@@ -950,8 +950,8 @@ TEST(URLCanonTest, Path) {
       // %7f should be allowed and %3D should not be unescaped (these were wrong
       // in a previous version).
     {"/%7Ffp3%3Eju%3Dduvgw%3Dd", L"/%7Ffp3%3Eju%3Dduvgw%3Dd", "/%7Ffp3%3Eju%3Dduvgw%3Dd", url_parse::Component(0, 24), true},
-      // @ should be unescaped.
-    {"/@asdf%40", L"/@asdf%40", "/@asdf@", url_parse::Component(0, 7), true},
+      // @ should be passed through unchanged (escaped or unescaped).
+    {"/@asdf%40", L"/@asdf%40", "/@asdf%40", url_parse::Component(0, 9), true},
 
     // ----- encoding tests -----
       // Basic conversions
