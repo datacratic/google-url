@@ -159,3 +159,4 @@ TEST(URLUtilTest, ReplaceScheme) {
   EXPECT_EQ("about://google.com/",
             CheckReplaceScheme("http://google.com/", "about"));
 }
+
