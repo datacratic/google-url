@@ -74,6 +74,9 @@ const char* kStandardURLSchemes[kNumStandardURLSchemes] = {
 // any destructors from being called that will slow us down or cause problems.
 std::vector<const char*>* standard_schemes = NULL;
 
+// See the LockStandardSchemes declaration in the header.
+bool standard_schemes_locked = false;
+
 // Ensures that the standard_schemes list is initialized, does nothing if it
 // already has values.
 void InitStandardSchemes() {
@@ -356,6 +359,17 @@ void Shutdown() {
 }
 
 void AddStandardScheme(const char* new_scheme) {
+  // If this assert triggers, it means you've called AddStandardScheme after
+  // LockStandardSchemes have been called (see the header file for
+  // LockStandardSchemes for more).
+  //
+  // This normally means you're trying to set up a new standard scheme too late
+  // in your application's init process. Locate where your app does this
+  // initialization and calls LockStandardScheme, and add your new standard
+  // scheme there.
+  DCHECK(!standard_schemes_locked) <<
+      "Trying to add a standard scheme after the list has been locked.";
+
   size_t scheme_len = strlen(new_scheme);
   if (scheme_len == 0)
     return;
@@ -367,6 +381,10 @@ void AddStandardScheme(const char* new_scheme) {
 
   InitStandardSchemes();
   standard_schemes->push_back(dup_scheme);
+}
+
+void LockStandardSchemes() {
+  standard_schemes_locked = true;
 }
 
 bool IsStandard(const char* spec, const url_parse::Component& scheme) {

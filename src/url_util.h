@@ -62,8 +62,24 @@ void Shutdown();
 // Schemes --------------------------------------------------------------------
 
 // Adds an application-defined scheme to the internal list of "standard" URL
-// schemes.
+// schemes. This function is not threadsafe and can not be called concurrently
+// with any other url_util function. It will assert if the list of standard
+// schemes has been locked (see LockStandardSchemes).
 void AddStandardScheme(const char* new_scheme);
+
+// Sets a flag to prevent future calls to AddStandardScheme from succeeding.
+//
+// This is designed to help prevent errors for multithreaded applications.
+// Normal usage would be to call AddStandardScheme for your custom schemes at
+// the beginning of program initialization, and then LockStandardSchemes. This
+// prevents future callers from mistakenly calling AddStandardScheme when the
+// program is running with multiple threads, where such usage would be
+// dangerous.
+//
+// We could have had AddStandardScheme use a lock instead, but that would add
+// some platform-specific dependencies we don't otherwise have now, and is
+// overkill considering the normal usage is so simple.
+void LockStandardSchemes();
 
 // Locates the scheme in the given string and places it into |found_scheme|,
 // which may be NULL to indicate the caller does not care about the range.
