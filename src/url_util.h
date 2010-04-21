@@ -46,8 +46,10 @@ void AddStandardScheme(const char* new_scheme);
 
 // Locates the scheme in the given string and places it into |found_scheme|,
 // which may be NULL to indicate the caller does not care about the range.
+//
 // Returns whether the given |compare| scheme matches the scheme found in the
-// input (if any).
+// input (if any). The |compare| scheme must be a valid canonical scheme or
+// the result of the comparison is undefined.
 bool FindAndCompareScheme(const char* str,
                           int str_len,
                           const char* compare,

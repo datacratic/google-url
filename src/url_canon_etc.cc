@@ -120,6 +120,11 @@ bool DoScheme(const CHAR* spec,
   // The output scheme starts from the current position.
   out_scheme->begin = output->length();
 
+  // Danger: it's important that this code does not strip any characters: it
+  // only emits the canonical version (be it valid or escaped) of each of
+  // the input characters. Stripping would put it out of sync with
+  // url_util::FindAndCompareScheme, which could cause some security checks on
+  // schemes to be incorrect.
   bool success = true;
   int end = scheme.end();
   for (int i = scheme.begin; i < end; i++) {

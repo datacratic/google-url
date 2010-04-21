@@ -64,6 +64,21 @@ TEST(URLUtilTest, FindAndCompareScheme) {
   // But when there is no scheme, it should fail.
   EXPECT_FALSE(url_util::FindAndCompareScheme("", 0, "", &found_scheme));
   EXPECT_TRUE(found_scheme == url_parse::Component());
+
+  // When there is a whitespace char in scheme, it should canonicalize the url before
+  // comparison.
+  const char whtspc_str[] = " \r\n\tjav\ra\nscri\tpt:alert(1)";
+  EXPECT_TRUE(url_util::FindAndCompareScheme(
+      whtspc_str, static_cast<int>(strlen(whtspc_str)), "javascript",
+      &found_scheme));
+  EXPECT_TRUE(found_scheme == url_parse::Component(1, 10));
+
+  // Control characters should be stripped out on the ends, and kept in the middle.
+  const char ctrl_str[] = "\02jav\02scr\03ipt:alert(1)";
+  EXPECT_FALSE(url_util::FindAndCompareScheme(
+      ctrl_str, static_cast<int>(strlen(ctrl_str)), "javascript",
+      &found_scheme));
+  EXPECT_TRUE(found_scheme == url_parse::Component(1, 11));
 }
 
 TEST(URLUtilTest, ReplaceComponents) {

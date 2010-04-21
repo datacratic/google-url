@@ -138,8 +138,15 @@ bool DoFindAndCompareScheme(const CHAR* str,
                             int str_len,
                             const char* compare,
                             url_parse::Component* found_scheme) {
+  // Before extracting scheme, canonicalize the URL to remove any whitespace.
+  // This matches the canonicalization done in DoCanonicalize function.
+  url_canon::RawCanonOutputT<CHAR> whitespace_buffer;
+  int spec_len;
+  const CHAR* spec = RemoveURLWhitespace(str, str_len,
+                                         &whitespace_buffer, &spec_len);
+
   url_parse::Component our_scheme;
-  if (!url_parse::ExtractScheme(str, str_len, &our_scheme)) {
+  if (!url_parse::ExtractScheme(spec, spec_len, &our_scheme)) {
     // No scheme.
     if (found_scheme)
       *found_scheme = url_parse::Component();
@@ -147,7 +154,7 @@ bool DoFindAndCompareScheme(const CHAR* str,
   }
   if (found_scheme)
     *found_scheme = our_scheme;
-  return CompareSchemeComponent(str, our_scheme, compare);
+  return CompareSchemeComponent(spec, our_scheme, compare);
 }
 
 template<typename CHAR>
