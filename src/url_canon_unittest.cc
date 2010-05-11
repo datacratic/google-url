@@ -766,6 +766,22 @@ TEST(URLCanonTest, IPv6) {
   }
 }
 
+TEST(URLCanonTest, IPEmpty) {
+  std::string out_str1;
+  url_canon::StdStringCanonOutput output1(&out_str1);
+  url_canon::CanonHostInfo host_info;
+
+  // This tests tests.
+  const char spec[] = "192.168.0.1";
+  url_canon::CanonicalizeIPAddress(spec, url_parse::Component(),
+                                   &output1, &host_info);
+  EXPECT_FALSE(host_info.IsIPAddress());
+
+  url_canon::CanonicalizeIPAddress(spec, url_parse::Component(0, 0),
+                                   &output1, &host_info);
+  EXPECT_FALSE(host_info.IsIPAddress());
+}
+
 TEST(URLCanonTest, UserInfo) {
   // Note that the canonicalizer should escape and treat empty components as
   // not being there.

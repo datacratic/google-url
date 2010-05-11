@@ -58,11 +58,14 @@ template<typename CHAR, typename UCHAR>
 bool DoFindIPv4Components(const CHAR* spec,
                           const url_parse::Component& host,
                           url_parse::Component components[4]) {
+  if (!host.is_nonempty())
+    return false;
+
   int cur_component = 0;  // Index of the component we're working on.
   int cur_component_begin = host.begin;  // Start of the current component.
   int end = host.end();
   for (int i = host.begin; /* nothing */; i++) {
-    if (i == end || spec[i] == '.') {
+    if (i >= end || spec[i] == '.') {
       // Found the end of the current component.
       int component_len = i - cur_component_begin;
       components[cur_component] =
@@ -76,10 +79,10 @@ bool DoFindIPv4Components(const CHAR* spec,
       // allow an empty component at the end (this would indicate that the
       // input ends in a dot). We also want to error if the component is
       // empty and it's the only component (cur_component == 1).
-      if (component_len == 0 && (i != end || cur_component == 1))
+      if (component_len == 0 && (i < end || cur_component == 1))
         return false;
 
-      if (i == end)
+      if (i >= end)
         break;  // End of the input.
 
       if (cur_component == 4) {
