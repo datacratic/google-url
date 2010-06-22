@@ -540,8 +540,8 @@ bool DoIPv6AddressToNumber(const CHAR* spec,
   if (ipv6_parsed.ipv4_component.is_valid()) {
     // We only allow the embedded IPv4 syntax to be used for "compat" and
     // "mapped" formats:
-    //     "compat" ==>  0:0:0:0:0:ffff:<IPv4-literal>
-    //     "mapped" ==>  0:0:0:0:0:0000:<IPv4-literal>
+    //     "mapped" ==>  0:0:0:0:0:ffff:<IPv4-literal>
+    //     "compat" ==>  0:0:0:0:0:0000:<IPv4-literal>
     for (int j = 0; j < 10; ++j) {
       if (address[j] != 0)
         return false;
