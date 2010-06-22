@@ -271,7 +271,7 @@ void ParseAuthority(const char* spec,
                     Component* password,
                     Component* hostname,
                     Component* port_num);
-void ParseAuthority(char16* spec,
+void ParseAuthority(const char16* spec,
                     const Component& auth,
                     Component* username,
                     Component* password,
