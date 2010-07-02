@@ -41,15 +41,15 @@ namespace url_util {
 // Init ------------------------------------------------------------------------
 
 // Initialization is NOT required, it will be implicitly initialized when first
-// used. However, this implicit initialization is threadsafe. If you are using
-// this library in a threaded environment and don't have a consistent "first
-// call" (an example might be calling "AddStandardScheme" with your special
-// application-specific schemes) then you will want to call initialize before
-// spawning any threads.
+// used. However, this implicit initialization is NOT threadsafe. If you are
+// using this library in a threaded environment and don't have a consistent
+// "first call" (an example might be calling "AddStandardScheme" with your
+// special application-specific schemes) then you will want to call initialize
+// before spawning any threads.
 //
 // It is OK to call this function more than once, subsequent calls will simply
-// "noop", unless TerminateGoogleUrl() was called in the mean time. This will
-// also be a "noop" if other calls to the library have forced an initialization
+// "noop", unless Shutdown() was called in the mean time. This will also be a
+// "noop" if other calls to the library have forced an initialization
 // beforehand.
 void Initialize();
 
