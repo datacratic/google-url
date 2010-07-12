@@ -36,6 +36,7 @@
 #include "base/string16.h"
 #include "googleurl/src/url_canon.h"
 #include "googleurl/src/url_canon_stdstring.h"
+#include "googleurl/src/url_common.h"
 #include "googleurl/src/url_parse.h"
 
 class GURL {
@@ -44,11 +45,11 @@ class GURL {
   typedef url_canon::StdStringReplacements<string16> ReplacementsW;
 
   // Creates an empty, invalid URL.
-  GURL();
+  GURL_API GURL();
 
   // Copy construction is relatively inexpensive, with most of the time going
   // to reallocating the string. It does not re-parse.
-  GURL(const GURL& other);
+  GURL_API GURL(const GURL& other);
 
   // The narrow version requires the input be UTF-8. Invalid UTF-8 input will
   // result in an invalid URL.
@@ -57,14 +58,16 @@ class GURL {
   // encode the query parameters. It is probably sufficient for the narrow
   // version to assume the query parameter encoding should be the same as the
   // input encoding.
-  explicit GURL(const std::string& url_string /*, output_param_encoding*/);
-  explicit GURL(const string16& url_string /*, output_param_encoding*/);
+  GURL_API explicit GURL(const std::string& url_string
+                         /*, output_param_encoding*/);
+  GURL_API explicit GURL(const string16& url_string
+                         /*, output_param_encoding*/);
 
   // Constructor for URLs that have already been parsed and canonicalized. This
   // is used for conversions from KURL, for example. The caller must supply all
   // information associated with the URL, which must be correct and consistent.
-  GURL(const char* canonical_spec, size_t canonical_spec_len,
-       const url_parse::Parsed& parsed, bool is_valid);
+  GURL_API GURL(const char* canonical_spec, size_t canonical_spec_len,
+                const url_parse::Parsed& parsed, bool is_valid);
 
   // Returns true when this object represents a valid parsed URL. When not
   // valid, other functions will still succeed, but you will not get canonical
@@ -96,7 +99,7 @@ class GURL {
   // Used invalid_spec() below to get the unusable spec of an invalid URL. This
   // separation is designed to prevent errors that may cause security problems
   // that could result from the mistaken use of an invalid URL.
-  const std::string& spec() const;
+  GURL_API const std::string& spec() const;
 
   // Returns the potentially invalid spec for a the URL. This spec MUST NOT be
   // modified or sent over the network. It is designed to be displayed in error
@@ -148,8 +151,8 @@ class GURL {
   //
   // It is an error to resolve a URL relative to an invalid URL. The result
   // will be the empty URL.
-  GURL Resolve(const std::string& relative) const;
-  GURL Resolve(const string16& relative) const;
+  GURL_API GURL Resolve(const std::string& relative) const;
+  GURL_API GURL Resolve(const string16& relative) const;
 
   // Like Resolve() above but takes a character set encoder which will be used
   // for any query text specified in the input. The charset converter parameter
@@ -158,10 +161,10 @@ class GURL {
   // TODO(brettw): These should be replaced with versions that take something
   // more friendly than a raw CharsetConverter (maybe like an ICU character set
   // name).
-  GURL ResolveWithCharsetConverter(
+  GURL_API GURL ResolveWithCharsetConverter(
       const std::string& relative,
       url_canon::CharsetConverter* charset_converter) const;
-  GURL ResolveWithCharsetConverter(
+  GURL_API GURL ResolveWithCharsetConverter(
       const string16& relative,
       url_canon::CharsetConverter* charset_converter) const;
 
@@ -176,9 +179,9 @@ class GURL {
   //
   // Note that we use the more general url_canon::Replacements type to give
   // callers extra flexibility rather than our override.
-  GURL ReplaceComponents(
+  GURL_API GURL ReplaceComponents(
       const url_canon::Replacements<char>& replacements) const;
-  GURL ReplaceComponents(
+  GURL_API GURL ReplaceComponents(
       const url_canon::Replacements<char16>& replacements) const;
 
   // A helper function that is equivalent to replacing the path with a slash
@@ -190,7 +193,7 @@ class GURL {
   //
   // It is an error to get an empty path on an invalid URL. The result
   // will be the empty URL.
-  GURL GetWithEmptyPath() const;
+  GURL_API GURL GetWithEmptyPath() const;
 
   // A helper function to return a GURL containing just the scheme, host,
   // and port from a URL. Equivalent to clearing any username and password,
@@ -201,19 +204,19 @@ class GURL {
   //
   // It is an error to get the origin of an invalid URL. The result
   // will be the empty URL.
-  GURL GetOrigin() const;
+  GURL_API GURL GetOrigin() const;
 
   // Returns true if the scheme for the current URL is a known "standard"
   // scheme. Standard schemes have an authority and a path section. This
   // includes file:, which some callers may want to filter out explicitly by
   // calling SchemeIsFile.
-  bool IsStandard() const;
+  GURL_API bool IsStandard() const;
 
   // Returns true if the given parameter (should be lower-case ASCII to match
   // the canonicalized scheme) is the scheme for this URL. This call is more
   // efficient than getting the scheme and comparing it because no copies or
   // object constructions are done.
-  bool SchemeIs(const char* lower_ascii_scheme) const;
+  GURL_API bool SchemeIs(const char* lower_ascii_scheme) const;
 
   // We often need to know if this is a file URL. File URLs are "standard", but
   // are often treated separately by some programs.
@@ -229,7 +232,7 @@ class GURL {
   // Returns true if the hostname is an IP address. Note: this function isn't
   // as cheap as a simple getter because it re-parses the hostname to verify.
   // This currently identifies only IPv4 addresses (bug 822685).
-  bool HostIsIPAddress() const;
+  GURL_API bool HostIsIPAddress() const;
 
   // Getters for various components of the URL. The returned string will be
   // empty if the component is empty or is not present.
@@ -295,24 +298,24 @@ class GURL {
 
   // Returns a parsed version of the port. Can also be any of the special
   // values defined in Parsed for ExtractPort.
-  int IntPort() const;
+  GURL_API int IntPort() const;
 
   // Returns the port number of the url, or the default port number.
   // If the scheme has no concept of port (or unknown default) returns
   // PORT_UNSPECIFIED.
-  int EffectiveIntPort() const;
+  GURL_API int EffectiveIntPort() const;
 
   // Extracts the filename portion of the path and returns it. The filename
   // is everything after the last slash in the path. This may be empty.
-  std::string ExtractFileName() const;
+  GURL_API std::string ExtractFileName() const;
 
   // Returns the path that should be sent to the server. This is the path,
   // parameter, and query portions of the URL. It is guaranteed to be ASCII.
-  std::string PathForRequest() const;
+  GURL_API std::string PathForRequest() const;
 
   // Returns the host, excluding the square brackets surrounding IPv6 address
   // literals.  This can be useful for passing to getaddrinfo().
-  std::string HostNoBrackets() const;
+  GURL_API std::string HostNoBrackets() const;
 
   // Returns true if this URL's host matches or is in the same domain as
   // the given input string. For example if this URL was "www.google.com",
@@ -324,7 +327,7 @@ class GURL {
   //
   // If function DomainIs has parameter domain_len, which means the parameter
   // lower_ascii_domain does not gurantee to terminate with NULL character.
-  bool DomainIs(const char* lower_ascii_domain, int domain_len) const;
+  GURL_API bool DomainIs(const char* lower_ascii_domain, int domain_len) const;
 
   // If function DomainIs only has parameter lower_ascii_domain, which means
   // domain string should be terminate with NULL character.
@@ -335,12 +338,12 @@ class GURL {
 
   // Swaps the contents of this GURL object with the argument without doing
   // any memory allocations.
-  void Swap(GURL* other);
+  GURL_API void Swap(GURL* other);
 
   // Returns a reference to a singleton empty GURL. This object is for callers
   // who return references but don't have anything to return in some cases.
   // This function may be called from any thread.
-  static const GURL& EmptyGURL();
+  GURL_API static const GURL& EmptyGURL();
 
  private:
   // Returns the substring of the input identified by the given component.

@@ -32,6 +32,7 @@
 
 #include "base/string16.h"
 #include "googleurl/src/url_canon.h"
+#include "googleurl/src/url_common.h"
 #include "googleurl/src/url_parse.h"
 
 namespace url_canon {
@@ -54,12 +55,12 @@ namespace url_canon {
 // Mozilla), so this code path never gets hit. Our host canonicalization will
 // notice these spaces and escape them, which will make IP address finding
 // fail. This seems like better behavior than stripping after a space.
-bool FindIPv4Components(const char* spec,
-                        const url_parse::Component& host,
-                        url_parse::Component components[4]);
-bool FindIPv4Components(const char16* spec,
-                        const url_parse::Component& host,
-                        url_parse::Component components[4]);
+GURL_API bool FindIPv4Components(const char* spec,
+                                 const url_parse::Component& host,
+                                 url_parse::Component components[4]);
+GURL_API bool FindIPv4Components(const char16* spec,
+                                 const url_parse::Component& host,
+                                 url_parse::Component components[4]);
 
 // Converts an IPv4 address to a 32-bit number (network byte order).
 //
@@ -72,26 +73,28 @@ bool FindIPv4Components(const char16* spec,
 //
 // On success, |num_ipv4_components| will be populated with the number of
 // components in the IPv4 address.
-CanonHostInfo::Family IPv4AddressToNumber(const char* spec,
-                                          const url_parse::Component& host,
-                                          unsigned char address[4],
-                                          int* num_ipv4_components);
-CanonHostInfo::Family IPv4AddressToNumber(const char16* spec,
-                                          const url_parse::Component& host,
-                                          unsigned char address[4],
-                                          int* num_ipv4_components);
+GURL_API CanonHostInfo::Family IPv4AddressToNumber(
+    const char* spec,
+    const url_parse::Component& host,
+    unsigned char address[4],
+    int* num_ipv4_components);
+GURL_API CanonHostInfo::Family IPv4AddressToNumber(
+    const char16* spec,
+    const url_parse::Component& host,
+    unsigned char address[4],
+    int* num_ipv4_components);
 
 // Converts an IPv6 address to a 128-bit number (network byte order), returning
 // true on success. False means that the input was not a valid IPv6 address.
 //
 // NOTE that |host| is expected to be surrounded by square brackets.
 // i.e. "[::1]" rather than "::1".
-bool IPv6AddressToNumber(const char* spec,
-                         const url_parse::Component& host,
-                         unsigned char address[16]);
-bool IPv6AddressToNumber(const char16* spec,
-                         const url_parse::Component& host,
-                         unsigned char address[16]);
+GURL_API bool IPv6AddressToNumber(const char* spec,
+                                  const url_parse::Component& host,
+                                  unsigned char address[16]);
+GURL_API bool IPv6AddressToNumber(const char16* spec,
+                                  const url_parse::Component& host,
+                                  unsigned char address[16]);
 
 }  // namespace url_canon
 

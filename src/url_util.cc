@@ -33,6 +33,7 @@
 #include "googleurl/src/url_util.h"
 
 #include "base/logging.h"
+#include "googleurl/src/url_canon_internal.h"
 #include "googleurl/src/url_file.h"
 
 namespace url_util {
@@ -498,6 +499,55 @@ bool LowerCaseEqualsASCII(const char16* a_begin,
                           const char16* a_end,
                           const char* b) {
   return DoLowerCaseEqualsASCII(a_begin, a_end, b);
+}
+
+void DecodeURLEscapeSequences(const char* input, int length,
+                              url_canon::CanonOutputW* output) {
+  url_canon::RawCanonOutputT<char> unescaped_chars;
+  for (int i = 0; i < length; i++) {
+    if (input[i] == '%') {
+      unsigned char ch;
+      if (url_canon::DecodeEscaped(input, &i, length, &ch)) {
+        unescaped_chars.push_back(ch);
+      } else {
+        // Invalid escape sequence, copy the percent literal.
+        unescaped_chars.push_back('%');
+      }
+    } else {
+      // Regular non-escaped 8-bit character.
+      unescaped_chars.push_back(input[i]);
+    }
+  }
+
+  // Convert that 8-bit to UTF-16. It's not clear IE does this at all to
+  // JavaScript URLs, but Firefox and Safari do.
+  for (int i = 0; i < unescaped_chars.length(); i++) {
+    unsigned char uch = static_cast<unsigned char>(unescaped_chars.at(i));
+    if (uch < 0x80) {
+      // Non-UTF-8, just append directly
+      output->push_back(uch);
+    } else {
+      // next_ch will point to the last character of the decoded
+      // character.
+      int next_character = i;
+      unsigned code_point;
+      if (url_canon::ReadUTFChar(unescaped_chars.data(), &next_character,
+                                 unescaped_chars.length(), &code_point)) {
+        // Valid UTF-8 character, convert to UTF-16.
+        url_canon::AppendUTF16Value(code_point, output);
+        i = next_character;
+      } else {
+        // If there are any sequences that are not valid UTF-8, we keep
+        // invalid code points and promote to UTF-16. We copy all characters
+        // from the current position to the end of the identified sequence.
+        while (i < next_character) {
+          output->push_back(static_cast<unsigned char>(unescaped_chars.at(i)));
+          i++;
+        }
+        output->push_back(static_cast<unsigned char>(unescaped_chars.at(i)));
+      }
+    }
+  }
 }
 
 }  // namespace url_util

@@ -31,15 +31,15 @@
 // strings. Because the canonicalizer tries not to be dependent on the STL,
 // we have segregated it here.
 
-#ifndef GOOGLEURL_SRC_URL_CANON_STRING_H__
-#define GOOGLEURL_SRC_URL_CANON_STRING_H__
+#ifndef GOOGLEURL_SRC_URL_CANON_STDSTRING_H__
+#define GOOGLEURL_SRC_URL_CANON_STDSTRING_H__
 
 #include <string>
 #include "googleurl/src/url_canon.h"
 
 namespace url_canon {
 
-// Write into a std::string given in the constructor. This object odes not own
+// Write into a std::string given in the constructor. This object does not own
 // the string itself, and the user must ensure that the string stays alive
 // throughout the lifetime of this object.
 //
@@ -82,7 +82,7 @@ class StdStringCanonOutput : public CanonOutput {
   }
 
  protected:
-   std::string* str_;
+  std::string* str_;
 };
 
 // An extension of the Replacements class that allows the setters to use
@@ -130,4 +130,5 @@ class StdStringReplacements :
 
 }  // namespace url_canon
 
-#endif  // GOOGLEURL_SRC_URL_CANON_STRING_H__
+#endif  // GOOGLEURL_SRC_URL_CANON_STDSTRING_H__
+

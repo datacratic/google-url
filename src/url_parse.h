@@ -34,6 +34,7 @@
 
 #include "base/basictypes.h"
 #include "base/string16.h"
+#include "googleurl/src/url_common.h"
 
 namespace url_parse {
 
@@ -119,7 +120,7 @@ struct Parsed {
   };
 
   // The default constructor is sufficient for the components.
-  Parsed() {}
+  GURL_API Parsed() {}
 
   // Returns the length of the URL (the end of the last component).
   //
@@ -127,7 +128,7 @@ struct Parsed {
   // of the string. For example "http://": the parsed structure will only
   // contain an entry for the four-character scheme, and it doesn't know about
   // the "://". For all other last-components, it will return the real length.
-  int Length() const;
+  GURL_API int Length() const;
 
   // Returns the number of characters before the given component if it exists,
   // or where the component would be if it did exist. This will return the
@@ -155,7 +156,8 @@ struct Parsed {
   //      *QUERY: 14                   15 <-
   //        *REF: 20                   20
   //
-  int CountCharactersBefore(ComponentType type, bool include_delimiter) const;
+  GURL_API int CountCharactersBefore(ComponentType type,
+                                     bool include_delimiter) const;
 
   // Scheme without the colon: "http://foo"/ would have a scheme of "http".
   // The length will be -1 if no scheme is specified ("foo.com"), or 0 if there
@@ -215,24 +217,24 @@ struct Parsed {
 // StandardURL is for when the scheme is known to be one that has an
 // authority (host) like "http". This function will not handle weird ones
 // like "about:" and "javascript:", or do the right thing for "file:" URLs.
-void ParseStandardURL(const char* url, int url_len, Parsed* parsed);
-void ParseStandardURL(const char16* url, int url_len, Parsed* parsed);
+GURL_API void ParseStandardURL(const char* url, int url_len, Parsed* parsed);
+GURL_API void ParseStandardURL(const char16* url, int url_len, Parsed* parsed);
 
 // PathURL is for when the scheme is known not to have an authority (host)
 // section but that aren't file URLs either. The scheme is parsed, and
 // everything after the scheme is considered as the path. This is used for
 // things like "about:" and "javascript:"
-void ParsePathURL(const char* url, int url_len, Parsed* parsed);
-void ParsePathURL(const char16* url, int url_len, Parsed* parsed);
+GURL_API void ParsePathURL(const char* url, int url_len, Parsed* parsed);
+GURL_API void ParsePathURL(const char16* url, int url_len, Parsed* parsed);
 
 // FileURL is for file URLs. There are some special rules for interpreting
 // these.
-void ParseFileURL(const char* url, int url_len, Parsed* parsed);
-void ParseFileURL(const char16* url, int url_len, Parsed* parsed);
+GURL_API void ParseFileURL(const char* url, int url_len, Parsed* parsed);
+GURL_API void ParseFileURL(const char16* url, int url_len, Parsed* parsed);
 
 // MailtoURL is for mailto: urls. They are made up scheme,path,query
-void ParseMailtoURL(const char* url, int url_len, Parsed* parsed);
-void ParseMailtoURL(const char16* url, int url_len, Parsed* parsed);
+GURL_API void ParseMailtoURL(const char* url, int url_len, Parsed* parsed);
+GURL_API void ParseMailtoURL(const char16* url, int url_len, Parsed* parsed);
 
 // Helper functions -----------------------------------------------------------
 
@@ -256,27 +258,27 @@ void ParseMailtoURL(const char16* url, int url_len, Parsed* parsed);
 // end of the string).
 //
 // The 8-bit version requires UTF-8 encoding.
-bool ExtractScheme(const char* url, int url_len, Component* scheme);
-bool ExtractScheme(const char16* url, int url_len, Component* scheme);
+GURL_API bool ExtractScheme(const char* url, int url_len, Component* scheme);
+GURL_API bool ExtractScheme(const char16* url, int url_len, Component* scheme);
 
 // Returns true if ch is a character that terminates the authority segment
 // of a URL.
-bool IsAuthorityTerminator(char16 ch);
+GURL_API bool IsAuthorityTerminator(char16 ch);
 
 // Does a best effort parse of input |spec|, in range |auth|. If a particular
 // component is not found, it will be set to invalid.
-void ParseAuthority(const char* spec,
-                    const Component& auth,
-                    Component* username,
-                    Component* password,
-                    Component* hostname,
-                    Component* port_num);
-void ParseAuthority(const char16* spec,
-                    const Component& auth,
-                    Component* username,
-                    Component* password,
-                    Component* hostname,
-                    Component* port_num);
+GURL_API void ParseAuthority(const char* spec,
+                             const Component& auth,
+                             Component* username,
+                             Component* password,
+                             Component* hostname,
+                             Component* port_num);
+GURL_API void ParseAuthority(const char16* spec,
+                             const Component& auth,
+                             Component* username,
+                             Component* password,
+                             Component* hostname,
+                             Component* port_num);
 
 // Computes the integer port value from the given port component. The port
 // component should have been identified by one of the init functions on
@@ -285,8 +287,8 @@ void ParseAuthority(const char16* spec,
 // The return value will be a positive integer between 0 and 64K, or one of
 // the two special values below.
 enum SpecialPort { PORT_UNSPECIFIED = -1, PORT_INVALID = -2 };
-int ParsePort(const char* url, const Component& port);
-int ParsePort(const char16* url, const Component& port);
+GURL_API int ParsePort(const char* url, const Component& port);
+GURL_API int ParsePort(const char16* url, const Component& port);
 
 // Extracts the range of the file name in the given url. The path must
 // already have been computed by the parse function, and the matching URL
@@ -298,12 +300,12 @@ int ParsePort(const char16* url, const Component& port);
 // following the last slash.
 //
 // The 8-bit version requires UTF-8 encoding.
-void ExtractFileName(const char* url,
-                     const Component& path,
-                     Component* file_name);
-void ExtractFileName(const char16* url,
-                     const Component& path,
-                     Component* file_name);
+GURL_API void ExtractFileName(const char* url,
+                              const Component& path,
+                              Component* file_name);
+GURL_API void ExtractFileName(const char16* url,
+                              const Component& path,
+                              Component* file_name);
 
 // Extract the first key/value from the range defined by |*query|. Updates
 // |*query| to start at the end of the extracted key/value pair. This is
@@ -320,14 +322,14 @@ void ExtractFileName(const char16* url,
 //
 // If no key/value are found |*key| and |*value| will be unchanged and it will
 // return false.
-bool ExtractQueryKeyValue(const char* url,
-                          Component* query,
-                          Component* key,
-                          Component* value);
-bool ExtractQueryKeyValue(const char16* url,
-                          Component* query,
-                          Component* key,
-                          Component* value);
+GURL_API bool ExtractQueryKeyValue(const char* url,
+                                   Component* query,
+                                   Component* key,
+                                   Component* value);
+GURL_API bool ExtractQueryKeyValue(const char16* url,
+                                   Component* query,
+                                   Component* key,
+                                   Component* value);
 
 }  // namespace url_parse
 
