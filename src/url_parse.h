@@ -120,7 +120,7 @@ struct Parsed {
   };
 
   // The default constructor is sufficient for the components.
-  GURL_API Parsed() {}
+  Parsed() {}
 
   // Returns the length of the URL (the end of the last component).
   //
