@@ -290,12 +290,11 @@ void DoCanonicalizeRef(const CHAR* spec,
     } else {
       // Non-ASCII characters are appended unescaped, but only when they are
       // valid. Invalid Unicode characters are replaced with the "invalid
-      // character" as IE seems to.
+      // character" as IE seems to (ReadUTFChar puts the unicode replacement
+      // character in the output on failure for us).
       unsigned code_point;
-      if (!ReadUTFChar(spec, &i, end, &code_point))
-        AppendUTF8Value(kUnicodeReplacementCharacter, output);
-      else
-        AppendUTF8Value(code_point, output);
+      ReadUTFChar(spec, &i, end, &code_point);
+      AppendUTF8Value(code_point, output);
     }
   }
 
