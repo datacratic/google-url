@@ -144,6 +144,44 @@ void SetupReplComp(
 
 }  // namespace
 
+TEST(URLCanonTest, DoAppendUTF8) {
+  struct UTF8Case {
+    unsigned input;
+    const char* output;
+  } utf_cases[] = {
+    // Valid code points.
+    {0x24, "\x24"},
+    {0xA2, "\xC2\xA2"},
+    {0x20AC, "\xE2\x82\xAC"},
+    {0x24B62, "\xF0\xA4\xAD\xA2"},
+    {0x10FFFF, "\xF4\x8F\xBF\xBF"},
+  };
+  std::string out_str;
+  for (size_t i = 0; i < ARRAYSIZE(utf_cases); i++) {
+    out_str.clear();
+    url_canon::StdStringCanonOutput output(&out_str);
+    url_canon::AppendUTF8Value(utf_cases[i].input, &output);
+    output.Complete();
+    EXPECT_EQ(utf_cases[i].output, out_str);
+  }
+}
+
+// TODO(mattm): Can't run this in debug mode for now, since the DCHECK will
+// cause the Chromium stacktrace dialog to appear and hang the test.
+// See http://crbug.com/49580.
+#ifdef NDEBUG
+TEST(URLCanonTest, DoAppendUTF8Invalid) {
+  std::string out_str;
+  url_canon::StdStringCanonOutput output(&out_str);
+  // Invalid code point (too large).
+  ASSERT_DEBUG_DEATH({
+    url_canon::AppendUTF8Value(0x110000, &output);
+    output.Complete();
+    EXPECT_EQ("", out_str);
+  }, "");
+}
+#endif
+
 TEST(URLCanonTest, UTF) {
   // Low-level test that we handle reading, canonicalization, and writing
   // UTF-8/UTF-16 strings properly.

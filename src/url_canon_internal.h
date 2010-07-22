@@ -37,6 +37,7 @@
 
 #include <stdlib.h>
 
+#include "base/logging.h"
 #include "googleurl/src/url_canon.h"
 
 namespace url_canon {
@@ -173,6 +174,9 @@ bool ReadUTFChar(const char* str, int* begin, int length,
 // Generic To-UTF-8 converter. This will call the given append method for each
 // character that should be appended, with the given output method. Wrappers
 // are provided below for escaped and non-escaped versions of this.
+//
+// The char_value must have already been checked that it's a valid Unicode
+// character.
 template<class Output, void Appender(unsigned char, Output*)>
 inline void DoAppendUTF8(unsigned char_value, Output* output) {
   if (char_value <= 0x7f) {
@@ -191,7 +195,7 @@ inline void DoAppendUTF8(unsigned char_value, Output* output) {
              output);
     Appender(static_cast<unsigned char>(0x80 | (char_value & 0x3f)),
              output);
-  } else if (char_value <= 0x1fffff) {
+  } else if (char_value <= 0x10FFFF) {  // Max unicode code point.
     // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
     Appender(static_cast<unsigned char>(0xf0 | (char_value >> 18)),
              output);
@@ -201,20 +205,9 @@ inline void DoAppendUTF8(unsigned char_value, Output* output) {
              output);
     Appender(static_cast<unsigned char>(0x80 | (char_value & 0x3f)),
              output);
-  } else if (char_value <= 0x10FFFF) {  // Max unicode code point.
-    // 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
-    Appender(static_cast<unsigned char>(0xf8 | (char_value >> 24)),
-             output);
-    Appender(static_cast<unsigned char>(0x80 | ((char_value >> 18) & 0x3f)),
-             output);
-    Appender(static_cast<unsigned char>(0x80 | ((char_value >> 12) & 0x3f)),
-             output);
-    Appender(static_cast<unsigned char>(0x80 | ((char_value >> 6) & 0x3f)),
-             output);
-    Appender(static_cast<unsigned char>(0x80 | (char_value & 0x3f)),
-             output);
   } else {
-    // Invalid UTF-8 character (>20 bits)
+    // Invalid UTF-8 character (>20 bits).
+    NOTREACHED();
   }
 }
 
