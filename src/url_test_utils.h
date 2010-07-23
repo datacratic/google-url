@@ -75,11 +75,4 @@ inline std::string ConvertUTF16ToUTF8(const string16& src) {
 
 }  // namespace url_test_utils
 
-// This operator allows EXPECT_EQ(astring16, anotherstring16); to work.
-inline std::ostream& operator<<(std::ostream& os,
-                                const string16& str) {
-  // Convert to UTF-8 and print the string
-  return os << url_test_utils::ConvertUTF16ToUTF8(str);
-}
-
 #endif  // GOOGLEURL_SRC_URL_TEST_UTILS_H__
