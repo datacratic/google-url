@@ -324,7 +324,7 @@ void DoParseStandardURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   if (DoExtractScheme(spec, spec_len, &parsed->scheme)) {
     after_scheme = parsed->scheme.end() + 1;  // Skip past the colon.
   } else {
-    // Say there's no scheme when there is a colon. We could also say that
+    // Say there's no scheme when there is no colon. We could also say that
     // everything is the scheme. Both would produce an invalid URL, but this way
     // seems less wrong in more cases.
     parsed->scheme.reset();
