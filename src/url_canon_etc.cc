@@ -213,9 +213,6 @@ bool DoUserInfo(const CHAR* username_spec,
 inline void WritePortInt(char* output, int output_len, int port) {
   _itoa_s(port, output, output_len, 10);
 }
-inline void WritePortInt(char16* output, int output_len, int port) {
-  _itow_s(port, output, output_len, 10);
-}
 
 // This function will prepend the colon if there will be a port.
 template<typename CHAR, typename UCHAR>
