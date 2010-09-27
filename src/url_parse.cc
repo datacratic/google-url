@@ -645,7 +645,7 @@ bool ExtractScheme(const char16* url, int url_len, Component* scheme) {
 // This handles everything that may be an authority terminator, including
 // backslash. For special backslash handling see DoParseAfterScheme.
 bool IsAuthorityTerminator(char16 ch) {
-  return IsURLSlash(ch) || ch == '?' || ch == '#' || ch == ';';
+  return IsURLSlash(ch) || ch == '?' || ch == '#';
 }
 
 void ExtractFileName(const char* url,
