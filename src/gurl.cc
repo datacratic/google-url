@@ -148,6 +148,16 @@ GURL::GURL(const char* canonical_spec, size_t canonical_spec_len,
 #endif
 }
 
+GURL::~GURL() {
+}
+
+GURL& GURL::operator=(const GURL& other) {
+  spec_ = other.spec_;
+  is_valid_ = other.is_valid_;
+  parsed_ = other.parsed_;
+  return *this;
+}
+
 const std::string& GURL::spec() const {
   if (is_valid_ || spec_.empty())
     return spec_;

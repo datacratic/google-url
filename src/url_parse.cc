@@ -565,6 +565,9 @@ bool DoExtractQueryKeyValue(const CHAR* spec,
 
 }  // namespace
 
+Parsed::Parsed() {
+}
+
 int Parsed::Length() const {
   if (ref.is_valid())
     return ref.end();

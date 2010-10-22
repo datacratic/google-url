@@ -69,6 +69,10 @@ class GURL {
   GURL_API GURL(const char* canonical_spec, size_t canonical_spec_len,
                 const url_parse::Parsed& parsed, bool is_valid);
 
+  GURL_API ~GURL();
+
+  GURL_API GURL& operator=(const GURL& other);
+
   // Returns true when this object represents a valid parsed URL. When not
   // valid, other functions will still succeed, but you will not get canonical
   // data out in the format you may be expecting. Instead, we keep something
