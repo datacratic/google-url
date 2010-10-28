@@ -148,9 +148,6 @@ GURL::GURL(const char* canonical_spec, size_t canonical_spec_len,
 #endif
 }
 
-GURL::~GURL() {
-}
-
 GURL& GURL::operator=(const GURL& other) {
   spec_ = other.spec_;
   is_valid_ = other.is_valid_;
