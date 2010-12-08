@@ -34,6 +34,7 @@
 #endif
 
 #include <algorithm>
+#include <iostream>
 
 #include "googleurl/src/gurl.h"
 
@@ -454,3 +455,6 @@ void GURL::Swap(GURL* other) {
   std::swap(parsed_, other->parsed_);
 }
 
+std::ostream& operator<<(std::ostream& out, const GURL& url) {
+  return out << url.possibly_invalid_spec();
+}

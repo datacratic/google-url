@@ -370,8 +370,6 @@ class GURL {
 };
 
 // Stream operator so GURL can be used in assertion statements.
-inline std::ostream& operator<<(std::ostream& out, const GURL& url) {
-  return out << url.possibly_invalid_spec();
-}
+std::ostream& operator<<(std::ostream& out, const GURL& url);
 
 #endif  // GOOGLEURL_SRC_GURL_H__
