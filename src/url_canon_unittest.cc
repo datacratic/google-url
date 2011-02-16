@@ -169,7 +169,7 @@ TEST(URLCanonTest, DoAppendUTF8) {
 // TODO(mattm): Can't run this in debug mode for now, since the DCHECK will
 // cause the Chromium stacktrace dialog to appear and hang the test.
 // See http://crbug.com/49580.
-#ifdef NDEBUG
+#if defined(GTEST_HAS_DEATH_TEST) && defined(NDEBUG)
 TEST(URLCanonTest, DoAppendUTF8Invalid) {
   std::string out_str;
   url_canon::StdStringCanonOutput output(&out_str);
