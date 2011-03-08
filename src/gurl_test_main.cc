@@ -63,9 +63,14 @@ bool InitializeICU() {
 #if (ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_SHARED)
   // We expect to find the ICU data module alongside the current module.
   // Because the module name is ASCII-only, "A" API should be safe.
-  HMODULE module = LoadLibraryA(ICU_UTIL_DATA_SHARED_MODULE_NAME);
-  if (!module)
-    return false;
+  // Chrome's copy of ICU dropped a version number XX from icudt dll,
+  // but 3rd-party embedders may need it. So, we try both.
+  HMODULE module = LoadLibraryA("icudt.dll");
+  if (!module) {
+    module = LoadLibraryA(ICU_UTIL_DATA_SHARED_MODULE_NAME);
+    if (!module)
+      return false;
+  }
 
   FARPROC addr = GetProcAddress(module, ICU_UTIL_DATA_SYMBOL);
   if (!addr)
