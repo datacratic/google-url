@@ -34,13 +34,19 @@
 #define GURL_IMPLEMENTATION 0
 #endif
 
-#if defined(WIN32) && defined(GURL_DLL)
+#if defined(GURL_DLL)
+#if defined(WIN32)
 #if GURL_IMPLEMENTATION
 #define GURL_API __declspec(dllexport)
 #else
 #define GURL_API __declspec(dllimport)
 #endif
 #else
+// Non-Windows DLLs.
+#define GURL_API __attribute__((visibility("default")))
+#endif
+#else
+// Not a DLL.
 #define GURL_API
 #endif
 
