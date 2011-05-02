@@ -538,18 +538,6 @@ bool DoIPv6AddressToNumber(const CHAR* spec,
   // If there was an IPv4 section, convert it into a 32-bit number and append
   // it to |address|.
   if (ipv6_parsed.ipv4_component.is_valid()) {
-    // We only allow the embedded IPv4 syntax to be used for "compat" and
-    // "mapped" formats:
-    //     "mapped" ==>  0:0:0:0:0:ffff:<IPv4-literal>
-    //     "compat" ==>  0:0:0:0:0:0000:<IPv4-literal>
-    for (int j = 0; j < 10; ++j) {
-      if (address[j] != 0)
-        return false;
-    }
-    if (!((address[10] == 0 && address[11] == 0) ||
-          (address[10] == 0xFF && address[11] == 0xFF)))
-      return false;
-
     // Append the 32-bit number to |address|.
     int ignored_num_ipv4_components;
     if (CanonHostInfo::IPV4 !=

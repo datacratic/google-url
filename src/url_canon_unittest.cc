@@ -675,8 +675,6 @@ TEST(URLCanonTest, IPv6) {
     {"[::]", L"[::]", "[::]", url_parse::Component(0,4), CanonHostInfo::IPV6, -1},
     {"[::1]", L"[::1]", "[::1]", url_parse::Component(0,5), CanonHostInfo::IPV6, -1},
     {"[1::]", L"[1::]", "[1::]", url_parse::Component(0,5), CanonHostInfo::IPV6, -1},
-    {"[::192.168.0.1]", L"[::192.168.0.1]", "[::c0a8:1]", url_parse::Component(0,10), CanonHostInfo::IPV6, -1},
-    {"[::ffff:192.168.0.1]", L"[::ffff:192.168.0.1]", "[::ffff:c0a8:1]", url_parse::Component(0,15), CanonHostInfo::IPV6, -1},
 
     // Leading zeros should be stripped.
     {"[000:01:02:003:004:5:6:007]", L"[000:01:02:003:004:5:6:007]", "[0:1:2:3:4:5:6:7]", url_parse::Component(0,17), CanonHostInfo::IPV6, -1},
@@ -689,10 +687,11 @@ TEST(URLCanonTest, IPv6) {
     {"[1:0:0:2::3:0]", L"[1:0:0:2::3:0]", "[1::2:0:0:3:0]", url_parse::Component(0,14), CanonHostInfo::IPV6, -1},
     {"[1::2:0:0:3:0]", L"[1::2:0:0:3:0]", "[1::2:0:0:3:0]", url_parse::Component(0,14), CanonHostInfo::IPV6, -1},
 
-    // IPv4 addresses
-    // Only mapped and compat addresses can have IPv4 syntax embedded.
-    {"[::eeee:192.168.0.1]", L"[::eeee:192.168.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[2001::192.168.0.1]", L"[2001::192.168.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    // Addresses with embedded IPv4.
+    {"[::192.168.0.1]", L"[::192.168.0.1]", "[::c0a8:1]", url_parse::Component(0,10), CanonHostInfo::IPV6, -1},
+    {"[::ffff:192.168.0.1]", L"[::ffff:192.168.0.1]", "[::ffff:c0a8:1]", url_parse::Component(0,15), CanonHostInfo::IPV6, -1},
+    {"[::eeee:192.168.0.1]", L"[::eeee:192.168.0.1]", "[::eeee:c0a8:1]", url_parse::Component(0, 15), CanonHostInfo::IPV6, -1},
+    {"[2001::192.168.0.1]", L"[2001::192.168.0.1]", "[2001::c0a8:1]", url_parse::Component(0, 14), CanonHostInfo::IPV6, -1},
     {"[1:2:192.168.0.1:5:6]", L"[1:2:192.168.0.1:5:6]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
 
     // IPv4 with last component missing.
