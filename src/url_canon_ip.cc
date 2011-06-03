@@ -216,18 +216,29 @@ CanonHostInfo::Family DoIPv4AddressToNumber(const CHAR* spec,
   // |existing_components| will be valid.
   uint32 component_values[4];
   int existing_components = 0;
+
+  // Set to true if one or more components are BROKEN.  BROKEN is only
+  // returned if all components are IPV4 or BROKEN, so, for example,
+  // 12345678912345.de returns NEUTRAL rather than broken.
+  bool broken = false;
   for (int i = 0; i < 4; i++) {
     if (components[i].len <= 0)
       continue;
     CanonHostInfo::Family family = IPv4ComponentToNumber(
         spec, components[i], &component_values[existing_components]);
 
-    // Stop if we hit an invalid non-empty component.
-    if (family != CanonHostInfo::IPV4)
+    if (family == CanonHostInfo::BROKEN) {
+      broken = true;
+    } else if (family != CanonHostInfo::IPV4) {
+      // Stop if we hit a non-BROKEN invalid non-empty component.
       return family;
+    }
 
     existing_components++;
   }
+
+  if (broken)
+    return CanonHostInfo::BROKEN;
 
   // Use that sequence of numbers to fill out the 4-component IP address.
 

@@ -439,6 +439,14 @@ TEST(URLCanonTest, Host) {
       // Cyrillic letter followed buy ( should return punicode for ( escaped before punicode string was created. I.e.
       // if ( is escaped after punicode is created we would get xn--%28-8tb (incorrect).
     {"\xd1\x82(", L"\x0442(", "xn--%28-7ed", url_parse::Component(0, 11), CanonHostInfo::NEUTRAL, -1},
+      // Address with all hexidecimal characters with leading number of 1<<32
+      // or greater and should return NEUTRAL rather than BROKEN if not all
+      // components are numbers.
+    {"12345678912345.de", L"12345678912345.de", "12345678912345.de", url_parse::Component(0, 17), CanonHostInfo::NEUTRAL, -1},
+    {"1.12345678912345.de", L"1.12345678912345.de", "1.12345678912345.de", url_parse::Component(0, 19), CanonHostInfo::NEUTRAL, -1},
+    {"12345678912345.12345678912345.de", L"12345678912345.12345678912345.de", "12345678912345.12345678912345.de", url_parse::Component(0, 32), CanonHostInfo::NEUTRAL, -1},
+    {"1.2.0xB3A73CE5B59.de", L"1.2.0xB3A73CE5B59.de", "1.2.0xb3a73ce5b59.de", url_parse::Component(0, 20), CanonHostInfo::NEUTRAL, -1},
+    {"12345678912345.0xde", L"12345678912345.0xde", "12345678912345.0xde", url_parse::Component(0, 19), CanonHostInfo::BROKEN, -1},
   };
 
   // CanonicalizeHost() non-verbose.
