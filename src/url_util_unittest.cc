@@ -216,3 +216,36 @@ TEST(URLUtilTest, DecodeURLEscapeSequences) {
             string16(invalid_output.data(), invalid_output.length()));
 }
 
+TEST(URLUtilTest, TestEncodeURIComponent) {
+  struct EncodeCase {
+    const char* input;
+    const char* output;
+  } encode_cases[] = {
+    {"hello, world", "hello%2C%20world"},
+    {"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F",
+     "%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F"},
+    {"\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F",
+     "%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F"},
+    {" !\"#$%&'()*+,-./",
+     "%20!%22%23%24%25%26'()*%2B%2C-.%2F"},
+    {"0123456789:;<=>?",
+     "0123456789%3A%3B%3C%3D%3E%3F"},
+    {"@ABCDEFGHIJKLMNO",
+     "%40ABCDEFGHIJKLMNO"},
+    {"PQRSTUVWXYZ[\\]^_",
+     "PQRSTUVWXYZ%5B%5C%5D%5E_"},
+    {"`abcdefghijklmno",
+     "%60abcdefghijklmno"},
+    {"pqrstuvwxyz{|}~\x7f",
+     "pqrstuvwxyz%7B%7C%7D~%7F"},
+  };
+
+  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(encode_cases); i++) {
+    const char* input = encode_cases[i].input;
+    url_canon::RawCanonOutputT<char> buffer;
+    url_util::EncodeURIComponent(input, strlen(input), &buffer);
+    std::string output(buffer.data(), buffer.length());
+    EXPECT_EQ(encode_cases[i].output, output);
+  }
+}
+

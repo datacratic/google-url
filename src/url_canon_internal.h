@@ -48,7 +48,7 @@ namespace url_canon {
 // bits that are set for each 8-bit character in the kSharedCharTypeTable.
 enum SharedCharTypes {
   // Characters that do not require escaping in queries. Characters that do
-  // not have this flag will be escaped, see url_canon_query.cc
+  // not have this flag will be escaped; see url_canon_query.cc
   CHAR_QUERY = 1,
 
   // Valid in the username/password field.
@@ -65,6 +65,10 @@ enum SharedCharTypes {
 
   // Valid in an ASCII-representation of an octal digit.
   CHAR_OCT = 32,
+
+  // Characters that do not require escaping in encodeURIComponent.  Characters
+  // that do not have this flag will be escaped; see url_util.cc.
+  CHAR_COMPONENT = 64,
 };
 
 // This table contains the flags in SharedCharTypes for each 8-bit character.
@@ -88,6 +92,9 @@ inline bool IsIPv4Char(unsigned char c) {
 }
 inline bool IsHexChar(unsigned char c) {
   return IsCharOfType(c, CHAR_HEX);
+}
+inline bool IsComponentChar(unsigned char c) {
+  return IsCharOfType(c, CHAR_COMPONENT);
 }
 
 // Appends the given string to the output, escaping characters that do not
@@ -149,7 +156,7 @@ template<typename UINCHAR, typename OUTCHAR>
 inline void AppendEscapedChar(UINCHAR ch,
                               CanonOutputT<OUTCHAR>* output) {
   output->push_back('%');
-  output->push_back(kHexCharLookup[ch >> 4]);
+  output->push_back(kHexCharLookup[(ch >> 4) & 0xf]);
   output->push_back(kHexCharLookup[ch & 0xf]);
 }
 

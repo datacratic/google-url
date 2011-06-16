@@ -217,6 +217,12 @@ GURL_API bool LowerCaseEqualsASCII(const char16* a_begin,
 GURL_API void DecodeURLEscapeSequences(const char* input, int length,
                                        url_canon::CanonOutputW* output);
 
+// Escapes the given string as defined by the JS method encodeURIComponent.  See
+// https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/encodeURIComponent
+GURL_API void EncodeURIComponent(const char* input, int length,
+                                 url_canon::CanonOutput* output);
+
+
 }  // namespace url_util
 
 #endif  // GOOGLEURL_SRC_URL_UTIL_H__

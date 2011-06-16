@@ -550,4 +550,15 @@ void DecodeURLEscapeSequences(const char* input, int length,
   }
 }
 
+void EncodeURIComponent(const char* input, int length,
+                        url_canon::CanonOutput* output) {
+  for (int i = 0; i < length; ++i) {
+    unsigned char c = static_cast<unsigned char>(input[i]);
+    if (url_canon::IsComponentChar(c))
+      output->push_back(c);
+    else
+      AppendEscapedChar(c, output);
+  }
+}
+
 }  // namespace url_util
