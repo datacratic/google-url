@@ -360,6 +360,17 @@ struct CanonHostInfo {
   // CanonicalizeIPAddress() only sets this field if |family| is IPV4 or IPV6.
   // CanonicalizeHostVerbose() always sets it.
   url_parse::Component out_host;
+
+  // |address| contains the parsed IP Address (if any) in its first
+  // AddressLength() bytes, in network order. If IsIPAddress() is false
+  // AddressLength() will return zero and the content of |address| is undefined.
+  unsigned char address[16];
+
+  // Convenience function to calculate the length of an IP address corresponding
+  // to the current IP version in |family|, if any. For use with |address|.
+  int AddressLength() const {
+    return family == IPV4 ? 4 : (family == IPV6 ? 16 : 0);
+  }
 };
 
 

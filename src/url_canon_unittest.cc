@@ -81,7 +81,19 @@ struct IPAddressCase {
   // CanonHostInfo fields, for verbose output.
   CanonHostInfo::Family expected_family;
   int expected_num_ipv4_components;
+  const char* expected_address_hex;  // Two hex chars per IP address byte.
 };
+
+std::string BytesToHexString(unsigned char bytes[16], int length) {
+  EXPECT_TRUE(length == 0 || length == 4 || length == 16)
+      << "Bad IP address length: " << length;
+  std::string result;
+  for (int i = 0; i < length; ++i) {
+    result.push_back(url_canon::kHexCharLookup[(bytes[i] >> 4) & 0xf]);
+    result.push_back(url_canon::kHexCharLookup[bytes[i] & 0xf]);
+  }
+  return result;
+}
 
 struct ReplaceCase {
   const char* base;
@@ -381,72 +393,72 @@ TEST(URLCanonTest, Scheme) {
 TEST(URLCanonTest, Host) {
   IPAddressCase host_cases[] = {
        // Basic canonicalization, uppercase should be converted to lowercase.
-    {"GoOgLe.CoM", L"GoOgLe.CoM", "google.com", url_parse::Component(0, 10), CanonHostInfo::NEUTRAL, -1},
+    {"GoOgLe.CoM", L"GoOgLe.CoM", "google.com", url_parse::Component(0, 10), CanonHostInfo::NEUTRAL, -1, ""},
       // Spaces and some other characters should be escaped.
-    {"Goo%20 goo%7C|.com", L"Goo%20 goo%7C|.com", "goo%20%20goo%7C%7C.com", url_parse::Component(0, 22), CanonHostInfo::NEUTRAL, -1},
+    {"Goo%20 goo%7C|.com", L"Goo%20 goo%7C|.com", "goo%20%20goo%7C%7C.com", url_parse::Component(0, 22), CanonHostInfo::NEUTRAL, -1, ""},
       // Exciting different types of spaces!
-    {NULL, L"GOO\x00a0\x3000goo.com", "goo%20%20goo.com", url_parse::Component(0, 16), CanonHostInfo::NEUTRAL, -1},
+    {NULL, L"GOO\x00a0\x3000goo.com", "goo%20%20goo.com", url_parse::Component(0, 16), CanonHostInfo::NEUTRAL, -1, ""},
       // Other types of space (no-break, zero-width, zero-width-no-break) are
       // name-prepped away to nothing.
-    {NULL, L"GOO\x200b\x2060\xfeffgoo.com", "googoo.com", url_parse::Component(0, 10), CanonHostInfo::NEUTRAL, -1},
+    {NULL, L"GOO\x200b\x2060\xfeffgoo.com", "googoo.com", url_parse::Component(0, 10), CanonHostInfo::NEUTRAL, -1, ""},
       // Ideographic full stop (full-width period for Chinese, etc.) should be
       // treated as a dot.
-    {NULL, L"www.foo\x3002"L"bar.com", "www.foo.bar.com", url_parse::Component(0, 15), CanonHostInfo::NEUTRAL, -1},
+    {NULL, L"www.foo\x3002"L"bar.com", "www.foo.bar.com", url_parse::Component(0, 15), CanonHostInfo::NEUTRAL, -1, ""},
       // Invalid unicode characters should fail...
       // ...In wide input, ICU will barf and we'll end up with the input as
       //    escaped UTF-8 (the invalid character should be replaced with the
       //    replacement character).
-    {"\xef\xb7\x90zyx.com", L"\xfdd0zyx.com", "%EF%BF%BDzyx.com", url_parse::Component(0, 16), CanonHostInfo::BROKEN, -1},
+    {"\xef\xb7\x90zyx.com", L"\xfdd0zyx.com", "%EF%BF%BDzyx.com", url_parse::Component(0, 16), CanonHostInfo::BROKEN, -1, ""},
       // ...This is the same as previous but with with escaped.
-    {"%ef%b7%90zyx.com", L"%ef%b7%90zyx.com", "%EF%BF%BDzyx.com", url_parse::Component(0, 16), CanonHostInfo::BROKEN, -1},
+    {"%ef%b7%90zyx.com", L"%ef%b7%90zyx.com", "%EF%BF%BDzyx.com", url_parse::Component(0, 16), CanonHostInfo::BROKEN, -1, ""},
       // Test name prepping, fullwidth input should be converted to ASCII and NOT
       // IDN-ized. This is "Go" in fullwidth UTF-8/UTF-16.
-    {"\xef\xbc\xa7\xef\xbd\x8f.com", L"\xff27\xff4f.com", "go.com", url_parse::Component(0, 6), CanonHostInfo::NEUTRAL, -1},
+    {"\xef\xbc\xa7\xef\xbd\x8f.com", L"\xff27\xff4f.com", "go.com", url_parse::Component(0, 6), CanonHostInfo::NEUTRAL, -1, ""},
       // Test that fullwidth escaped values are properly name-prepped,
       // then converted or rejected.
       // ...%41 in fullwidth = 'A' (also as escaped UTF-8 input)
-    {"\xef\xbc\x85\xef\xbc\x94\xef\xbc\x91.com", L"\xff05\xff14\xff11.com", "a.com", url_parse::Component(0, 5), CanonHostInfo::NEUTRAL, -1},
-    {"%ef%bc%85%ef%bc%94%ef%bc%91.com", L"%ef%bc%85%ef%bc%94%ef%bc%91.com", "a.com", url_parse::Component(0, 5), CanonHostInfo::NEUTRAL, -1},
+    {"\xef\xbc\x85\xef\xbc\x94\xef\xbc\x91.com", L"\xff05\xff14\xff11.com", "a.com", url_parse::Component(0, 5), CanonHostInfo::NEUTRAL, -1, ""},
+    {"%ef%bc%85%ef%bc%94%ef%bc%91.com", L"%ef%bc%85%ef%bc%94%ef%bc%91.com", "a.com", url_parse::Component(0, 5), CanonHostInfo::NEUTRAL, -1, ""},
       // ...%00 in fullwidth should fail (also as escaped UTF-8 input)
-    {"\xef\xbc\x85\xef\xbc\x90\xef\xbc\x90.com", L"\xff05\xff10\xff10.com", "%00.com", url_parse::Component(0, 7), CanonHostInfo::BROKEN, -1},
-    {"%ef%bc%85%ef%bc%90%ef%bc%90.com", L"%ef%bc%85%ef%bc%90%ef%bc%90.com", "%00.com", url_parse::Component(0, 7), CanonHostInfo::BROKEN, -1},
+    {"\xef\xbc\x85\xef\xbc\x90\xef\xbc\x90.com", L"\xff05\xff10\xff10.com", "%00.com", url_parse::Component(0, 7), CanonHostInfo::BROKEN, -1, ""},
+    {"%ef%bc%85%ef%bc%90%ef%bc%90.com", L"%ef%bc%85%ef%bc%90%ef%bc%90.com", "%00.com", url_parse::Component(0, 7), CanonHostInfo::BROKEN, -1, ""},
       // Basic IDN support, UTF-8 and UTF-16 input should be converted to IDN
-    {"\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xbd\xa0\xe5\xa5\xbd", L"\x4f60\x597d\x4f60\x597d", "xn--6qqa088eba", url_parse::Component(0, 14), CanonHostInfo::NEUTRAL, -1},
+    {"\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xbd\xa0\xe5\xa5\xbd", L"\x4f60\x597d\x4f60\x597d", "xn--6qqa088eba", url_parse::Component(0, 14), CanonHostInfo::NEUTRAL, -1, ""},
       // Mixed UTF-8 and escaped UTF-8 (narrow case) and UTF-16 and escaped
       // UTF-8 (wide case). The output should be equivalent to the true wide
       // character input above).
-    {"%E4%BD%A0%E5%A5%BD\xe4\xbd\xa0\xe5\xa5\xbd", L"%E4%BD%A0%E5%A5%BD\x4f60\x597d", "xn--6qqa088eba", url_parse::Component(0, 14), CanonHostInfo::NEUTRAL, -1},
+    {"%E4%BD%A0%E5%A5%BD\xe4\xbd\xa0\xe5\xa5\xbd", L"%E4%BD%A0%E5%A5%BD\x4f60\x597d", "xn--6qqa088eba", url_parse::Component(0, 14), CanonHostInfo::NEUTRAL, -1, ""},
       // Invalid escaped characters should fail and the percents should be
       // escaped.
-    {"%zz%66%a", L"%zz%66%a", "%25zzf%25a", url_parse::Component(0, 10), CanonHostInfo::BROKEN, -1},
+    {"%zz%66%a", L"%zz%66%a", "%25zzf%25a", url_parse::Component(0, 10), CanonHostInfo::BROKEN, -1, ""},
       // If we get an invalid character that has been escaped.
-    {"%25", L"%25", "%25", url_parse::Component(0, 3), CanonHostInfo::BROKEN, -1},
-    {"hello%00", L"hello%00", "hello%00", url_parse::Component(0, 8), CanonHostInfo::BROKEN, -1},
+    {"%25", L"%25", "%25", url_parse::Component(0, 3), CanonHostInfo::BROKEN, -1, ""},
+    {"hello%00", L"hello%00", "hello%00", url_parse::Component(0, 8), CanonHostInfo::BROKEN, -1, ""},
       // Escaped numbers should be treated like IP addresses if they are.
-    {"%30%78%63%30%2e%30%32%35%30.01", L"%30%78%63%30%2e%30%32%35%30.01", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3},
-    {"%30%78%63%30%2e%30%32%35%30.01%2e", L"%30%78%63%30%2e%30%32%35%30.01%2e", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3},
+    {"%30%78%63%30%2e%30%32%35%30.01", L"%30%78%63%30%2e%30%32%35%30.01", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3, "C0A80001"},
+    {"%30%78%63%30%2e%30%32%35%30.01%2e", L"%30%78%63%30%2e%30%32%35%30.01%2e", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3, "C0A80001"},
       // Invalid escaping should trigger the regular host error handling.
-    {"%3g%78%63%30%2e%30%32%35%30%2E.01", L"%3g%78%63%30%2e%30%32%35%30%2E.01", "%253gxc0.0250..01", url_parse::Component(0, 17), CanonHostInfo::BROKEN, -1},
+    {"%3g%78%63%30%2e%30%32%35%30%2E.01", L"%3g%78%63%30%2e%30%32%35%30%2E.01", "%253gxc0.0250..01", url_parse::Component(0, 17), CanonHostInfo::BROKEN, -1, ""},
       // Something that isn't exactly an IP should get treated as a host and
       // spaces escaped.
-    {"192.168.0.1 hello", L"192.168.0.1 hello", "192.168.0.1%20hello", url_parse::Component(0, 19), CanonHostInfo::NEUTRAL, -1},
+    {"192.168.0.1 hello", L"192.168.0.1 hello", "192.168.0.1%20hello", url_parse::Component(0, 19), CanonHostInfo::NEUTRAL, -1, ""},
       // Fullwidth and escaped UTF-8 fullwidth should still be treated as IP.
       // These are "0Xc0.0250.01" in fullwidth.
-    {"\xef\xbc\x90%Ef%bc\xb8%ef%Bd%83\xef\xbc\x90%EF%BC%8E\xef\xbc\x90\xef\xbc\x92\xef\xbc\x95\xef\xbc\x90\xef\xbc%8E\xef\xbc\x90\xef\xbc\x91", L"\xff10\xff38\xff43\xff10\xff0e\xff10\xff12\xff15\xff10\xff0e\xff10\xff11", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3},
+    {"\xef\xbc\x90%Ef%bc\xb8%ef%Bd%83\xef\xbc\x90%EF%BC%8E\xef\xbc\x90\xef\xbc\x92\xef\xbc\x95\xef\xbc\x90\xef\xbc%8E\xef\xbc\x90\xef\xbc\x91", L"\xff10\xff38\xff43\xff10\xff0e\xff10\xff12\xff15\xff10\xff0e\xff10\xff11", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3, "C0A80001"},
       // Broken IP addresses get marked as such.
-    {"192.168.0.257", L"192.168.0.257", "192.168.0.257", url_parse::Component(0, 13), CanonHostInfo::BROKEN, -1},
-    {"[google.com]", L"[google.com]", "[google.com]", url_parse::Component(0, 12), CanonHostInfo::BROKEN, -1},
+    {"192.168.0.257", L"192.168.0.257", "192.168.0.257", url_parse::Component(0, 13), CanonHostInfo::BROKEN, -1, ""},
+    {"[google.com]", L"[google.com]", "[google.com]", url_parse::Component(0, 12), CanonHostInfo::BROKEN, -1, ""},
       // Cyrillic letter followed buy ( should return punicode for ( escaped before punicode string was created. I.e.
       // if ( is escaped after punicode is created we would get xn--%28-8tb (incorrect).
-    {"\xd1\x82(", L"\x0442(", "xn--%28-7ed", url_parse::Component(0, 11), CanonHostInfo::NEUTRAL, -1},
+    {"\xd1\x82(", L"\x0442(", "xn--%28-7ed", url_parse::Component(0, 11), CanonHostInfo::NEUTRAL, -1, ""},
       // Address with all hexidecimal characters with leading number of 1<<32
       // or greater and should return NEUTRAL rather than BROKEN if not all
       // components are numbers.
-    {"12345678912345.de", L"12345678912345.de", "12345678912345.de", url_parse::Component(0, 17), CanonHostInfo::NEUTRAL, -1},
-    {"1.12345678912345.de", L"1.12345678912345.de", "1.12345678912345.de", url_parse::Component(0, 19), CanonHostInfo::NEUTRAL, -1},
-    {"12345678912345.12345678912345.de", L"12345678912345.12345678912345.de", "12345678912345.12345678912345.de", url_parse::Component(0, 32), CanonHostInfo::NEUTRAL, -1},
-    {"1.2.0xB3A73CE5B59.de", L"1.2.0xB3A73CE5B59.de", "1.2.0xb3a73ce5b59.de", url_parse::Component(0, 20), CanonHostInfo::NEUTRAL, -1},
-    {"12345678912345.0xde", L"12345678912345.0xde", "12345678912345.0xde", url_parse::Component(0, 19), CanonHostInfo::BROKEN, -1},
+    {"12345678912345.de", L"12345678912345.de", "12345678912345.de", url_parse::Component(0, 17), CanonHostInfo::NEUTRAL, -1, ""},
+    {"1.12345678912345.de", L"1.12345678912345.de", "1.12345678912345.de", url_parse::Component(0, 19), CanonHostInfo::NEUTRAL, -1, ""},
+    {"12345678912345.12345678912345.de", L"12345678912345.12345678912345.de", "12345678912345.12345678912345.de", url_parse::Component(0, 32), CanonHostInfo::NEUTRAL, -1, ""},
+    {"1.2.0xB3A73CE5B59.de", L"1.2.0xB3A73CE5B59.de", "1.2.0xb3a73ce5b59.de", url_parse::Component(0, 20), CanonHostInfo::NEUTRAL, -1, ""},
+    {"12345678912345.0xde", L"12345678912345.0xde", "12345678912345.0xde", url_parse::Component(0, 19), CanonHostInfo::BROKEN, -1, ""},
   };
 
   // CanonicalizeHost() non-verbose.
@@ -514,6 +526,8 @@ TEST(URLCanonTest, Host) {
       EXPECT_EQ(host_cases[i].expected_component.begin,
                 host_info.out_host.begin);
       EXPECT_EQ(host_cases[i].expected_component.len, host_info.out_host.len);
+      EXPECT_EQ(std::string(host_cases[i].expected_address_hex),
+                BytesToHexString(host_info.address, host_info.AddressLength()));
       if (host_cases[i].expected_family == CanonHostInfo::IPV4) {
         EXPECT_EQ(host_cases[i].expected_num_ipv4_components,
                   host_info.num_ipv4_components);
@@ -539,6 +553,8 @@ TEST(URLCanonTest, Host) {
       EXPECT_EQ(host_cases[i].expected_component.begin,
                 host_info.out_host.begin);
       EXPECT_EQ(host_cases[i].expected_component.len, host_info.out_host.len);
+      EXPECT_EQ(std::string(host_cases[i].expected_address_hex),
+                BytesToHexString(host_info.address, host_info.AddressLength()));
       if (host_cases[i].expected_family == CanonHostInfo::IPV4) {
         EXPECT_EQ(host_cases[i].expected_num_ipv4_components,
                   host_info.num_ipv4_components);
@@ -550,75 +566,75 @@ TEST(URLCanonTest, Host) {
 TEST(URLCanonTest, IPv4) {
   IPAddressCase cases[] = {
       // Empty is not an IP address.
-    {"", L"", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
-    {".", L".", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
+    {"", L"", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
+    {".", L".", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
       // Regular IP addresses in different bases.
-    {"192.168.0.1", L"192.168.0.1", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 4},
-    {"0300.0250.00.01", L"0300.0250.00.01", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 4},
-    {"0xC0.0Xa8.0x0.0x1", L"0xC0.0Xa8.0x0.0x1", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 4},
+    {"192.168.0.1", L"192.168.0.1", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 4, "C0A80001"},
+    {"0300.0250.00.01", L"0300.0250.00.01", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 4, "C0A80001"},
+    {"0xC0.0Xa8.0x0.0x1", L"0xC0.0Xa8.0x0.0x1", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 4, "C0A80001"},
       // Non-IP addresses due to invalid characters.
-    {"192.168.9.com", L"192.168.9.com", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
+    {"192.168.9.com", L"192.168.9.com", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
       // Invalid characters for the base should be rejected.
-    {"19a.168.0.1", L"19a.168.0.1", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
-    {"0308.0250.00.01", L"0308.0250.00.01", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
-    {"0xCG.0xA8.0x0.0x1", L"0xCG.0xA8.0x0.0x1", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
+    {"19a.168.0.1", L"19a.168.0.1", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
+    {"0308.0250.00.01", L"0308.0250.00.01", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
+    {"0xCG.0xA8.0x0.0x1", L"0xCG.0xA8.0x0.0x1", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
       // If there are not enough components, the last one should fill them out.
-    {"192", L"192", "0.0.0.192", url_parse::Component(0, 9), CanonHostInfo::IPV4, 1},
-    {"0xC0a80001", L"0xC0a80001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 1},
-    {"030052000001", L"030052000001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 1},
-    {"000030052000001", L"000030052000001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 1},
-    {"192.168", L"192.168", "192.0.0.168", url_parse::Component(0, 11), CanonHostInfo::IPV4, 2},
-    {"192.0x00A80001", L"192.0x000A80001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 2},
-    {"0xc0.052000001", L"0xc0.052000001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 2},
-    {"192.168.1", L"192.168.1", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3},
+    {"192", L"192", "0.0.0.192", url_parse::Component(0, 9), CanonHostInfo::IPV4, 1, "000000C0"},
+    {"0xC0a80001", L"0xC0a80001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 1, "C0A80001"},
+    {"030052000001", L"030052000001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 1, "C0A80001"},
+    {"000030052000001", L"000030052000001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 1, "C0A80001"},
+    {"192.168", L"192.168", "192.0.0.168", url_parse::Component(0, 11), CanonHostInfo::IPV4, 2, "C00000A8"},
+    {"192.0x00A80001", L"192.0x000A80001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 2, "C0A80001"},
+    {"0xc0.052000001", L"0xc0.052000001", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 2, "C0A80001"},
+    {"192.168.1", L"192.168.1", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3, "C0A80001"},
       // Too many components means not an IP address.
-    {"192.168.0.0.1", L"192.168.0.0.1", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
+    {"192.168.0.0.1", L"192.168.0.0.1", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
       // We allow a single trailing dot.
-    {"192.168.0.1.", L"192.168.0.1.", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 4},
-    {"192.168.0.1. hello", L"192.168.0.1. hello", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
-    {"192.168.0.1..", L"192.168.0.1..", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
+    {"192.168.0.1.", L"192.168.0.1.", "192.168.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 4, "C0A80001"},
+    {"192.168.0.1. hello", L"192.168.0.1. hello", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
+    {"192.168.0.1..", L"192.168.0.1..", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
       // Two dots in a row means not an IP address.
-    {"192.168..1", L"192.168..1", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
+    {"192.168..1", L"192.168..1", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
       // Any numerical overflow should be marked as BROKEN.
-    {"0x100.0", L"0x100.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"0x100.0.0", L"0x100.0.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"0x100.0.0.0", L"0x100.0.0.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"0.0x100.0.0", L"0.0x100.0.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"0.0.0x100.0", L"0.0.0x100.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"0.0.0.0x100", L"0.0.0.0x100", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"0.0.0x10000", L"0.0.0x10000", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"0.0x1000000", L"0.0x1000000", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"0x100000000", L"0x100000000", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"0x100.0", L"0x100.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"0x100.0.0", L"0x100.0.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"0x100.0.0.0", L"0x100.0.0.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"0.0x100.0.0", L"0.0x100.0.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"0.0.0x100.0", L"0.0.0x100.0", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"0.0.0.0x100", L"0.0.0.0x100", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"0.0.0x10000", L"0.0.0x10000", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"0.0x1000000", L"0.0x1000000", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"0x100000000", L"0x100000000", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
       // Repeat the previous tests, minus 1, to verify boundaries.
-    {"0xFF.0", L"0xFF.0", "255.0.0.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 2},
-    {"0xFF.0.0", L"0xFF.0.0", "255.0.0.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 3},
-    {"0xFF.0.0.0", L"0xFF.0.0.0", "255.0.0.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 4},
-    {"0.0xFF.0.0", L"0.0xFF.0.0", "0.255.0.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 4},
-    {"0.0.0xFF.0", L"0.0.0xFF.0", "0.0.255.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 4},
-    {"0.0.0.0xFF", L"0.0.0.0xFF", "0.0.0.255", url_parse::Component(0, 9), CanonHostInfo::IPV4, 4},
-    {"0.0.0xFFFF", L"0.0.0xFFFF", "0.0.255.255", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3},
-    {"0.0xFFFFFF", L"0.0xFFFFFF", "0.255.255.255", url_parse::Component(0, 13), CanonHostInfo::IPV4, 2},
-    {"0xFFFFFFFF", L"0xFFFFFFFF", "255.255.255.255", url_parse::Component(0, 15), CanonHostInfo::IPV4, 1},
+    {"0xFF.0", L"0xFF.0", "255.0.0.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 2, "FF000000"},
+    {"0xFF.0.0", L"0xFF.0.0", "255.0.0.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 3, "FF000000"},
+    {"0xFF.0.0.0", L"0xFF.0.0.0", "255.0.0.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 4, "FF000000"},
+    {"0.0xFF.0.0", L"0.0xFF.0.0", "0.255.0.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 4, "00FF0000"},
+    {"0.0.0xFF.0", L"0.0.0xFF.0", "0.0.255.0", url_parse::Component(0, 9), CanonHostInfo::IPV4, 4, "0000FF00"},
+    {"0.0.0.0xFF", L"0.0.0.0xFF", "0.0.0.255", url_parse::Component(0, 9), CanonHostInfo::IPV4, 4, "000000FF"},
+    {"0.0.0xFFFF", L"0.0.0xFFFF", "0.0.255.255", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3, "0000FFFF"},
+    {"0.0xFFFFFF", L"0.0xFFFFFF", "0.255.255.255", url_parse::Component(0, 13), CanonHostInfo::IPV4, 2, "00FFFFFF"},
+    {"0xFFFFFFFF", L"0xFFFFFFFF", "255.255.255.255", url_parse::Component(0, 15), CanonHostInfo::IPV4, 1, "FFFFFFFF"},
       // Old trunctations tests.  They're all "BROKEN" now.
-    {"276.256.0xf1a2.077777", L"276.256.0xf1a2.077777", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"192.168.0.257", L"192.168.0.257", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"192.168.0xa20001", L"192.168.0xa20001", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"192.015052000001", L"192.015052000001", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"0X12C0a80001", L"0X12C0a80001", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"276.1.2", L"276.1.2", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"276.256.0xf1a2.077777", L"276.256.0xf1a2.077777", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"192.168.0.257", L"192.168.0.257", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"192.168.0xa20001", L"192.168.0xa20001", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"192.015052000001", L"192.015052000001", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"0X12C0a80001", L"0X12C0a80001", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"276.1.2", L"276.1.2", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
       // Spaces should be rejected.
-    {"192.168.0.1 hello", L"192.168.0.1 hello", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
+    {"192.168.0.1 hello", L"192.168.0.1 hello", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
       // Very large numbers.
-    {"0000000000000300.0x00000000000000fF.00000000000000001", L"0000000000000300.0x00000000000000fF.00000000000000001", "192.255.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3},
-    {"0000000000000300.0xffffffffFFFFFFFF.3022415481470977", L"0000000000000300.0xffffffffFFFFFFFF.3022415481470977", "", url_parse::Component(0, 11), CanonHostInfo::BROKEN, -1},
+    {"0000000000000300.0x00000000000000fF.00000000000000001", L"0000000000000300.0x00000000000000fF.00000000000000001", "192.255.0.1", url_parse::Component(0, 11), CanonHostInfo::IPV4, 3, "C0FF0001"},
+    {"0000000000000300.0xffffffffFFFFFFFF.3022415481470977", L"0000000000000300.0xffffffffFFFFFFFF.3022415481470977", "", url_parse::Component(0, 11), CanonHostInfo::BROKEN, -1, ""},
       // A number has no length limit, but long numbers can still overflow.
-    {"00000000000000000001", L"00000000000000000001", "0.0.0.1", url_parse::Component(0, 7), CanonHostInfo::IPV4, 1},
-    {"0000000000000000100000000000000001", L"0000000000000000100000000000000001", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"00000000000000000001", L"00000000000000000001", "0.0.0.1", url_parse::Component(0, 7), CanonHostInfo::IPV4, 1, "00000001"},
+    {"0000000000000000100000000000000001", L"0000000000000000100000000000000001", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
       // If a long component is non-numeric, it's a hostname, *not* a broken IP.
-    {"0.0.0.000000000000000000z", L"0.0.0.000000000000000000z", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
-    {"0.0.0.100000000000000000z", L"0.0.0.100000000000000000z", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
+    {"0.0.0.000000000000000000z", L"0.0.0.000000000000000000z", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
+    {"0.0.0.100000000000000000z", L"0.0.0.100000000000000000z", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
       // Truncation of all zeros should still result in 0.
-    {"0.00.0x.0x0", L"0.00.0x.0x0", "0.0.0.0", url_parse::Component(0, 7), CanonHostInfo::IPV4, 4},
+    {"0.00.0x.0x0", L"0.00.0x.0x0", "0.0.0.0", url_parse::Component(0, 7), CanonHostInfo::IPV4, 4, "00000000"},
   };
 
   for (size_t i = 0; i < arraysize(cases); i++) {
@@ -634,6 +650,8 @@ TEST(URLCanonTest, IPv4) {
     output1.Complete();
 
     EXPECT_EQ(cases[i].expected_family, host_info.family);
+    EXPECT_EQ(std::string(cases[i].expected_address_hex),
+              BytesToHexString(host_info.address, host_info.AddressLength()));
     if (host_info.family == CanonHostInfo::IPV4) {
       EXPECT_STREQ(cases[i].expected, out_str1.c_str());
       EXPECT_EQ(cases[i].expected_component.begin, host_info.out_host.begin);
@@ -653,6 +671,8 @@ TEST(URLCanonTest, IPv4) {
     output2.Complete();
 
     EXPECT_EQ(cases[i].expected_family, host_info.family);
+    EXPECT_EQ(std::string(cases[i].expected_address_hex),
+              BytesToHexString(host_info.address, host_info.AddressLength()));
     if (host_info.family == CanonHostInfo::IPV4) {
       EXPECT_STREQ(cases[i].expected, out_str2.c_str());
       EXPECT_EQ(cases[i].expected_component.begin, host_info.out_host.begin);
@@ -666,83 +686,83 @@ TEST(URLCanonTest, IPv4) {
 TEST(URLCanonTest, IPv6) {
   IPAddressCase cases[] = {
       // Empty is not an IP address.
-    {"", L"", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1},
+    {"", L"", "", url_parse::Component(), CanonHostInfo::NEUTRAL, -1, ""},
       // Non-IPs with [:] characters are marked BROKEN.
-    {":", L":", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[", L"[", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[:", L"[:", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"]", L"]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {":]", L":]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[]", L"[]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[:]", L"[:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {":", L":", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[", L"[", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[:", L"[:", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"]", L"]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {":]", L":]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[]", L"[]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[:]", L"[:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
       // Regular IP address is invalid without bounding '[' and ']'.
-    {"2001:db8::1", L"2001:db8::1", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[2001:db8::1", L"[2001:db8::1", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"2001:db8::1]", L"2001:db8::1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"2001:db8::1", L"2001:db8::1", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[2001:db8::1", L"[2001:db8::1", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"2001:db8::1]", L"2001:db8::1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
       // Regular IP addresses.
-    {"[::]", L"[::]", "[::]", url_parse::Component(0,4), CanonHostInfo::IPV6, -1},
-    {"[::1]", L"[::1]", "[::1]", url_parse::Component(0,5), CanonHostInfo::IPV6, -1},
-    {"[1::]", L"[1::]", "[1::]", url_parse::Component(0,5), CanonHostInfo::IPV6, -1},
+    {"[::]", L"[::]", "[::]", url_parse::Component(0,4), CanonHostInfo::IPV6, -1, "00000000000000000000000000000000"},
+    {"[::1]", L"[::1]", "[::1]", url_parse::Component(0,5), CanonHostInfo::IPV6, -1, "00000000000000000000000000000001"},
+    {"[1::]", L"[1::]", "[1::]", url_parse::Component(0,5), CanonHostInfo::IPV6, -1, "00010000000000000000000000000000"},
 
     // Leading zeros should be stripped.
-    {"[000:01:02:003:004:5:6:007]", L"[000:01:02:003:004:5:6:007]", "[0:1:2:3:4:5:6:7]", url_parse::Component(0,17), CanonHostInfo::IPV6, -1},
+    {"[000:01:02:003:004:5:6:007]", L"[000:01:02:003:004:5:6:007]", "[0:1:2:3:4:5:6:7]", url_parse::Component(0,17), CanonHostInfo::IPV6, -1, "00000001000200030004000500060007"},
 
     // Upper case letters should be lowercased.
-    {"[A:b:c:DE:fF:0:1:aC]", L"[A:b:c:DE:fF:0:1:aC]", "[a:b:c:de:ff:0:1:ac]", url_parse::Component(0,20), CanonHostInfo::IPV6, -1},
+    {"[A:b:c:DE:fF:0:1:aC]", L"[A:b:c:DE:fF:0:1:aC]", "[a:b:c:de:ff:0:1:ac]", url_parse::Component(0,20), CanonHostInfo::IPV6, -1, "000A000B000C00DE00FF0000000100AC"},
 
     // The same address can be written with different contractions, but should
     // get canonicalized to the same thing.
-    {"[1:0:0:2::3:0]", L"[1:0:0:2::3:0]", "[1::2:0:0:3:0]", url_parse::Component(0,14), CanonHostInfo::IPV6, -1},
-    {"[1::2:0:0:3:0]", L"[1::2:0:0:3:0]", "[1::2:0:0:3:0]", url_parse::Component(0,14), CanonHostInfo::IPV6, -1},
+    {"[1:0:0:2::3:0]", L"[1:0:0:2::3:0]", "[1::2:0:0:3:0]", url_parse::Component(0,14), CanonHostInfo::IPV6, -1, "00010000000000020000000000030000"},
+    {"[1::2:0:0:3:0]", L"[1::2:0:0:3:0]", "[1::2:0:0:3:0]", url_parse::Component(0,14), CanonHostInfo::IPV6, -1, "00010000000000020000000000030000"},
 
     // Addresses with embedded IPv4.
-    {"[::192.168.0.1]", L"[::192.168.0.1]", "[::c0a8:1]", url_parse::Component(0,10), CanonHostInfo::IPV6, -1},
-    {"[::ffff:192.168.0.1]", L"[::ffff:192.168.0.1]", "[::ffff:c0a8:1]", url_parse::Component(0,15), CanonHostInfo::IPV6, -1},
-    {"[::eeee:192.168.0.1]", L"[::eeee:192.168.0.1]", "[::eeee:c0a8:1]", url_parse::Component(0, 15), CanonHostInfo::IPV6, -1},
-    {"[2001::192.168.0.1]", L"[2001::192.168.0.1]", "[2001::c0a8:1]", url_parse::Component(0, 14), CanonHostInfo::IPV6, -1},
-    {"[1:2:192.168.0.1:5:6]", L"[1:2:192.168.0.1:5:6]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[::192.168.0.1]", L"[::192.168.0.1]", "[::c0a8:1]", url_parse::Component(0,10), CanonHostInfo::IPV6, -1, "000000000000000000000000C0A80001"},
+    {"[::ffff:192.168.0.1]", L"[::ffff:192.168.0.1]", "[::ffff:c0a8:1]", url_parse::Component(0,15), CanonHostInfo::IPV6, -1, "00000000000000000000FFFFC0A80001"},
+    {"[::eeee:192.168.0.1]", L"[::eeee:192.168.0.1]", "[::eeee:c0a8:1]", url_parse::Component(0, 15), CanonHostInfo::IPV6, -1, "00000000000000000000EEEEC0A80001"},
+    {"[2001::192.168.0.1]", L"[2001::192.168.0.1]", "[2001::c0a8:1]", url_parse::Component(0, 14), CanonHostInfo::IPV6, -1, "200100000000000000000000C0A80001"},
+    {"[1:2:192.168.0.1:5:6]", L"[1:2:192.168.0.1:5:6]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
 
     // IPv4 with last component missing.
-    {"[::ffff:192.1.2]", L"[::ffff:192.1.2]", "[::ffff:c001:2]", url_parse::Component(0,15), CanonHostInfo::IPV6, -1},
+    {"[::ffff:192.1.2]", L"[::ffff:192.1.2]", "[::ffff:c001:2]", url_parse::Component(0,15), CanonHostInfo::IPV6, -1, "00000000000000000000FFFFC0010002"},
 
     // IPv4 using hex.
     // TODO(eroman): Should this format be disallowed?
-    {"[::ffff:0xC0.0Xa8.0x0.0x1]", L"[::ffff:0xC0.0Xa8.0x0.0x1]", "[::ffff:c0a8:1]", url_parse::Component(0,15), CanonHostInfo::IPV6, -1},
+    {"[::ffff:0xC0.0Xa8.0x0.0x1]", L"[::ffff:0xC0.0Xa8.0x0.0x1]", "[::ffff:c0a8:1]", url_parse::Component(0,15), CanonHostInfo::IPV6, -1, "00000000000000000000FFFFC0A80001"},
 
     // There may be zeros surrounding the "::" contraction.
-    {"[0:0::0:0:8]", L"[0:0::0:0:8]", "[::8]", url_parse::Component(0,5), CanonHostInfo::IPV6, -1},
+    {"[0:0::0:0:8]", L"[0:0::0:0:8]", "[::8]", url_parse::Component(0,5), CanonHostInfo::IPV6, -1, "00000000000000000000000000000008"},
 
-    {"[2001:db8::1]", L"[2001:db8::1]", "[2001:db8::1]", url_parse::Component(0,13), CanonHostInfo::IPV6, -1},
+    {"[2001:db8::1]", L"[2001:db8::1]", "[2001:db8::1]", url_parse::Component(0,13), CanonHostInfo::IPV6, -1, "20010DB8000000000000000000000001"},
 
       // Can only have one "::" contraction in an IPv6 string literal.
-    {"[2001::db8::1]", L"[2001::db8::1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[2001::db8::1]", L"[2001::db8::1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
       // No more than 2 consecutive ':'s.
-    {"[2001:db8:::1]", L"[2001:db8:::1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[:::]", L"[:::]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[2001:db8:::1]", L"[2001:db8:::1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[:::]", L"[:::]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
       // Non-IP addresses due to invalid characters.
-    {"[2001::.com]", L"[2001::.com]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[2001::.com]", L"[2001::.com]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
       // If there are not enough components, the last one should fill them out.
     // ... omitted at this time ...
       // Too many components means not an IP address.  Similarly with too few if using IPv4 compat or mapped addresses.
-    {"[::192.168.0.0.1]", L"[::192.168.0.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[::ffff:192.168.0.0.1]", L"[::ffff:192.168.0.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[1:2:3:4:5:6:7:8:9]", L"[1:2:3:4:5:6:7:8:9]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[::192.168.0.0.1]", L"[::192.168.0.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[::ffff:192.168.0.0.1]", L"[::ffff:192.168.0.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[1:2:3:4:5:6:7:8:9]", L"[1:2:3:4:5:6:7:8:9]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
     // Too many bits (even though 8 comonents, the last one holds 32 bits).
-    {"[0:0:0:0:0:0:0:192.168.0.1]", L"[0:0:0:0:0:0:0:192.168.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[0:0:0:0:0:0:0:192.168.0.1]", L"[0:0:0:0:0:0:0:192.168.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
 
     // Too many bits specified -- the contraction would have to be zero-length
     // to not exceed 128 bits.
-    {"[1:2:3:4:5:6::192.168.0.1]", L"[1:2:3:4:5:6::192.168.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[1:2:3:4:5:6::192.168.0.1]", L"[1:2:3:4:5:6::192.168.0.1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
 
     // The contraction is for 16 bits of zero.
-    {"[1:2:3:4:5:6::8]", L"[1:2:3:4:5:6::8]", "[1:2:3:4:5:6:0:8]", url_parse::Component(0,17), CanonHostInfo::IPV6, -1},
+    {"[1:2:3:4:5:6::8]", L"[1:2:3:4:5:6::8]", "[1:2:3:4:5:6:0:8]", url_parse::Component(0,17), CanonHostInfo::IPV6, -1, "00010002000300040005000600000008"},
 
     // Cannot have a trailing colon.
-    {"[1:2:3:4:5:6:7:8:]", L"[1:2:3:4:5:6:7:8:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[1:2:3:4:5:6:192.168.0.1:]", L"[1:2:3:4:5:6:192.168.0.1:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[1:2:3:4:5:6:7:8:]", L"[1:2:3:4:5:6:7:8:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[1:2:3:4:5:6:192.168.0.1:]", L"[1:2:3:4:5:6:192.168.0.1:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
 
     // Cannot have negative numbers.
-    {"[-1:2:3:4:5:6:7:8]", L"[-1:2:3:4:5:6:7:8]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[-1:2:3:4:5:6:7:8]", L"[-1:2:3:4:5:6:7:8]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
 
     // Scope ID -- the URL may contain an optional ["%" <scope_id>] section.
     // The scope_id should be included in the canonicalized URL, and is an
@@ -751,25 +771,25 @@ TEST(URLCanonTest, IPv6) {
     // Invalid because no ID was given after the percent.
 
     // Don't allow scope-id
-    {"[1::%1]", L"[1::%1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[1::%eth0]", L"[1::%eth0]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[1::%]", L"[1::%]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[%]", L"[%]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[::%:]", L"[::%:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[1::%1]", L"[1::%1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[1::%eth0]", L"[1::%eth0]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[1::%]", L"[1::%]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[%]", L"[%]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[::%:]", L"[::%:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
 
     // Don't allow leading or trailing colons.
-    {"[:0:0::0:0:8]", L"[:0:0::0:0:8]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[0:0::0:0:8:]", L"[0:0::0:0:8:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
-    {"[:0:0::0:0:8:]", L"[:0:0::0:0:8:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[:0:0::0:0:8]", L"[:0:0::0:0:8]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[0:0::0:0:8:]", L"[0:0::0:0:8:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
+    {"[:0:0::0:0:8:]", L"[:0:0::0:0:8:]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
 
       // We allow a single trailing dot.
     // ... omitted at this time ...
       // Two dots in a row means not an IP address.
-    {"[::192.168..1]", L"[::192.168..1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[::192.168..1]", L"[::192.168..1]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
       // Any non-first components get truncated to one byte.
     // ... omitted at this time ...
       // Spaces should be rejected.
-    {"[::1 hello]", L"[::1 hello]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1},
+    {"[::1 hello]", L"[::1 hello]", "", url_parse::Component(), CanonHostInfo::BROKEN, -1, ""},
   };
 
   for (size_t i = 0; i < arraysize(cases); i++) {
@@ -785,6 +805,8 @@ TEST(URLCanonTest, IPv6) {
     output1.Complete();
 
     EXPECT_EQ(cases[i].expected_family, host_info.family);
+    EXPECT_EQ(std::string(cases[i].expected_address_hex),
+              BytesToHexString(host_info.address, host_info.AddressLength())) << "iter " << i << " host " << cases[i].input8;
     if (host_info.family == CanonHostInfo::IPV6) {
       EXPECT_STREQ(cases[i].expected, out_str1.c_str());
       EXPECT_EQ(cases[i].expected_component.begin,
@@ -803,6 +825,8 @@ TEST(URLCanonTest, IPv6) {
     output2.Complete();
 
     EXPECT_EQ(cases[i].expected_family, host_info.family);
+    EXPECT_EQ(std::string(cases[i].expected_address_hex),
+              BytesToHexString(host_info.address, host_info.AddressLength()));
     if (host_info.family == CanonHostInfo::IPV6) {
       EXPECT_STREQ(cases[i].expected, out_str2.c_str());
       EXPECT_EQ(cases[i].expected_component.begin, host_info.out_host.begin);

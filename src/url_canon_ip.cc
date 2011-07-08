@@ -275,14 +275,13 @@ bool DoCanonicalizeIPv4Address(const CHAR* spec,
                                const url_parse::Component& host,
                                CanonOutput* output,
                                CanonHostInfo* host_info) {
-  unsigned char address[4];
   host_info->family = IPv4AddressToNumber(
-      spec, host, address, &host_info->num_ipv4_components);
+      spec, host, host_info->address, &host_info->num_ipv4_components);
 
   switch (host_info->family) {
     case CanonHostInfo::IPV4:
       // Definitely an IPv4 address.
-      AppendIPv4Address(address, output, &host_info->out_host);
+      AppendIPv4Address(host_info->address, output, &host_info->out_host);
       return true;
     case CanonHostInfo::BROKEN:
       // Definitely broken.
@@ -604,8 +603,7 @@ bool DoCanonicalizeIPv6Address(const CHAR* spec,
                                CanonOutput* output,
                                CanonHostInfo* host_info) {
   // Turn the IP address into a 128 bit number.
-  unsigned char address[16];
-  if (!IPv6AddressToNumber(spec, host, address)) {
+  if (!IPv6AddressToNumber(spec, host, host_info->address)) {
     // If it's not an IPv6 address, scan for characters that should *only*
     // exist in an IPv6 address.
     for (int i = host.begin; i < host.end(); i++) {
@@ -631,7 +629,7 @@ bool DoCanonicalizeIPv6Address(const CHAR* spec,
 
   // Start by finding where to place the "::" contraction (if any).
   url_parse::Component contraction_range;
-  ChooseIPv6ContractionRange(address, &contraction_range);
+  ChooseIPv6ContractionRange(host_info->address, &contraction_range);
 
   for (int i = 0; i <= 14;) {
     // We check 2 bytes at a time, from bytes (0, 1) to (14, 15), inclusive.
@@ -643,8 +641,8 @@ bool DoCanonicalizeIPv6Address(const CHAR* spec,
       output->push_back(':');
       i = contraction_range.end();
     } else {
-      // Consume the next 16 bits from |address|.
-      int x = address[i] << 8 | address[i + 1];
+      // Consume the next 16 bits from |host_info->address|.
+      int x = host_info->address[i] << 8 | host_info->address[i + 1];
 
       i += 2;
 
