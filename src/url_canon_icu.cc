@@ -1,4 +1,4 @@
-// Copyright 2007, Google Inc.
+// Copyright 2011, Google Inc.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -101,6 +101,9 @@ class AppendHandlerInstaller {
 
 ICUCharsetConverter::ICUCharsetConverter(UConverter* converter)
     : converter_(converter) {
+}
+
+ICUCharsetConverter::~ICUCharsetConverter() {
 }
 
 void ICUCharsetConverter::ConvertFromUTF16(const char16* input,

@@ -1,4 +1,4 @@
-// Copyright 2007, Google Inc.
+// Copyright 2011, Google Inc.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -433,8 +433,9 @@ bool CanonicalizePartialPath(const char16* spec,
 #ifndef WIN32
 
 // Implementations of Windows' int-to-string conversions
-int _itoa_s(int value, char* buffer, size_t size_in_chars, int radix);
-int _itow_s(int value, char16* buffer, size_t size_in_chars, int radix);
+GURL_API int _itoa_s(int value, char* buffer, size_t size_in_chars, int radix);
+GURL_API int _itow_s(int value, char16* buffer, size_t size_in_chars,
+                     int radix);
 
 // Secure template overloads for these functions
 template<size_t N>
