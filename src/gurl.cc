@@ -34,7 +34,7 @@
 #endif
 
 #include <algorithm>
-#include <iostream>
+#include <ostream>
 
 #include "googleurl/src/gurl.h"
 
