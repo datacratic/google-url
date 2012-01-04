@@ -40,6 +40,8 @@
 
 #include "base/logging.h"
 #include "googleurl/src/url_parse_internal.h"
+#include "googleurl/src/url_util.h"
+#include "googleurl/src/url_util_internal.h"
 
 namespace url_parse {
 
@@ -310,6 +312,122 @@ void DoParseAfterScheme(const CHAR* spec,
   ParsePath(spec, full_path, &parsed->path, &parsed->query, &parsed->ref);
 }
 
+template<typename CHAR>
+void DoParseFileSystemURL(const CHAR* spec, int spec_len, Parsed* parsed) {
+  DCHECK(spec_len >= 0);
+
+  // Get the unused parts of the URL out of the way.
+  parsed->username.reset();
+  parsed->password.reset();
+  parsed->host.reset();
+  parsed->port.reset();
+  parsed->path.reset();   // May use this; reset for convenience.
+  parsed->ref.reset();    // May use this; reset for convenience.
+  parsed->query.reset();  // May use this; reset for convenience.
+
+  // Strip leading & trailing spaces and control characters.
+  int begin = 0;
+  TrimURL(spec, &begin, &spec_len);
+
+  // Handle empty specs or ones that contain only whitespace or control chars.
+  if (begin == spec_len) {
+    parsed->scheme.reset();
+    return;
+  }
+
+  int inner_start = -1;
+
+  // Extract the scheme.  We also handle the case where there is no scheme.
+  if (DoExtractScheme(&spec[begin], spec_len - begin, &parsed->scheme)) {
+    // Offset the results since we gave ExtractScheme a substring.
+    parsed->scheme.begin += begin;
+
+    if (parsed->scheme.end() == spec_len - 1)
+      return;
+
+    inner_start = parsed->scheme.end() + 1;
+  } else {
+    // No scheme found; that's not valid for filesystem URLs.
+    parsed->scheme.reset();
+    return;
+  }
+
+  url_parse::Component inner_scheme;
+  const CHAR* inner_spec = &spec[inner_start];
+  int inner_spec_len = spec_len - inner_start;
+
+  if (DoExtractScheme(inner_spec, inner_spec_len, &inner_scheme)) {
+    // Offset the results since we gave ExtractScheme a substring.
+    inner_scheme.begin += inner_start;
+
+    if (inner_scheme.end() == spec_len - 1)
+      return;
+  } else {
+    // No scheme found; that's not valid for filesystem URLs.
+    // The best we can do is return "filesystem://".
+    return;
+  }
+
+  Parsed inner_parsed;
+
+  if (url_util::CompareSchemeComponent(
+      spec, inner_scheme, url_util::kFileScheme)) {
+    // File URLs are special.
+    ParseFileURL(inner_spec, inner_spec_len, &inner_parsed);
+  } else if (url_util::CompareSchemeComponent(spec, inner_scheme,
+      url_util::kFileSystemScheme)) {
+    // Filesystem URLs don't nest.
+    return;
+  } else if (url_util::IsStandard(spec, inner_scheme)) {
+    // All "normal" URLs.
+    DoParseStandardURL(inner_spec, inner_spec_len, &inner_parsed);
+  } else {
+    return;
+  }
+
+  // All members of inner_parsed need to be offset by inner_start.
+  // If we had any scheme that supported nesting more than one level deep,
+  // we'd have to recurse into the inner_parsed's inner_parsed when
+  // adjusting by inner_start.
+  inner_parsed.scheme.begin += inner_start;
+  inner_parsed.username.begin += inner_start;
+  inner_parsed.password.begin += inner_start;
+  inner_parsed.host.begin += inner_start;
+  inner_parsed.port.begin += inner_start;
+  inner_parsed.query.begin += inner_start;
+  inner_parsed.ref.begin += inner_start;
+  inner_parsed.path.begin += inner_start;
+
+  // Query and ref move from inner_parsed to parsed.
+  parsed->query = inner_parsed.query;
+  inner_parsed.query.reset();
+  parsed->ref = inner_parsed.ref;
+  inner_parsed.ref.reset();
+
+  parsed->set_inner_parsed(inner_parsed);
+  if (!inner_parsed.scheme.is_valid() || !inner_parsed.path.is_valid() ||
+      inner_parsed.inner_parsed()) {
+    return;
+  }
+
+  // The path in inner_parsed should start with a slash, then have a filesystem
+  // type followed by a slash.  From the first slash up to but excluding the
+  // second should be what it keeps; the rest goes to parsed.  If the path ends
+  // before the second slash, it's still pretty clear what the user meant, so
+  // we'll let that through.
+  if (!IsURLSlash(spec[inner_parsed.path.begin])) {
+    return;
+  }
+  int inner_path_end = inner_parsed.path.begin + 1;  // skip the leading slash
+  while (inner_path_end < spec_len &&
+      !IsURLSlash(spec[inner_path_end]))
+    ++inner_path_end;
+  parsed->path.begin = inner_path_end;
+  int new_inner_path_length = inner_path_end - inner_parsed.path.begin;
+  parsed->path.len = inner_parsed.path.len - new_inner_path_length;
+  parsed->inner_parsed()->path.len = new_inner_path_length;
+}
+
 // The main parsing function for standard URLs. Standard URLs have a scheme,
 // host, path, etc.
 template<typename CHAR>
@@ -565,7 +683,43 @@ bool DoExtractQueryKeyValue(const CHAR* spec,
 
 }  // namespace
 
-Parsed::Parsed() {
+Parsed::Parsed() : inner_parsed_(NULL) {
+}
+
+Parsed::Parsed(const Parsed& other) :
+    scheme(other.scheme),
+    username(other.username),
+    password(other.password),
+    host(other.host),
+    port(other.port),
+    path(other.path),
+    query(other.query),
+    ref(other.ref),
+    inner_parsed_(NULL) {
+  if (other.inner_parsed_)
+    set_inner_parsed(*other.inner_parsed_);
+}
+
+Parsed& Parsed::operator=(const Parsed& other) {
+  if (this != &other) {
+    scheme = other.scheme;
+    username = other.username;
+    password = other.password;
+    host = other.host;
+    port = other.port;
+    path = other.path;
+    query = other.query;
+    ref = other.ref;
+    if (other.inner_parsed_)
+      set_inner_parsed(*other.inner_parsed_);
+    else
+      clear_inner_parsed();
+  }
+  return *this;
+}
+
+Parsed::~Parsed() {
+  delete inner_parsed_;
 }
 
 int Parsed::Length() const {
@@ -717,6 +871,14 @@ void ParsePathURL(const char* url, int url_len, Parsed* parsed) {
 
 void ParsePathURL(const char16* url, int url_len, Parsed* parsed) {
   DoParsePathURL(url, url_len, parsed);
+}
+
+void ParseFileSystemURL(const char* url, int url_len, Parsed* parsed) {
+  DoParseFileSystemURL(url, url_len, parsed);
+}
+
+void ParseFileSystemURL(const char16* url, int url_len, Parsed* parsed) {
+  DoParseFileSystemURL(url, url_len, parsed);
 }
 
 void ParseMailtoURL(const char* url, int url_len, Parsed* parsed) {

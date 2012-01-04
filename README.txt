@@ -64,12 +64,17 @@ Definitions
    this type of URL. Note that it may have a hostname! "localhost" is allowed,
    for example "file://localhost/foo" is the same as "file:///foo".
 
+"FileSystem URL": A URL referring to a file reached via the FileSystem API
+   described at http://www.w3.org/TR/file-system-api/.  These are nested URLs,
+   with compound schemes of e.g. "filesystem:file:" or "filesystem:https:".
+   Parsed FileSystem URLs will have a nested inner_parsed() object containing
+   information about the inner URL.
+
 "Path URL": This is everything else. There is no standard on how to treat these
    URLs, or even what they are called. This library decomposes them into a
    scheme and a path. The path is everything following the scheme. This type of
    URL includes "javascript", "data", and even "mailto" (although "mailto"
    might look like a standard scheme in some respects, it is not).
-
 
 Design
 ======
@@ -80,11 +85,11 @@ layers below it.
 
 1. Parsing
 ----------
-At the lowest level is the parsing code. The files encompasing this are
+At the lowest level is the parsing code. The files encompassing this are
 url_parse.* and the main include file is src/url_parse.h. This code will, given
 an input string, parse it into the most likely form of a URL.
 
-Parsing can not fail and does no validation. The exception is the port number,
+Parsing cannot fail and does no validation. The exception is the port number,
 which it currently validates, but this is a bug. Given crazy input, the parser
 will do its best to find the various URL components according to its rules (see
 url_parse_unittest.cc for some examples).
@@ -116,11 +121,11 @@ proivided that writes to a raw buffer with a fixed amount statically allocated
 (for performance). Applications using STL can use StdStringCanonOutput defined
 in url_canon_stdstring.h which writes into a std::string.
 
-A normal application would call one of the three high-level functions
-"CanonicalizeStandardURL", "CanonicalizeFileURL", and CanonicalizePathURL"
-depending on the type of URL in question. Lower-level functions are also
-provided which will canonicalize individual parts of a URL (for example,
-"CanonicalizeHost").
+A normal application would call one of the four high-level functions
+"CanonicalizeStandardURL", "CanonicalizeFileURL", "CanonicalizeFileSystemURL",
+and CanonicalizePathURL" depending on the type of URL in question. Lower-level
+functions are also provided which will canonicalize individual parts of a URL
+(for example, "CanonicalizeHost").
 
 Part of this layer is the integration with the host system for IDN and encoding
 conversion. An implementation that provides integration with the ICU

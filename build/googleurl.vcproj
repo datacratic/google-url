@@ -142,6 +142,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\src\url_canon_filesystemurl.cc"
+			>
+		</File>
+		<File
 			RelativePath="..\src\url_canon_fileurl.cc"
 			>
 		</File>

@@ -105,46 +105,77 @@ const std::string& EmptyStringForGURL() {
 
 } // namespace
 
-GURL::GURL() : is_valid_(false) {
+GURL::GURL() : is_valid_(false), inner_url_(NULL) {
 }
 
 GURL::GURL(const GURL& other)
     : spec_(other.spec_),
       is_valid_(other.is_valid_),
-      parsed_(other.parsed_) {
+      parsed_(other.parsed_),
+      inner_url_(NULL) {
+  if (other.inner_url_)
+    inner_url_ = new GURL(*other.inner_url_);
 }
 
-GURL::GURL(const std::string& url_string) {
+GURL::GURL(const std::string& url_string) : inner_url_(NULL) {
   is_valid_ = InitCanonical(url_string, &spec_, &parsed_);
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+  if (is_valid_ && SchemeIsFileSystem()) {
+    inner_url_ =
+        new GURL(spec_.data(), parsed_.Length(), *parsed_.inner_parsed(), true);
+  }
+#endif
 }
 
-GURL::GURL(const string16& url_string) {
+GURL::GURL(const string16& url_string) : inner_url_(NULL) {
   is_valid_ = InitCanonical(url_string, &spec_, &parsed_);
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+  if (is_valid_ && SchemeIsFileSystem()) {
+    inner_url_ =
+        new GURL(spec_.data(), parsed_.Length(), *parsed_.inner_parsed(), true);
+  }
+#endif
 }
 
 GURL::GURL(const char* canonical_spec, size_t canonical_spec_len,
            const url_parse::Parsed& parsed, bool is_valid)
     : spec_(canonical_spec, canonical_spec_len),
       is_valid_(is_valid),
-      parsed_(parsed) {
+      parsed_(parsed),
+      inner_url_(NULL) {
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+  if (is_valid_ && SchemeIsFileSystem()) {
+    inner_url_ =
+        new GURL(spec_.data(), parsed_.Length(), *parsed_.inner_parsed(), true);
+  }
+#endif
+
 #ifndef NDEBUG
   // For testing purposes, check that the parsed canonical URL is identical to
   // what we would have produced. Skip checking for invalid URLs have no meaning
   // and we can't always canonicalize then reproducabely.
   if (is_valid_) {
-    GURL test_url(spec_);
+    url_parse::Component scheme;
+    if (!url_util::FindAndCompareScheme(canonical_spec, canonical_spec_len,
+                                        "filesystem", &scheme) ||
+        scheme.begin == parsed.scheme.begin) {
+      // We can't do this check on the inner_url of a filesystem URL, as
+      // canonical_spec actually points to the start of the outer URL, so we'd
+      // end up with infinite recursion in this constructor.
+      GURL test_url(spec_);
 
-    DCHECK(test_url.is_valid_ == is_valid_);
-    DCHECK(test_url.spec_ == spec_);
+      DCHECK(test_url.is_valid_ == is_valid_);
+      DCHECK(test_url.spec_ == spec_);
 
-    DCHECK(test_url.parsed_.scheme == parsed_.scheme);
-    DCHECK(test_url.parsed_.username == parsed_.username);
-    DCHECK(test_url.parsed_.password == parsed_.password);
-    DCHECK(test_url.parsed_.host == parsed_.host);
-    DCHECK(test_url.parsed_.port == parsed_.port);
-    DCHECK(test_url.parsed_.path == parsed_.path);
-    DCHECK(test_url.parsed_.query == parsed_.query);
-    DCHECK(test_url.parsed_.ref == parsed_.ref);
+      DCHECK(test_url.parsed_.scheme == parsed_.scheme);
+      DCHECK(test_url.parsed_.username == parsed_.username);
+      DCHECK(test_url.parsed_.password == parsed_.password);
+      DCHECK(test_url.parsed_.host == parsed_.host);
+      DCHECK(test_url.parsed_.port == parsed_.port);
+      DCHECK(test_url.parsed_.path == parsed_.path);
+      DCHECK(test_url.parsed_.query == parsed_.query);
+      DCHECK(test_url.parsed_.ref == parsed_.ref);
+    }
   }
 #endif
 }
@@ -153,6 +184,10 @@ GURL& GURL::operator=(const GURL& other) {
   spec_ = other.spec_;
   is_valid_ = other.is_valid_;
   parsed_ = other.parsed_;
+  delete inner_url_;
+  inner_url_ = NULL;
+  if (other.inner_url_)
+    inner_url_ = new GURL(*other.inner_url_);
   return *this;
 }
 
@@ -276,6 +311,11 @@ GURL GURL::GetOrigin() const {
   // the empty URL
   if (!is_valid_ || !IsStandard())
     return GURL();
+
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+  if (SchemeIsFileSystem())
+    return inner_url_->GetOrigin();
+#endif
 
   url_canon::Replacements<char> replacements;
   replacements.ClearUsername();
@@ -412,7 +452,14 @@ const GURL& GURL::EmptyGURL() {
 bool GURL::DomainIs(const char* lower_ascii_domain,
                     int domain_len) const {
   // Return false if this URL is not valid or domain is empty.
-  if (!is_valid_ || !parsed_.host.is_nonempty() || !domain_len)
+  if (!is_valid_ || !domain_len)
+    return false;
+
+  // FileSystem URLs have empty parsed_.host, so check this first.
+  if (SchemeIsFileSystem())
+    return inner_url_->DomainIs(lower_ascii_domain, domain_len);
+
+  if (!parsed_.host.is_nonempty())
     return false;
 
   // Check whether the host name is end with a dot. If yes, treat it
@@ -453,6 +500,7 @@ void GURL::Swap(GURL* other) {
   spec_.swap(other->spec_);
   std::swap(is_valid_, other->is_valid_);
   std::swap(parsed_, other->parsed_);
+  std::swap(inner_url_, other->inner_url_);
 }
 
 std::ostream& operator<<(std::ostream& out, const GURL& url) {

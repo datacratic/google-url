@@ -101,6 +101,22 @@ struct MailtoURLParseCase {
   const char* query;
 };
 
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+// More complicated version of URLParseCase for testing filesystem URLs.
+struct FileSystemURLParseCase {
+  const char* input;
+
+  const char* inner_scheme;
+  const char* inner_username;
+  const char* inner_password;
+  const char* inner_host;
+  int inner_port;
+  const char* inner_path;
+  const char* path;
+  const char* query;
+  const char* ref;
+};
+#endif
 
 bool ComponentMatches(const char* input,
                       const char* reference,
@@ -328,7 +344,7 @@ static URLParseCase cases[] = {
 
 TEST(URLParser, Standard) {
   // Declared outside for loop to try to catch cases in init() where we forget
-  // to reset something that is reset by the construtor.
+  // to reset something that is reset by the constructor.
   url_parse::Parsed parsed;
   for (size_t i = 0; i < arraysize(cases); i++) {
     const char* url = cases[i].input;
@@ -581,3 +597,57 @@ TEST(URLParser, MailtoUrl) {
     ExpectInvalidComponent(parsed.ref);
   }
 }
+
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+// Various incarnations of filesystem URLs.
+static FileSystemURLParseCase filesystem_cases[] = {
+  // Regular URL with all the parts
+{"filesystem:http://user:pass@foo:21/temporary/bar;par?b#c", "http",  "user", "pass", "foo", 21, "/temporary",  "/bar;par",  "b",  "c"},
+{"filesystem:https://foo/persistent/bar;par/",               "https", NULL,   NULL,   "foo", -1, "/persistent", "/bar;par/", NULL, NULL},
+{"filesystem:file:///persistent/bar;par/",                   "file", NULL,    NULL,   NULL,  -1, "/persistent", "/bar;par/", NULL, NULL},
+{"filesystem:file:///persistent/bar;par/?query#ref",                   "file", NULL,    NULL,   NULL,  -1, "/persistent", "/bar;par/", "query", "ref"},
+{"filesystem:file:///persistent",                            "file", NULL,    NULL,   NULL,  -1, "/persistent", "",        NULL, NULL},
+};
+
+TEST(URLParser, FileSystemURL) {
+  // Declared outside for loop to try to catch cases in init() where we forget
+  // to reset something that is reset by the construtor.
+  url_parse::Parsed parsed;
+  for (size_t i = 0; i < arraysize(filesystem_cases); i++) {
+    const FileSystemURLParseCase* parsecase = &filesystem_cases[i];
+    const char* url = parsecase->input;
+    url_parse::ParseFileSystemURL(url, static_cast<int>(strlen(url)), &parsed);
+
+    EXPECT_TRUE(ComponentMatches(url, "filesystem", parsed.scheme));
+    EXPECT_EQ(!parsecase->inner_scheme, !parsed.inner_parsed());
+    // Only check the inner_parsed if there is one.
+    if (parsed.inner_parsed()) {
+      EXPECT_TRUE(ComponentMatches(url, parsecase->inner_scheme,
+          parsed.inner_parsed()->scheme));
+      EXPECT_TRUE(ComponentMatches(url, parsecase->inner_username,
+          parsed.inner_parsed()->username));
+      EXPECT_TRUE(ComponentMatches(url, parsecase->inner_password,
+          parsed.inner_parsed()->password));
+      EXPECT_TRUE(ComponentMatches(url, parsecase->inner_host,
+          parsed.inner_parsed()->host));
+      int port = url_parse::ParsePort(url, parsed.inner_parsed()->port);
+      EXPECT_EQ(parsecase->inner_port, port);
+
+      // The remaining components are never used for filesystem urls.
+      ExpectInvalidComponent(parsed.inner_parsed()->query);
+      ExpectInvalidComponent(parsed.inner_parsed()->ref);
+    }
+
+    EXPECT_TRUE(ComponentMatches(url, parsecase->path, parsed.path));
+    EXPECT_TRUE(ComponentMatches(url, parsecase->query, parsed.query));
+    EXPECT_TRUE(ComponentMatches(url, parsecase->ref, parsed.ref));
+
+    // The remaining components are never used for filesystem urls.
+    ExpectInvalidComponent(parsed.username);
+    ExpectInvalidComponent(parsed.password);
+    ExpectInvalidComponent(parsed.host);
+    ExpectInvalidComponent(parsed.port);
+  }
+}
+#endif
+

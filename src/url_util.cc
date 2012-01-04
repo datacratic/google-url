@@ -35,8 +35,13 @@
 #include "base/logging.h"
 #include "googleurl/src/url_canon_internal.h"
 #include "googleurl/src/url_file.h"
+#include "googleurl/src/url_util_internal.h"
 
 namespace url_util {
+
+const char kFileScheme[] = "file";
+const char kFileSystemScheme[] = "filesystem";
+const char kMailtoScheme[] = "mailto";
 
 namespace {
 
@@ -56,10 +61,11 @@ inline bool DoLowerCaseEqualsASCII(Iter a_begin, Iter a_end, const char* b) {
   return *b == 0;
 }
 
-const char kFileScheme[] = "file";  // Used in a number of places.
-const char kMailtoScheme[] = "mailto";
-
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+const int kNumStandardURLSchemes = 8;
+#else
 const int kNumStandardURLSchemes = 7;
+#endif
 const char* kStandardURLSchemes[kNumStandardURLSchemes] = {
   "http",
   "https",
@@ -68,6 +74,9 @@ const char* kStandardURLSchemes[kNumStandardURLSchemes] = {
   "gopher",
   "ws",  // WebSocket.
   "wss",  // WebSocket secure.
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+  kFileSystemScheme,
+#endif
 };
 
 // List of the currently installed standard schemes. This list is lazily
@@ -91,9 +100,9 @@ void InitStandardSchemes() {
 // Given a string and a range inside the string, compares it to the given
 // lower-case |compare_to| buffer.
 template<typename CHAR>
-inline bool CompareSchemeComponent(const CHAR* spec,
-                                   const url_parse::Component& component,
-                                   const char* compare_to) {
+inline bool DoCompareSchemeComponent(const CHAR* spec,
+                                     const url_parse::Component& component,
+                                     const char* compare_to) {
   if (!component.is_nonempty())
     return compare_to[0] == 0;  // When component is empty, match empty scheme.
   return LowerCaseEqualsASCII(&spec[component.begin],
@@ -138,7 +147,7 @@ bool DoFindAndCompareScheme(const CHAR* str,
   }
   if (found_scheme)
     *found_scheme = our_scheme;
-  return CompareSchemeComponent(spec, our_scheme, compare);
+  return DoCompareSchemeComponent(spec, our_scheme, compare);
 }
 
 template<typename CHAR>
@@ -169,8 +178,8 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
       url_parse::DoesBeginWindowsDriveSpec(spec, 0, spec_len)) {
     url_parse::ParseFileURL(spec, spec_len, &parsed_input);
     return url_canon::CanonicalizeFileURL(spec, spec_len, parsed_input,
-                                           charset_converter,
-                                           output, output_parsed);
+                                          charset_converter,
+                                          output, output_parsed);
   }
 #endif
 
@@ -181,13 +190,22 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
   // This is the parsed version of the input URL, we have to canonicalize it
   // before storing it in our object.
   bool success;
-  if (CompareSchemeComponent(spec, scheme, kFileScheme)) {
+  if (DoCompareSchemeComponent(spec, scheme, kFileScheme)) {
     // File URLs are special.
     url_parse::ParseFileURL(spec, spec_len, &parsed_input);
     success = url_canon::CanonicalizeFileURL(spec, spec_len, parsed_input,
-                                             charset_converter,
-                                             output, output_parsed);
+                                             charset_converter, output,
+                                             output_parsed);
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+  } else if (DoCompareSchemeComponent(spec, scheme, kFileSystemScheme)) {
+    // Filesystem URLs are special.
+    url_parse::ParseFileSystemURL(spec, spec_len, &parsed_input);
+    success = url_canon::CanonicalizeFileSystemURL(spec, spec_len,
+                                                   parsed_input,
+                                                   charset_converter,
+                                                   output, output_parsed);
 
+#endif
   } else if (DoIsStandard(spec, scheme)) {
     // All "normal" URLs.
     url_parse::ParseStandardURL(spec, spec_len, &parsed_input);
@@ -195,7 +213,7 @@ bool DoCanonicalize(const CHAR* in_spec, int in_spec_len,
                                                  charset_converter,
                                                  output, output_parsed);
 
-  } else if (CompareSchemeComponent(spec, scheme, kMailtoScheme)) {
+  } else if (DoCompareSchemeComponent(spec, scheme, kMailtoScheme)) {
     // Mailto are treated like a standard url with only a scheme, path, query
     url_parse::ParseMailtoURL(spec, spec_len, &parsed_input);
     success = url_canon::CanonicalizeMailtoURL(spec, spec_len, parsed_input,
@@ -246,7 +264,7 @@ bool DoResolveRelative(const char* base_spec,
   if (is_relative) {
     // Relative, resolve and canonicalize.
     bool file_base_scheme = base_parsed.scheme.is_nonempty() &&
-        CompareSchemeComponent(base_spec, base_parsed.scheme, kFileScheme);
+        DoCompareSchemeComponent(base_spec, base_parsed.scheme, kFileScheme);
     return url_canon::ResolveRelativeURL(base_spec, base_parsed,
                                          file_base_scheme, relative,
                                          relative_component, charset_converter,
@@ -328,15 +346,22 @@ bool DoReplaceComponents(const char* spec,
 
   // If we get here, then we know the scheme doesn't need to be replaced, so can
   // just key off the scheme in the spec to know how to do the replacements.
-  if (CompareSchemeComponent(spec, parsed.scheme, kFileScheme)) {
+  if (DoCompareSchemeComponent(spec, parsed.scheme, kFileScheme)) {
     return url_canon::ReplaceFileURL(spec, parsed, replacements,
                                      charset_converter, output, out_parsed);
   }
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+  if (DoCompareSchemeComponent(spec, parsed.scheme, kFileSystemScheme)) {
+    return url_canon::ReplaceFileSystemURL(spec, parsed, replacements,
+                                           charset_converter, output,
+                                           out_parsed);
+  }
+#endif
   if (DoIsStandard(spec, parsed.scheme)) {
     return url_canon::ReplaceStandardURL(spec, parsed, replacements,
                                          charset_converter, output, out_parsed);
   }
-  if (CompareSchemeComponent(spec, parsed.scheme, kMailtoScheme)) {
+  if (DoCompareSchemeComponent(spec, parsed.scheme, kMailtoScheme)) {
      return url_canon::ReplaceMailtoURL(spec, parsed, replacements,
                                         output, out_parsed);
   }
@@ -559,6 +584,18 @@ void EncodeURIComponent(const char* input, int length,
     else
       AppendEscapedChar(c, output);
   }
+}
+
+bool CompareSchemeComponent(const char* spec,
+                            const url_parse::Component& component,
+                            const char* compare_to) {
+  return DoCompareSchemeComponent(spec, component, compare_to);
+}
+
+bool CompareSchemeComponent(const char16* spec,
+                            const url_parse::Component& component,
+                            const char* compare_to) {
+  return DoCompareSchemeComponent(spec, component, compare_to);
 }
 
 }  // namespace url_util

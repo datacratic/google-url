@@ -135,6 +135,38 @@ TEST(GURLTest, Copy) {
   EXPECT_EQ("", invalid2.ref());
 }
 
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+TEST(GURLTest, CopyFileSystem) {
+  GURL url(WStringToUTF16(L"filesystem:https://user:pass@google.com:99/t/foo;bar?q=a#ref"));
+
+  GURL url2(url);
+  EXPECT_TRUE(url2.is_valid());
+
+  EXPECT_EQ("filesystem:https://user:pass@google.com:99/t/foo;bar?q=a#ref", url2.spec());
+  EXPECT_EQ("filesystem", url2.scheme());
+  EXPECT_EQ("", url2.username());
+  EXPECT_EQ("", url2.password());
+  EXPECT_EQ("", url2.host());
+  EXPECT_EQ("", url2.port());
+  EXPECT_EQ(url_parse::PORT_UNSPECIFIED, url2.IntPort());
+  EXPECT_EQ("/foo;bar", url2.path());
+  EXPECT_EQ("q=a", url2.query());
+  EXPECT_EQ("ref", url2.ref());
+
+  const GURL* inner = url2.inner_url();
+  ASSERT_TRUE(inner);
+  EXPECT_EQ("https", inner->scheme());
+  EXPECT_EQ("user", inner->username());
+  EXPECT_EQ("pass", inner->password());
+  EXPECT_EQ("google.com", inner->host());
+  EXPECT_EQ("99", inner->port());
+  EXPECT_EQ(99, inner->IntPort());
+  EXPECT_EQ("/t", inner->path());
+  EXPECT_EQ("", inner->query());
+  EXPECT_EQ("", inner->ref());
+}
+#endif
+
 // Given an invalid URL, we should still get most of the components.
 TEST(GURLTest, Invalid) {
   GURL url("http:google.com:foo");
@@ -171,6 +203,11 @@ TEST(GURLTest, Resolve) {
     {"data:blahblah", "http://google.com/", true, "http://google.com/"},
     {"data:blahblah", "http:google.com", true, "http://google.com/"},
     {"data:/blahblah", "file.html", false, ""},
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+      // Filesystem URLs have different paths to test.
+    {"filesystem:http://www.google.com/type/", "foo.html", true, "filesystem:http://www.google.com/type/foo.html"},
+    {"filesystem:http://www.google.com/type/", "../foo.html", true, "filesystem:http://www.google.com/type/foo.html"},
+#endif
   };
 
   for (size_t i = 0; i < ARRAYSIZE(resolve_cases); i++) {
@@ -200,6 +237,10 @@ TEST(GURLTest, GetOrigin) {
     {"http://user@www.google.com", "http://www.google.com/"},
     {"http://:pass@www.google.com", "http://www.google.com/"},
     {"http://:@www.google.com", "http://www.google.com/"},
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+    {"filesystem:http://www.google.com/temp/foo?q#b", "http://www.google.com/"},
+    {"filesystem:http://user:pass@google.com:21/blah#baz", "http://google.com:21/"},
+#endif
   };
   for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
     GURL url(cases[i].input);
@@ -216,6 +257,10 @@ TEST(GURLTest, GetWithEmptyPath) {
     {"http://www.google.com", "http://www.google.com/"},
     {"javascript:window.alert(\"hello, world\");", ""},
     {"http://www.google.com/foo/bar.html?baz=22", "http://www.google.com/"},
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+    {"filesystem:http://www.google.com/temporary/bar.html?baz=22", "filesystem:http://www.google.com/temporary/"},
+    {"filesystem:file:///temporary/bar.html?baz=22", "filesystem:file:///temporary/"},
+#endif
   };
 
   for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
@@ -247,6 +292,9 @@ TEST(GURLTest, Replacements) {
 #ifdef WIN32
     {"http://www.google.com/foo/bar.html?foo#bar", "file", "", "", "", "", "c:\\", "", "", "file:///C:/"},
 #endif
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+    {"filesystem:http://www.google.com/foo/bar.html?foo#bar", NULL, NULL, NULL, NULL, NULL, "/", "", "", "filesystem:http://www.google.com/foo/"},
+#endif
   };
 
   for (size_t i = 0; i < ARRAYSIZE(replace_cases); i++) {
@@ -277,6 +325,9 @@ TEST(GURLTest, PathForRequest) {
     {"http://www.google.com/foo/bar.html?baz=22", "/foo/bar.html?baz=22"},
     {"http://www.google.com/foo/bar.html#ref", "/foo/bar.html"},
     {"http://www.google.com/foo/bar.html?query#ref", "/foo/bar.html?query"},
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+    {"filesystem:http://www.google.com/temporary/foo/bar.html?query#ref", "/foo/bar.html?query"},
+#endif
   };
 
   for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
@@ -318,6 +369,12 @@ TEST(GURLTest, EffectiveIntPort) {
     // data - no port
     {"data:www.google.com:90", url_parse::PORT_UNSPECIFIED},
     {"data:www.google.com", url_parse::PORT_UNSPECIFIED},
+
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+    // filesystem - no port
+    {"filesystem:http://www.google.com:90/t/foo", url_parse::PORT_UNSPECIFIED},
+    {"filesystem:file:///t/foo", url_parse::PORT_UNSPECIFIED},
+#endif
   };
 
   for (size_t i = 0; i < ARRAYSIZE(port_tests); i++) {
@@ -405,6 +462,14 @@ TEST(GURLTest, DomainIs) {
 
   GURL url_10("http://www.iamnotgoogle.com../foo");
   EXPECT_FALSE(url_10.DomainIs(".com"));
+
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+  GURL url_11("filesystem:http://www.google.com:99/foo/");
+  EXPECT_TRUE(url_11.DomainIs(google_domain));
+
+  GURL url_12("filesystem:http://www.iamnotgoogle.com/foo/");
+  EXPECT_FALSE(url_12.DomainIs(google_domain));
+#endif
 }
 
 // Newlines should be stripped from inputs.

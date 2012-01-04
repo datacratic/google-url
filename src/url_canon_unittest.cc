@@ -1331,6 +1331,9 @@ TEST(URLCanonTest, ReplaceStandardURL) {
     {"http://a:b@google.com:22/foo;bar?baz@cat", "https", "me", "pw", "host.com", "99", "/path", "query", "ref", "https://me:pw@host.com:99/path?query#ref"},
       // Replace nothing
     {"http://a:b@google.com:22/foo?baz@cat", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "http://a:b@google.com:22/foo?baz@cat"},
+      // Replace scheme with filesystem.  The result is garbage, but you asked
+      // for it.
+    {"http://a:b@google.com:22/foo?baz@cat", "filesystem", NULL, NULL, NULL, NULL, NULL, NULL, NULL, "filesystem://a:b@google.com:22/foo?baz@cat"},
   };
 
   for (size_t i = 0; i < arraysize(replace_cases); i++) {
@@ -1401,12 +1404,14 @@ TEST(URLCanonTest, ReplaceFileURL) {
       // Clear non-path components (common)
     {"file:///C:/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, kDeleteComp, kDeleteComp, "file:///C:/gaba"},
       // Replace path with something that doesn't begin with a slash and make
-      // sure it get added properly.
+      // sure it gets added properly.
     {"file:///C:/gaba", NULL, NULL, NULL, NULL, NULL, "interesting/", NULL, NULL, "file:///interesting/"},
     {"file:///home/gaba?query#ref", NULL, NULL, NULL, "filer", NULL, "/foo", "b", "c", "file://filer/foo?b#c"},
     {"file:///home/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "file:///home/gaba?query#ref"},
     {"file:///home/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, kDeleteComp, kDeleteComp, "file:///home/gaba"},
     {"file:///home/gaba", NULL, NULL, NULL, NULL, NULL, "interesting/", NULL, NULL, "file:///interesting/"},
+      // Replace scheme -- shouldn't do anything.
+    {"file:///C:/gaba?query#ref", "http", NULL, NULL, NULL, NULL, NULL, NULL, NULL, "file:///C:/gaba?query#ref"},
   };
 
   for (size_t i = 0; i < arraysize(replace_cases); i++) {
@@ -1436,6 +1441,59 @@ TEST(URLCanonTest, ReplaceFileURL) {
     EXPECT_EQ(replace_cases[i].expected, out_str);
   }
 }
+
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+TEST(URLCanonTest, ReplaceFileSystemURL) {
+  ReplaceCase replace_cases[] = {
+      // Replace everything in the outer URL.
+    {"filesystem:file:///temporary/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, "/foo", "b", "c", "filesystem:file:///temporary/foo?b#c"},
+      // Replace nothing
+    {"filesystem:file:///temporary/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "filesystem:file:///temporary/gaba?query#ref"},
+      // Clear non-path components (common)
+    {"filesystem:file:///temporary/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, NULL, kDeleteComp, kDeleteComp, "filesystem:file:///temporary/gaba"},
+      // Replace path with something that doesn't begin with a slash and make
+      // sure it gets added properly.
+    {"filesystem:file:///temporary/gaba?query#ref", NULL, NULL, NULL, NULL, NULL, "interesting/", NULL, NULL, "filesystem:file:///temporary/interesting/?query#ref"},
+      // Replace scheme -- shouldn't do anything.
+    {"filesystem:http://u:p@bar.com/t/gaba?query#ref", "http", NULL, NULL, NULL, NULL, NULL, NULL, NULL, "filesystem:http://u:p@bar.com/t/gaba?query#ref"},
+      // Replace username -- shouldn't do anything.
+    {"filesystem:http://u:p@bar.com/t/gaba?query#ref", NULL, "u2", NULL, NULL, NULL, NULL, NULL, NULL, "filesystem:http://u:p@bar.com/t/gaba?query#ref"},
+      // Replace password -- shouldn't do anything.
+    {"filesystem:http://u:p@bar.com/t/gaba?query#ref", NULL, NULL, "pw2", NULL, NULL, NULL, NULL, NULL, "filesystem:http://u:p@bar.com/t/gaba?query#ref"},
+      // Replace host -- shouldn't do anything.
+    {"filesystem:http://u:p@bar.com/t/gaba?query#ref", NULL, NULL, NULL, "foo.com", NULL, NULL, NULL, NULL, "filesystem:http://u:p@bar.com/t/gaba?query#ref"},
+      // Replace port -- shouldn't do anything.
+    {"filesystem:http://u:p@bar.com:40/t/gaba?query#ref", NULL, NULL, NULL, NULL, "41", NULL, NULL, NULL, "filesystem:http://u:p@bar.com:40/t/gaba?query#ref"},
+  };
+
+  for (size_t i = 0; i < arraysize(replace_cases); i++) {
+    const ReplaceCase& cur = replace_cases[i];
+    int base_len = static_cast<int>(strlen(cur.base));
+    url_parse::Parsed parsed;
+    url_parse::ParseFileSystemURL(cur.base, base_len, &parsed);
+
+    url_canon::Replacements<char> r;
+    typedef url_canon::Replacements<char> R;  // Clean up syntax.
+    SetupReplComp(&R::SetScheme, &R::ClearRef, &r, cur.scheme);
+    SetupReplComp(&R::SetUsername, &R::ClearUsername, &r, cur.username);
+    SetupReplComp(&R::SetPassword, &R::ClearPassword, &r, cur.password);
+    SetupReplComp(&R::SetHost, &R::ClearHost, &r, cur.host);
+    SetupReplComp(&R::SetPort, &R::ClearPort, &r, cur.port);
+    SetupReplComp(&R::SetPath, &R::ClearPath, &r, cur.path);
+    SetupReplComp(&R::SetQuery, &R::ClearQuery, &r, cur.query);
+    SetupReplComp(&R::SetRef, &R::ClearRef, &r, cur.ref);
+
+    std::string out_str;
+    url_canon::StdStringCanonOutput output(&out_str);
+    url_parse::Parsed out_parsed;
+    url_canon::ReplaceFileSystemURL(cur.base, parsed, r, NULL,
+                                    &output, &out_parsed);
+    output.Complete();
+
+    EXPECT_EQ(replace_cases[i].expected, out_str);
+  }
+}
+#endif
 
 TEST(URLCanonTest, ReplacePathURL) {
   ReplaceCase replace_cases[] = {
@@ -1619,6 +1677,47 @@ TEST(URLCanonTest, CanonicalizeFileURL) {
     EXPECT_EQ(cases[i].expected_path.len, out_parsed.path.len);
   }
 }
+
+#ifdef FULL_FILESYSTEM_URL_SUPPORT
+TEST(URLCanonTest, CanonicalizeFileSystemURL) {
+  struct URLCase {
+    const char* input;
+    const char* expected;
+    bool expected_success;
+  } cases[] = {
+    {"Filesystem:htTp://www.Foo.com:80/tempoRary", "filesystem:http://www.foo.com/tempoRary/", true},
+    {"filesystem:httpS://www.foo.com/temporary/", "filesystem:https://www.foo.com/temporary/", true},
+    {"filesystem:http://www.foo.com//", "filesystem:http://www.foo.com//", false},
+    {"filesystem:http://www.foo.com/persistent/bob?query#ref", "filesystem:http://www.foo.com/persistent/bob?query#ref", true},
+    {"filesystem:fIle://\\temporary/", "filesystem:file:///temporary/", true},
+    {"filesystem:fiLe:///temporary", "filesystem:file:///temporary/", true},
+    {"filesystem:file://///temporary", "filesystem:file:///temporary/", true},
+    {"filesystem:File:///temporary/Bob?qUery#reF", "filesystem:file:///temporary/Bob?qUery#reF", true},
+  };
+
+  for (size_t i = 0; i < ARRAYSIZE(cases); i++) {
+    int url_len = static_cast<int>(strlen(cases[i].input));
+    url_parse::Parsed parsed;
+    url_parse::ParseFileSystemURL(cases[i].input, url_len, &parsed);
+
+    url_parse::Parsed out_parsed;
+    std::string out_str;
+    url_canon::StdStringCanonOutput output(&out_str);
+    bool success = url_canon::CanonicalizeFileSystemURL(cases[i].input, url_len,
+                                                        parsed, NULL, &output,
+                                                        &out_parsed);
+    output.Complete();
+
+    EXPECT_EQ(cases[i].expected_success, success);
+    EXPECT_EQ(cases[i].expected, out_str);
+
+    // Make sure the spec was properly identified, the filesystem canonicalizer
+    // has different code for writing the spec.
+    EXPECT_EQ(0, out_parsed.scheme.begin);
+    EXPECT_EQ(10, out_parsed.scheme.len);
+  }
+}
+#endif
 
 TEST(URLCanonTest, CanonicalizePathURL) {
   // Path URLs should get canonicalized schemes but nothing else.
@@ -1930,6 +2029,16 @@ TEST(URLCanonTest, ResolveRelativeURL) {
       // is not file.
     {"http://host/a", true, false, "/c:\\foo", true, true, true, "http://host/c:/foo"},
     {"http://host/a", true, false, "//c:\\foo", true, true, true, "http://c/foo"},
+      // Filesystem URL tests; filesystem URLs are only valid and relative if
+      // they have no scheme, e.g. "./index.html".  There's no valid equivalent
+      // to http:index.html.
+    {"filesystem:http://host/t/path", true, false, "filesystem:http://host/t/path2", true, false, false, NULL},
+    {"filesystem:http://host/t/path", true, false, "filesystem:https://host/t/path2", true, false, false, NULL},
+    {"filesystem:http://host/t/path", true, false, "http://host/t/path2", true, false, false, NULL},
+    {"http://host/t/path", true, false, "filesystem:http://host/t/path2", true, false, false, NULL},
+    {"filesystem:http://host/t/path", true, false, "./path2", true, true, true, "filesystem:http://host/t/path2"},
+    {"filesystem:http://host/t/path/", true, false, "path2", true, true, true, "filesystem:http://host/t/path/path2"},
+    {"filesystem:http://host/t/path", true, false, "filesystem:http:path2", true, false, false, NULL},
   };
 
   for (size_t i = 0; i < ARRAYSIZE(rel_cases); i++) {

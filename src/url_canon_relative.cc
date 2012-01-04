@@ -34,6 +34,7 @@
 #include "googleurl/src/url_canon_internal.h"
 #include "googleurl/src/url_file.h"
 #include "googleurl/src/url_parse_internal.h"
+#include "googleurl/src/url_util_internal.h"
 
 namespace url_canon {
 
@@ -155,10 +156,16 @@ bool DoIsRelativeURL(const char* base,
   if (!is_base_hierarchical)
     return true;
 
+  int colon_offset = scheme.end();
+
+  // If it's a filesystem URL, the only valid way to make it relative is not to
+  // supply a scheme.  There's no equivalent to e.g. http:index.html.
+  if (url_util::CompareSchemeComponent(url, scheme, "filesystem"))
+    return true;
+
   // ExtractScheme guarantees that the colon immediately follows what it
   // considers to be the scheme. CountConsecutiveSlashes will handle the
   // case where the begin offset is the end of the input.
-  int colon_offset = scheme.end();
   int num_slashes = url_parse::CountConsecutiveSlashes(url, colon_offset + 1,
                                                        url_len);
 
