@@ -456,7 +456,7 @@ bool GURL::DomainIs(const char* lower_ascii_domain,
     return false;
 
   // FileSystem URLs have empty parsed_.host, so check this first.
-  if (SchemeIsFileSystem())
+  if (SchemeIsFileSystem() && inner_url_)
     return inner_url_->DomainIs(lower_ascii_domain, domain_len);
 
   if (!parsed_.host.is_nonempty())

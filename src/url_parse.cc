@@ -312,6 +312,29 @@ void DoParseAfterScheme(const CHAR* spec,
   ParsePath(spec, full_path, &parsed->path, &parsed->query, &parsed->ref);
 }
 
+// The main parsing function for standard URLs. Standard URLs have a scheme,
+// host, path, etc.
+template<typename CHAR>
+void DoParseStandardURL(const CHAR* spec, int spec_len, Parsed* parsed) {
+  DCHECK(spec_len >= 0);
+
+  // Strip leading & trailing spaces and control characters.
+  int begin = 0;
+  TrimURL(spec, &begin, &spec_len);
+
+  int after_scheme;
+  if (DoExtractScheme(spec, spec_len, &parsed->scheme)) {
+    after_scheme = parsed->scheme.end() + 1;  // Skip past the colon.
+  } else {
+    // Say there's no scheme when there is no colon. We could also say that
+    // everything is the scheme. Both would produce an invalid URL, but this way
+    // seems less wrong in more cases.
+    parsed->scheme.reset();
+    after_scheme = begin;
+  }
+  DoParseAfterScheme(spec, spec_len, after_scheme, parsed);
+}
+
 template<typename CHAR>
 void DoParseFileSystemURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   DCHECK(spec_len >= 0);
@@ -426,29 +449,6 @@ void DoParseFileSystemURL(const CHAR* spec, int spec_len, Parsed* parsed) {
   int new_inner_path_length = inner_path_end - inner_parsed.path.begin;
   parsed->path.len = inner_parsed.path.len - new_inner_path_length;
   parsed->inner_parsed()->path.len = new_inner_path_length;
-}
-
-// The main parsing function for standard URLs. Standard URLs have a scheme,
-// host, path, etc.
-template<typename CHAR>
-void DoParseStandardURL(const CHAR* spec, int spec_len, Parsed* parsed) {
-  DCHECK(spec_len >= 0);
-
-  // Strip leading & trailing spaces and control characters.
-  int begin = 0;
-  TrimURL(spec, &begin, &spec_len);
-
-  int after_scheme;
-  if (DoExtractScheme(spec, spec_len, &parsed->scheme)) {
-    after_scheme = parsed->scheme.end() + 1;  // Skip past the colon.
-  } else {
-    // Say there's no scheme when there is no colon. We could also say that
-    // everything is the scheme. Both would produce an invalid URL, but this way
-    // seems less wrong in more cases.
-    parsed->scheme.reset();
-    after_scheme = begin;
-  }
-  DoParseAfterScheme(spec, spec_len, after_scheme, parsed);
 }
 
 // Initializes a path URL which is merely a scheme followed by a path. Examples
