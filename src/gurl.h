@@ -33,7 +33,7 @@
 #include <iosfwd>
 #include <string>
 
-#include "base/string16.h"
+#include "googleurl/base/string16.h"
 #include "googleurl/src/url_canon.h"
 #include "googleurl/src/url_canon_stdstring.h"
 #include "googleurl/src/url_common.h"
