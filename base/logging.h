@@ -4,6 +4,24 @@
 #ifndef BASE_LOGGING_H__
 #define BASE_LOGGING_H__
 
+#include "jml/utils/exc_assert.h"
+
+struct EatShifts {
+
+    template<typename T>
+    const EatShifts & operator << (const T & other) const
+    {
+        return *this;
+    }
+};
+
+inline EatShifts eatShifts() { EatShifts result;  return result; }
+
+#define NOTREACHED() ExcAssert(false)
+#define DCHECK(x) ExcAssert((x)); eatShifts()
+
+#if 0
+
 #include <string>
 #include <cstring>
 #include <strstream>
@@ -478,5 +496,7 @@ std::ostream& operator<<(std::ostream& out, const wchar_t* wstr);
 inline std::ostream& operator<<(std::ostream& out, const std::wstring& wstr) {
   return out << wstr.c_str();
 }
+
+#endif
 
 #endif  // BASE_LOGGING_H__

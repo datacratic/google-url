@@ -18,19 +18,18 @@ LIBRECOSET_GOOGLE_URL_SOURCES := \
 	src/url_canon_filesystemurl.cc \
 	src/url_canon_internal.cc \
 	src/url_canon_stdurl.cc \
-	src/gurl_test_main.cc \
 	src/url_canon_path.cc \
 	src/url_canon_query.cc
 
 
+#	src/gurl_test_main.cc \
 #	src/gurl_unittest.cc \
 #	src/url_util_unittest.cc \
 #	src/url_parse_unittest.cc \
 #	src/url_canon_unittest.cc \
 
-$(eval $(call set_compile_option,$(LIBRECOSET_GOOGLE_URL_SOURCES),-Igoogle_url/src -DOS_LINUX -DPLATFORM=OS_LINUX -DSNAPPY=1 -DGOOGLE_URL_PLATFORM_POSIX))
+$(eval $(call set_compile_option,$(LIBRECOSET_GOOGLE_URL_SOURCES),-Igoogleurl/src -Igoogleurl -Duint64=uint64_t))
 
-LIBRECOSET_GOOGLE_URL_LINK := snappy
+LIBRECOSET_GOOGLE_URL_LINK := icui18n icuuc icudata m
 
-$(eval $(call library,google_url,$(LIBRECOSET_GOOGLE_URL_SOURCES),$(LIBRECOSET_GOOGLE_URL_LINK)))
-
+$(eval $(call library,googleurl,$(LIBRECOSET_GOOGLE_URL_SOURCES),$(LIBRECOSET_GOOGLE_URL_LINK)))
