@@ -29,7 +29,7 @@
 
 // Canonicalizer functions for working with and resolving relative URLs.
 
-#include "base/logging.h"
+#include "googleurl/base/logging.h"
 #include "googleurl/src/url_canon.h"
 #include "googleurl/src/url_canon_internal.h"
 #include "googleurl/src/url_file.h"

@@ -27,7 +27,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "base/logging.h"
+#include "googleurl/base/logging.h"
 #include "googleurl/src/url_file.h"
 #include "googleurl/src/url_parse.h"
 #include "googleurl/src/url_parse_internal.h"

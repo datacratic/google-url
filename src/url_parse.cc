@@ -38,7 +38,7 @@
 
 #include <stdlib.h>
 
-#include "base/logging.h"
+#include "googleurl/base/logging.h"
 #include "googleurl/src/url_parse_internal.h"
 #include "googleurl/src/url_util.h"
 #include "googleurl/src/url_util_internal.h"

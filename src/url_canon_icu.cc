@@ -38,7 +38,7 @@
 #include "googleurl/src/url_canon_icu.h"
 #include "googleurl/src/url_canon_internal.h"  // for _itoa_s
 
-#include "base/logging.h"
+#include "googleurl/base/logging.h"
 
 namespace url_canon {
 

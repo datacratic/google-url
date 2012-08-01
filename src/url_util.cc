@@ -32,7 +32,7 @@
 
 #include "googleurl/src/url_util.h"
 
-#include "base/logging.h"
+#include "googleurl/base/logging.h"
 #include "googleurl/src/url_canon_internal.h"
 #include "googleurl/src/url_file.h"
 #include "googleurl/src/url_util_internal.h"
