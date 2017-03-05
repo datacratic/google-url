@@ -54,6 +54,8 @@
 
 #include "googleurl/base/basictypes.h"
 
+#include <cstdio>
+
 #ifdef WIN32
 
 typedef wchar_t char16;
